@@ -10,13 +10,13 @@ exec(open('atomict/version.py').read())
 
 setuptools.setup(
     name="atomict",
-    version=__version__,
+    version="0.1.1",
     author="Alain Richardt",
     author_email="alain@atomictessellator.com",
     description="The client application for the https://atomictessellator.com/",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/your-cli-project",
+    url="https://github.com/AtomicTessellator/atomic_cli",
     packages=setuptools.find_packages(),
     entry_points={
         'console_scripts': [
