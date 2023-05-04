@@ -10,7 +10,7 @@ exec(open('atomict/version.py').read())
 
 setuptools.setup(
     name="atomict",
-    version="0.1.1",
+    version="0.1.2",
     author="Alain Richardt",
     author_email="alain@atomictessellator.com",
     description="The client application for the https://atomictessellator.com/",
