@@ -123,9 +123,6 @@ celerybeat.pid
 .vscode
 .env
 .venv
-.venv2
-.venv-test
-.venv-user
 env/
 venv/
 ENV/

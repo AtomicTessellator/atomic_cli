@@ -1,59 +1,39 @@
-from atomict.datasets import download_public_dataset
-from atomict.datasets.public import MAPPINGS
-
-
-import fire
 import os
-from prettytable import PrettyTable
-from typing import Optional
+
+import dotenv
+import fire
+import requests
+
+from atomict.auth import authenticate
+from atomict.env import check_environment, clear
+from atomict.exceptions import APIValidationError, PermissionDenied
 
 
 class AtomicT:
-  """Atomic Tessellator CLI."""
+    """Atomic Tessellator CLI."""
 
-  def list_datasets(self):
-    """List all public datasets available for download."""
-    table = PrettyTable(['Dataset Ident', 'Fetch From'])
-    table.align = 'l'
+    def auth(self):
+        authenticate("alain@atomictessellator.com", "1181020")
 
-    for ident, url in MAPPINGS.items():
-      table.add_row([ident, url])
-
-    print(table)
-    print()
-    print('Use atomict get <dataset_ident> to fetch a dataset.')
-    print()
-
-  def download_dataset(self, identifier: str, destination: Optional[str] = None):
-    """Download a public dataset from the atomict-raw-datasets s3 bucket.
-    Parameters
-    ----------
-    stub : str
-        The name of the dataset to load.
-    destination : str
-        The path to save the dataset to.
-    Returns
-    -------
-    None
-    """
-
-    # If destination is supplied it must be a valid folder path
-    if destination:
-      if not os.path.isdir(destination):
-        raise ValueError(f'Destination: {destination} must be a valid folder')
-    else:
-      destination = os.getcwd()
-
-    try:
-      download_public_dataset(identifier, destination)
-    except ValueError as e:
-      return e
+    def clear(self):
+        clear()
 
 
 def main():
-    fire.Fire(AtomicT, name='atomict')
+    dotenv.load_dotenv()
+    check_environment()
+
+    try:
+        fire.Fire(AtomicT, name="atomict")
+    except requests.exceptions.ConnectionError as e:
+        print(
+            f"{e}\n\nCould not connect to the Atomic Tessellator API. atomict is configured to use {os.environ.get('ATOMICT_API_ROOT')}"
+        )
+    except PermissionDenied as e:
+        print(f"{e}\n\nPermission denied.")
+    except APIValidationError as e:
+        print(f"{e}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-
