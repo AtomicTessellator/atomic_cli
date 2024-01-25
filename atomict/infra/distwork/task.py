@@ -1,6 +1,6 @@
 from enum import Enum
 
-from atomict.api import get, post
+from atomict.api import get, patch, post
 from atomict.exceptions import UserTaskAbortException
 
 
@@ -39,4 +39,4 @@ def update_task_status(
     if percent:
         payload["percent"] = percent
 
-    return post(f"api/tasks/{task_uuid}/", payload=payload)
+    return patch(f"api/tasks/{task_uuid}/", payload=payload)

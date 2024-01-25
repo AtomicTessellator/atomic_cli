@@ -13,11 +13,16 @@ class AtomicT:
     """Atomic Tessellator CLI."""
 
     def auth(self):
-        authenticate("alain@atomictessellator.com", "1181020")
+        return authenticate("alain@atomictessellator.com", "1181020")
 
     def clear(self):
         clear()
 
+    def test(self):
+        from atomict.simulation.cantera import post_cantera_simulation
+        token = self.auth()
+        os.environ["AT_API_KEY"] = token
+        post_cantera_simulation({})
 
 def main():
     dotenv.load_dotenv()
