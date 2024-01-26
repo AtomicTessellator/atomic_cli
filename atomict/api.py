@@ -31,7 +31,7 @@ def get(path: str):
         response.raise_for_status()
 
 
-def post(path: str, payload: dict):
+def post(path: str, payload: dict, files=None):
     payload_enc = json.dumps(payload)
     headers = {"Content-Type": "application/json"}
 
@@ -39,7 +39,11 @@ def post(path: str, payload: dict):
         headers["Authorization"] = f"Token {os.environ.get('AT_TOKEN')}"
 
     api_root = os.environ.get("AT_API_SERVER")
-    response = requests.post(f"{api_root}/{path}", data=payload_enc, headers=headers)
+
+    if files is not None:
+        response = requests.post(f"{api_root}/{path}", data=payload_enc, headers=headers, files=files)
+    else:
+        response = requests.post(f"{api_root}/{path}", data=payload_enc, headers=headers)
 
     if response.status_code == requests.codes.ok:
         resp = response.json()
