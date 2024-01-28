@@ -32,8 +32,10 @@ def get(path: str):
 
 
 def post(path: str, payload: dict, files=None):
-    payload_enc = json.dumps(payload)
-    headers = {"Content-Type": "application/json"}
+    if not files:
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    else:
+        headers = {}
 
     if os.environ.get("AT_TOKEN"):
         headers["Authorization"] = f"Token {os.environ.get('AT_TOKEN')}"
@@ -41,9 +43,11 @@ def post(path: str, payload: dict, files=None):
     api_root = os.environ.get("AT_API_SERVER")
 
     if files is not None:
-        response = requests.post(f"{api_root}/{path}", data=payload_enc, headers=headers, files=files)
+        response = requests.post(
+            f"{api_root}/{path}", data=payload, headers=headers, files=files
+        )
     else:
-        response = requests.post(f"{api_root}/{path}", data=payload_enc, headers=headers)
+        response = requests.post(f"{api_root}/{path}", data=payload, headers=headers)
 
     if response.status_code == requests.codes.ok:
         resp = response.json()
