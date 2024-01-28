@@ -10,7 +10,6 @@ def get_simulation(simulation_id: str):
 
 
 def upload_simulation_results(results, traj_file_path, log_file_path):
-
     url = "simulation/catalysis/mlacc/results_upload/"
 
     files = {
