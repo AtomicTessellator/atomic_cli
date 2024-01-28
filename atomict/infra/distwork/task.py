@@ -1,6 +1,6 @@
 from enum import Enum
 
-from atomict.api import get, patch, post
+from atomict.api import get, patch
 from atomict.exceptions import UserTaskAbortException
 
 
