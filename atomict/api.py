@@ -18,7 +18,7 @@ def get(path: str):
     if response.status_code == requests.codes.ok:
         resp = response.json()
 
-        if "error" in resp:
+        if "error" in resp and resp["error"] is not None:
             raise PermissionDenied(resp["error"])
         else:
             return resp
