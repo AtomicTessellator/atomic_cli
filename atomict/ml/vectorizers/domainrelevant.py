@@ -1,3 +1,4 @@
+import numpy as np
 from rdkit.ML.Descriptors.MoleculeDescriptors import MolecularDescriptorCalculator
 
 
@@ -214,4 +215,4 @@ def domainrelevant_fingerprint(smiles: str):
     calc = MolecularDescriptorCalculator(domainrelevant_desc())
     desc = calc.CalcDescriptors(smiles)
 
-    return desc
+    return np.array(desc)

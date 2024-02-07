@@ -4,6 +4,7 @@ from rdkit import Chem
 
 from atomict.ml.vectorizers import (
     avalon_fingerprints,
+    get_full_fingerprint,
     morgan_fingerprints,
 )
 
@@ -26,8 +27,4 @@ def test_morgan_fingerprints(benzene_mol):
 
 
 def test_fingerprint_values():
-    """
-    Implement tests here to check if the fingerprint values are as expected.
-    This requires having a known fingerprint for a given molecule to compare against.
-    """
-    pass
+    get_full_fingerprint("C1=CC=CC=C1")

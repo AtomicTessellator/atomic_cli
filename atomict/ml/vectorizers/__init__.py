@@ -14,6 +14,6 @@ def get_full_fingerprint(smiles: str):
     
     avalon = avalon_fingerprints(mol)
     morgan = morgan_fingerprints(mol)
-    domain_r = domainrelevant_fingerprint(smiles)
+    domain_r = domainrelevant_fingerprint(mol)
     
-    return np.concatenate([avalon, morgan, domain_r], axis=1)
+    return np.concatenate([avalon, morgan, domain_r], axis=0)
