@@ -39,4 +39,5 @@ def update_task_status(
     if percent:
         payload["percent"] = percent
 
-    return patch(f"api/tasks/{task_uuid}/", payload=payload)
+    res = patch(f"api/tasks/{task_uuid}/", payload=payload)
+    return res

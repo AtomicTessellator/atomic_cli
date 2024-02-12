@@ -31,11 +31,19 @@ def get(path: str):
         response.raise_for_status()
 
 
-def post(path: str, payload: dict, files=None):
-    if not files:
+def post(path: str, payload: dict, files=None, extra_headers={}):
+    # Jesus christ this logic needs cleaning up
+    if not files and "Content-Type" not in extra_headers:
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
     else:
         headers = {}
+
+    if extra_headers:
+        if "Content-Type" in extra_headers:
+            headers["Content-Type"] = extra_headers["Content-Type"]
+            payload = json.dumps(payload)
+        else:
+            headers.update(extra_headers)
 
     if os.environ.get("AT_TOKEN"):
         headers["Authorization"] = f"Token {os.environ.get('AT_TOKEN')}"
