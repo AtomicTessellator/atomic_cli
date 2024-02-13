@@ -12,7 +12,17 @@ def create_simulation(data: dict):
 def create_cf_sample_space_example(payload: dict, extra_headers={}):
 
     return post(
-        "api/cf-sample-space-example/",
-        payload=payload,
-        extra_headers=extra_headers
+        "api/cf-sample-space-example/", payload=payload, extra_headers=extra_headers
+    )
+
+
+def create_cf_counterfactual(payload: dict, extra_headers={}):
+
+    return post("api/cf-counterfactual/", payload=payload, extra_headers=extra_headers)
+
+
+def create_cf_lime_explanation(payload: dict, extra_headers={}):
+
+    return post(
+        "api/cf-lime-explanation/", payload=payload, extra_headers=extra_headers
     )
