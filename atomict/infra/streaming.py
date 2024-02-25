@@ -7,10 +7,7 @@ TOPIC_CATALYSIS_EXPLORE = "catalysis_explore"
 TOPIC_CATALYSIS_SIMULATE = "catalysis_simulate"
 TOPIC_COUNTERFACTUAL_SIMULATE = "counterfactual_simulate"
 TOPIC_MOL_FINGERPRINT = "mol_fingerprint"
-
-GROUP_ID_CANTERA_SIMULATION = "procsim-cantera-simulation"
-GROUP_ID_CATALYSIS_EXPLORE = "catalysis-exploration"
-GROUP_ID_MOL_FINGERPRINT = "mol-fingerprint"
+TOPIC_KNOWLEDGE_EXTRACT = "knowledge_extract"
 
 
 def get_consumer():
