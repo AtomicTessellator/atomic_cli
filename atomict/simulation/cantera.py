@@ -1,3 +1,5 @@
+import json
+
 from atomict.api import get, post
 
 
@@ -23,10 +25,22 @@ def post_cantera_simulation(cantera_simulation: dict):
 
 
 def post_ct_reaction(ct_reaction: dict):
+
+    for json_prop in ['input_data', 'reactants', 'products']:
+
+        if isinstance(ct_reaction[json_prop], dict):
+            ct_reaction[json_prop] = json.dumps(ct_reaction[json_prop])
+
     return post("api/ct-reaction/", ct_reaction)
 
 
 def post_ct_species(ct_species: dict):
+
+    for json_prop in ["input_data", ]:
+
+        if isinstance(ct_species[json_prop], dict):
+            ct_species[json_prop] = json.dumps(ct_species[json_prop])
+
     return post("api/ct-species/", ct_species)
 
 
