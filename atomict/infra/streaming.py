@@ -11,7 +11,10 @@ TOPIC_MOL_FINGERPRINT = "mol_fingerprint"
 TOPIC_KNOWLEDGE_EXTRACT = "knowledge_extract"
 
 
-def get_consumer():
+def get_consumer(
+    c_group: str,
+    auto_commit: bool = True
+):
     host = os.environ.get("AT_CONFLUENT_HOST")
     port = os.environ.get("AT_CONFLUENT_PORT")
     c_group = os.environ.get("AT_CONFLUENT_CONSUMER_GROUP")
@@ -46,10 +49,10 @@ def get_consumer():
             "bootstrap.servers": f"{host}:{port}",
             "group.id": c_group,
             "auto.offset.reset": "earliest",
-            "enable.auto.commit": False,
-            "session.timeout.ms": session_timeout,
+            "enable.auto.commit": auto_commit,
             "heartbeat.interval.ms": heartbeat_interval,
-            "max.poll.interval.ms": session_timeout,
+            "session.timeout.ms": session_timeout,
+            "max.poll.interval.ms": session_timeout
         }
     )
 
