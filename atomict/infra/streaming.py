@@ -27,7 +27,7 @@ def get_consumer(
         logging.info(
             f"AT_CONFLUENT_SESSION_TIMEOUT_MS configuration found: {session_timeout}"
         )
-    except ValueError:
+    except (ValueError, TypeError):
         logging.warning(
             f"Invalid session timeout: {session_timeout}, using default of 30000"
         )
@@ -38,7 +38,7 @@ def get_consumer(
         logging.info(
             f"AT_CONFLUENT_HEARTBEAT_INTERVAL_MS configuration found: {heartbeat_interval}"
         )
-    except ValueError:
+    except (ValueError, TypeError):
         logging.warning(
             f"Invalid heartbeat interval: {heartbeat_interval}, using default of 10000"
         )
