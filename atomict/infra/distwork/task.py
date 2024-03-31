@@ -37,7 +37,7 @@ def update_task_status(
         payload["error"] = error_msg
 
     if percent:
-        payload["percent"] = percent
+        payload["progress"] = percent
 
     res = patch(f"api/tasks/{task_uuid}/", payload=payload)
     return res
