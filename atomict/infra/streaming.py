@@ -9,6 +9,7 @@ TOPIC_CATALYSIS_SIMULATE = "catalysis_simulate"
 TOPIC_COUNTERFACTUAL_SIMULATE = "counterfactual_simulate"
 TOPIC_MOL_FINGERPRINT = "mol_fingerprint"
 TOPIC_KNOWLEDGE_EXTRACT = "knowledge_extract"
+TOPIC_RMG_RUN = "rmg_run"
 
 
 def get_consumer(
