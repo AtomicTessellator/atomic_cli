@@ -48,7 +48,7 @@ def post(path: str, payload: dict, files=None, extra_headers={}):
     if os.environ.get("AT_TOKEN"):
         headers["Authorization"] = f"Token {os.environ.get('AT_TOKEN')}"
 
-    api_root = os.environ.get("AT_API_SERVER")
+    api_root = os.environ.get("AT_SERVER")
 
     if files is not None:
         response = requests.post(
