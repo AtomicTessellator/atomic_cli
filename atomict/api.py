@@ -7,7 +7,7 @@ from atomict.exceptions import APIValidationError, PermissionDenied
 
 
 def get(path: str):
-    api_root = os.environ.get("AT_API_SERVER")
+    api_root = os.environ.get("AT_SERVER")
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
 
     if os.environ.get("AT_TOKEN"):
@@ -80,7 +80,7 @@ def patch(path: str, payload: dict):
     if os.environ.get("AT_TOKEN"):
         headers["Authorization"] = f"Token {os.environ.get('AT_TOKEN')}"
 
-    api_root = os.environ.get("AT_API_SERVER")
+    api_root = os.environ.get("AT_SERVER")
     response = requests.patch(f"{api_root}/{path}", data=payload_enc, headers=headers)
 
     if response.status_code == requests.codes.ok:
