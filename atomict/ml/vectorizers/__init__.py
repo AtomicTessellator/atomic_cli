@@ -10,7 +10,7 @@ def get_amd_fingerprint(smiles: str, remove_extraneous_hydrogens: bool = False):
     return get_full_fingerprint(smiles, remove_extraneous_hydrogens)
 
 
-def get_full_fingerprint(smiles: str, remove_extraneous_hydrogens: bool = False):
+def get_full_fingerprint(smiles: str, remove_extraneous_hydrogens: bool = False, morgan_radius: int = 2):
 
     mol = Chem.MolFromSmiles(smiles)
 
@@ -21,7 +21,7 @@ def get_full_fingerprint(smiles: str, remove_extraneous_hydrogens: bool = False)
         mol = Chem.RemoveHs(mol)
 
     avalon = avalon_fingerprints(mol)
-    morgan = morgan_fingerprints(mol)
+    morgan = morgan_fingerprints(mol, radius=morgan_radius)
     domain_r = domainrelevant_fingerprint(mol)
 
     return np.concatenate([avalon, morgan, domain_r], axis=0)
