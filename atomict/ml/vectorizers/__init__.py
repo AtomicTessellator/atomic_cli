@@ -6,8 +6,8 @@ from .domainrelevant import domainrelevant_fingerprint
 
 
 # Better name, get_full_fingerprint will be deprecated
-def get_amd_fingerprint(smiles: str, remove_extraneous_hydrogens: bool = False):
-    return get_full_fingerprint(smiles, remove_extraneous_hydrogens)
+def get_amd_fingerprint(smiles: str, remove_extraneous_hydrogens: bool = False, morgan_radius: int = 2):
+    return get_full_fingerprint(smiles, remove_extraneous_hydrogens, morgan_radius)
 
 
 def get_full_fingerprint(smiles: str, remove_extraneous_hydrogens: bool = False, morgan_radius: int = 2):
