@@ -9,6 +9,6 @@ def associate_user_upload_with_phonon_analysis(
     """
     result = post(
         "api/phonon-analysis-file/",
-        payload={"upload": user_upload_id, "analysis": pa_id},
+        payload={"user_upload": user_upload_id, "analysis": pa_id},
     )
     return result
