@@ -29,9 +29,12 @@ def resolve_token() -> str:
     if token:
         return token
 
-    token = get("token")
-    if token:
-        return token
+    try:
+        token = get("token")
+        if token:
+            return token
+    except FileNotFoundError:
+        pass
 
     user = os.environ.get("AT_USER")
     passw = os.environ.get("AT_PASS")
