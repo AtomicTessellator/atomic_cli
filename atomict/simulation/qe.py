@@ -1,7 +1,7 @@
 from atomict.api import get, post
 
 
-def get_qe_simulation(simulation_id: str):
+def get_simulation(simulation_id: str):
     """
     Get a Quantum Espresso simulation
     """

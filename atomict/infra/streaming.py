@@ -1,8 +1,6 @@
 import logging
 import os
 
-from confluent_kafka import Consumer
-
 TOPIC_CANTERA_SIMULATION = "procsim_cantera_simulate"
 TOPIC_CATALYSIS_EXPLORE = "catalysis_explore"
 TOPIC_CATALYSIS_SIMULATE = "catalysis_simulate"
@@ -16,6 +14,9 @@ def get_consumer(
     c_group: str,
     auto_commit: bool = True
 ):
+    # This is guarded because it's pending removal
+    from confluent_kafka import Consumer
+
     host = os.environ.get("AT_CONFLUENT_HOST")
     port = os.environ.get("AT_CONFLUENT_PORT")
     c_group = os.environ.get("AT_CONFLUENT_CONSUMER_GROUP")
