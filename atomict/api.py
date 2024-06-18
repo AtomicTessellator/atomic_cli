@@ -57,7 +57,7 @@ def post(path: str, payload: dict, files=None, extra_headers={}):
     else:
         response = requests.post(f"{api_root}/{path}", data=payload, headers=headers)
 
-    if response.status_code == requests.codes.ok:
+    if response.status_code in [requests.codes.ok, requests.codes.created]:
         resp = response.json()
 
         if "error" in resp:
