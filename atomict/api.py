@@ -7,7 +7,7 @@ from atomict.exceptions import APIValidationError, PermissionDenied
 
 
 def get(path: str):
-    api_root = os.environ.get("AT_SERVER")
+    api_root = os.environ.get("AT_SERVER", "https://api.atomictessellator.com")
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
 
     if os.environ.get("AT_TOKEN"):
