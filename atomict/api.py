@@ -97,3 +97,29 @@ def patch(path: str, payload: dict):
         raise PermissionDenied(response.json())
     else:
         response.raise_for_status()
+
+
+def delete(path: str):
+    headers = {}
+
+    if os.environ.get("AT_TOKEN"):
+        headers["Authorization"] = f"Token {os.environ.get('AT_TOKEN')}"
+
+    api_root = os.environ.get("AT_SERVER")
+    response = requests.delete(f"{api_root}/{path}", headers=headers)
+
+    if response.status_code == requests.codes.ok:
+        resp = response.json()
+
+        if resp.get("error") is not None:
+            raise Exception(resp["error"])
+        else:
+            return resp
+
+    elif response.status_code == requests.codes.bad_request:
+        raise APIValidationError(response.json())
+    elif response.status_code == requests.codes.forbidden:
+        raise PermissionDenied(response.json())
+    else:
+        response.raise_for_status()
+
