@@ -1,4 +1,31 @@
-from atomict.api import get, post
+from atomict.api import delete, get, post
+
+
+def create_simulation(project_id: str, 
+                      input_file: str,
+                      action: str,
+                      name: str = None,
+                      description: str = None) -> dict:
+
+    if action not in ["DRAFT", "LAUNCH"]:
+        raise ValueError("Action must be 'DRAFT' or 'LAUNCH'")
+    
+    payload = {
+        'project': project_id,
+        'input_file': input_file,
+        'action': action,
+        'name': name,
+        'description': description
+    }
+    
+    result = post("api/qe-simulation/", payload, extra_headers={"Content-Type": "application/json"})
+    
+    return result
+
+
+def get_simulation_by_name(name: str) -> dict:
+    result = get(f"api/qe-simulation/?name={name}")
+    return result['results'][0]
 
 
 def get_simulation(simulation_id: str):
@@ -6,6 +33,14 @@ def get_simulation(simulation_id: str):
     Get a Quantum Espresso simulation
     """
     result = get(f"api/qe-simulation/{simulation_id}/")
+    return result
+
+
+def delete_simulation(simulation_id): 
+    """
+    Delete a Quantum Espresso simulation
+    """
+    result = delete(f"api/qe-simulation/{simulation_id}/")
     return result
 
 
