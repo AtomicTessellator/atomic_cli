@@ -31,7 +31,7 @@ def except_on_user_abort(task_uuid: str):
 def update_task_status(
     task_uuid: str, status: TaskStatus = None, error_msg: str = None, percent: int = None, progress_indeterminate: bool = None
 ):
-    payload = {"status": status.value}
+    payload = {}
 
     if status:
         payload["status"] = status.value
