@@ -29,15 +29,21 @@ def except_on_user_abort(task_uuid: str):
 
 
 def update_task_status(
-    task_uuid: str, status: TaskStatus, error_msg: str = None, percent: int = None
+    task_uuid: str, status: TaskStatus = None, error_msg: str = None, percent: int = None, progress_indeterminate: bool = None
 ):
     payload = {"status": status.value}
+
+    if status:
+        payload["status"] = status.value
 
     if error_msg:
         payload["error"] = error_msg
 
     if percent:
         payload["progress"] = percent
+
+    if progress_indeterminate is not None:
+        payload["progress_indeterminate"] = progress_indeterminate
 
     res = patch(f"api/tasks/{task_uuid}/", payload=payload)
     return res
