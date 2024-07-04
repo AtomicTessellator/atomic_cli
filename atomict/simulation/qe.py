@@ -5,7 +5,8 @@ def create_simulation(project_id: str,
                       input_file: str,
                       action: str,
                       name: str = None,
-                      description: str = None) -> dict:
+                      description: str = None,
+                      **kwargs) -> dict:
 
     if action not in ["DRAFT", "LAUNCH"]:
         raise ValueError("Action must be 'DRAFT' or 'LAUNCH'")
@@ -17,6 +18,8 @@ def create_simulation(project_id: str,
         'name': name,
         'description': description
     }
+    
+    payload.update(kwargs)
     
     result = post("api/qe-simulation/", payload, extra_headers={"Content-Type": "application/json"})
     
