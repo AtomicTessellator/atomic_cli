@@ -1,3 +1,5 @@
+import os
+
 from atomict.api import get, post
 
 
@@ -17,6 +19,13 @@ def upload_single_file(full_path: str, file_name: str, project_uuid: str = None)
 
 def download_file(user_upload_uuid: str, destination_path: str):
     content = get(f"user/file_upload_get/{user_upload_uuid}/")
+
+    # Write the content to the destination path
+    # if there's a directory path in the destination path, create the directory
+    destination_dir = os.path.dirname(destination_path)
+    if destination_dir:
+        os.makedirs(destination_dir, exist_ok=True)
+
     with open(destination_path, "wb") as f:
         f.write(content)
     return content
