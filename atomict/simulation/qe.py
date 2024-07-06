@@ -59,3 +59,11 @@ def associate_user_upload_with_qe_simulation(user_upload_id: str, qe_simulation_
         }    
     )
     return result
+
+
+def get_simulation_files(simulation_id: str):
+    """
+    Get the files associated with a Quantum Espresso simulation
+    """
+    result = get(f"api/qe-simulation-file/?simulation_uuid={simulation_id}")
+    return result['results']
