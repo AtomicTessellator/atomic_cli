@@ -66,4 +66,4 @@ def get_simulation_files(simulation_id: str):
     Get the files associated with a Quantum Espresso simulation
     """
     result = get(f"api/qe-simulation-file/?simulation_uuid={simulation_id}")
-    return result['results']
+    return result
