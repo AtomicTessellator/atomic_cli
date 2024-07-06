@@ -1,4 +1,4 @@
-from atomict.api import post
+from atomict.api import get, post
 
 
 def upload_single_file(full_path: str, file_name: str, project_uuid: str = None):
@@ -16,7 +16,7 @@ def upload_single_file(full_path: str, file_name: str, project_uuid: str = None)
 
 
 def download_file(user_upload_uuid: str, destination_path: str):
-    result = post(f"user/file_upload_get/{user_upload_uuid}/")
+    content = get(f"user/file_upload_get/{user_upload_uuid}/")
     with open(destination_path, "wb") as f:
-        f.write(result.content)
-    return result
+        f.write(content)
+    return content
