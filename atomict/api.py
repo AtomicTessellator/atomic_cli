@@ -15,14 +15,21 @@ def get(path: str):
 
     response = requests.get(f"{api_root}/{path}", headers=headers)
 
-    if response.status_code == requests.codes.ok:
+    if (
+        response.status_code == requests.codes.ok
+        and response.headers["Content-Type"] == "application/json"
+    ):
         resp = response.json()
 
         if "error" in resp and resp["error"] is not None:
             raise PermissionDenied(resp["error"])
         else:
             return resp
-
+    elif(
+        response.status_code == requests.codes.ok
+        and response.headers["Content-Type"] != "application/json"
+    ):
+        return response.content
     elif response.status_code == requests.codes.bad_request:
         raise APIValidationError(response.json())
     elif response.status_code == requests.codes.forbidden:
@@ -122,4 +129,3 @@ def delete(path: str):
         raise PermissionDenied(response.json())
     else:
         response.raise_for_status()
-
