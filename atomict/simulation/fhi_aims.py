@@ -29,3 +29,16 @@ def create_simulation(
     )
 
     return result
+
+
+def associate_user_upload_with_fhiaims_simulation(
+    user_upload_id: str, fhi_simulation_id: str
+):
+    """
+    Associate a user upload with a FHI-aims simulation
+    """
+    result = post(
+        "api/fhiaims-simulation-file/",
+        payload={"user_upload": user_upload_id, "simulation": fhi_simulation_id},
+    )
+    return result
