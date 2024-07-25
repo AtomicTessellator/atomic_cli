@@ -31,6 +31,22 @@ def create_simulation(
     return result
 
 
+def get_simulation(simulation_id: str):
+    """
+    Get a FHI aims simulation
+    """
+    result = get(f"api/fhiaims-simulation/{simulation_id}/")
+    return result
+
+
+def delete_simulation(simulation_id):
+    """
+    Delete a FHI aims simulation
+    """
+    result = delete(f"api/fhiaims-simulation/{simulation_id}/")
+    return result
+
+
 def associate_user_upload_with_fhiaims_simulation(
     user_upload_id: str, fhi_simulation_id: str
 ):
@@ -41,4 +57,12 @@ def associate_user_upload_with_fhiaims_simulation(
         "api/fhiaims-simulation-file/",
         payload={"user_upload": user_upload_id, "simulation": fhi_simulation_id},
     )
+    return result
+
+
+def get_simulation_files(simulation_id: str):
+    """
+    Get the files associated with a FHI-aims simulation
+    """
+    result = get(f"api/fhiaims-simulation-file/?simulation_uuid={simulation_id}")
     return result
