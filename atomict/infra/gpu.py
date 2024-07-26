@@ -25,7 +25,7 @@ def gpu_compute_capacity():
 
         for i in range(device_count):
             handle = pynvml.nvmlDeviceGetHandleByIndex(i)
-            device_name = pynvml.nvmlDeviceGetName(handle).decode("utf-8")
+            device_name = pynvml.nvmlDeviceGetName(handle)
 
             compute_capability = compute_capability_map.get(device_name, "Unknown")
             if compute_capability != "Unknown":
