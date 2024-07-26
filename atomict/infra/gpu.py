@@ -1,5 +1,7 @@
 import logging
 
+import pynvml
+
 # Having this hard coded list really sucks, but I don't know of a better way to do it
 # pycuda library adds more than 1GB to the size of the continer
 # and deviceQuery is statically linked to the CUDA library and fails on our setup
@@ -12,19 +14,13 @@ compute_capability_map = {
 
 
 def gpu_compute_capacity():
-    
-    try:
-        import pynvml
-    except ImportError:
-        logging.error("Failed to import pynvml")
-        return
 
     try:
         pynvml.nvmlInit()
 
         device_count = pynvml.nvmlDeviceGetCount()
         if device_count == 0:
-            logging.error("No CUDA-capable devices found")
+            logging.info("No CUDA-capable devices found")
             return None
 
         for i in range(device_count):
