@@ -15,7 +15,7 @@ def display_name(user_upload):
 
 def clear_workspace(sim, base_path: str = "./workspace"):
 
-    target_dir = os.path.join(base_path, sim['id'])
+    target_dir = os.path.join(base_path, sim["id"])
 
     if os.path.exists(target_dir):
         logging.warning(f"Removing existing workspace folder {target_dir}")
@@ -23,7 +23,7 @@ def clear_workspace(sim, base_path: str = "./workspace"):
 
 
 def download_workspace(workspace_files, target_directory: str):
-    """ Download a workspace to a target directory
+    """Download a workspace to a target directory
 
     Args:
         workspace_files list of UserUpload objects: List of files to download
@@ -86,9 +86,18 @@ def upload_workspace(
             inner_workspace = file_path.replace(workspace_folder, "")
             file_size = os.path.getsize(file_path)
 
-            logging.info(f"Uploading {inner_workspace}")
-            result = upload_single_file(file_path, inner_workspace)
-            logging.info(f"Upload result: {result}")
+            try:
+                result = upload_single_file(file_path, inner_workspace)
+                if result["status"] != "OK":
+                    logging.error(f"Failed to upload {inner_workspace}")
+                    logging.error(result)
+                    raise Exception(f"Failed to upload {inner_workspace} {result}")
+                else:
+                    logging.info(f"Uploaded {inner_workspace} OK")
+            except Exception as e:
+                logging.error(f"Failed to upload {inner_workspace}")
+                logging.error(e)
+                raise
 
             associate_function(result["UserUpload"]["id"], simulation_id)
 
