@@ -1,4 +1,4 @@
-from atomict.api import post
+from atomict.api import post, delete
 
 
 def create_object_link(
@@ -15,4 +15,12 @@ def create_object_link(
     response = post(
         "api/object-link/", payload, extra_headers={"Content-Type": "application/json"}
     )
+    return response
+
+
+def delete_object_link(link_id: str) -> dict:
+    """
+    Delete a link between an object and a project
+    """
+    response = delete(f"api/object-link/{link_id}/")
     return response
