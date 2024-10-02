@@ -66,19 +66,3 @@ def get_simulation_files(simulation_id: str):
     """
     result = get(f"api/fhiaims-simulation-file/?simulation_uuid={simulation_id}")
     return result
-
-
-def create_exploration_sample(exploration_id: str, simulation_id: str):
-    """
-    Create an exploration sample
-
-    exploration_id: str - The ID of the exploration to associate the sample with
-    simulation_id: str - The ID of the simulation to associate with the exploration
-    """
-
-    result = post(
-        "api/ea-exploration-sample/",
-        payload={"exploration": exploration_id, "simulation": simulation_id},
-    )
-
-    return result
