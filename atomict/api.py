@@ -70,7 +70,7 @@ def post(path: str, payload: dict, files=None, extra_headers={}):
     if response.status_code in [requests.codes.ok, requests.codes.created]:
         resp = response.json()
 
-        if "error" in resp:
+        if "error" in resp and "api/tasks/" not in path:
             raise PermissionDenied(resp["error"])
         else:
             return resp
@@ -96,7 +96,7 @@ def patch(path: str, payload: dict):
     if response.status_code == requests.codes.ok:
         resp = response.json()
 
-        if resp.get("error") is not None:
+        if resp.get("error") is not None and "api/tasks/" not in path:
             raise Exception(resp["error"])
         else:
             return resp
@@ -121,7 +121,7 @@ def delete(path: str):
     if response.status_code == requests.codes.ok:
         resp = response.json()
 
-        if resp.get("error") is not None:
+        if resp.get("error") is not None and "api/tasks/" not in path:
             raise Exception(resp["error"])
         else:
             return resp
