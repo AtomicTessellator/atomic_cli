@@ -20,7 +20,12 @@ def get(path: str):
     if response.status_code == requests.codes.ok and content_type == "application/json":
         resp = response.json()
 
-        if "error" in resp and resp["error"] is not None:
+        # This is truely hideous, an error can take many forms, not just permission denied
+        # This really needs to be cleaned up
+        # This hack about the paths is because the task object is special case where it has a legitimate
+        # field called "error" - 
+        # We need to standardize a response type from the server, likely the django rest framework response
+        if "error" in resp and resp["error"] is not None and "/api/tasks/" not in path:
             raise PermissionDenied(resp["error"])
         else:
             return resp
