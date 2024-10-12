@@ -9,6 +9,14 @@ def get_kpoint_exploration(simulation_id: str):
     return result
 
 
+def update_kpoint_exploration(exploration_id: str, fields: dict):
+    """
+    Update KPoint exploration
+    """
+    result = patch(f"api/kpoint-exploration/{exploration_id}/", payload=fields)
+    return result
+
+
 def get_kpoint_simulation_list(exploration_id: str):
     """
     Get kpoints for a simulation
