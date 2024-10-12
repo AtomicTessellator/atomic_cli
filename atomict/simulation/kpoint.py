@@ -23,6 +23,6 @@ def create_kpoint_simulation(exploration_id: str, simulation_id: str, k_points: 
     """
     result = post(
         f"api/kpoint-simulation/",
-        payload={"exploration_id": exploration_id, "simulation_id": simulation_id, "k_points": k_points},
+        payload={"exploration": exploration_id, "simulation": simulation_id, "k_points": k_points},
     )
     return result
