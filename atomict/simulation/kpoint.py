@@ -9,6 +9,14 @@ def get_kpoint_exploration(simulation_id: str):
     return result
 
 
+def get_kpoint_simulation_list(exploration_id: str):
+    """
+    Get kpoints for a simulation
+    """
+    result = get(f"api/kpoint-simulation/?exploration_id={exploration_id}")
+    return result
+
+
 def get_kpoint_simulation(simulation_id: str):
     """
     Get KPoint simulation
