@@ -56,3 +56,19 @@ def update_kpoint_simulation(simulation_id: str, fields: dict):
     """
     result = patch(f"api/kpoint-simulation/{simulation_id}/", payload=fields)
     return result
+
+
+def get_kpoint_analysis(analysis_id: str):
+    """
+    Get KPoint analysis
+    """
+    result = get(f"api/kpoint-analysis/{analysis_id}/")
+    return result
+
+
+def update_kpoint_analysis(analysis_id: str, fields: dict):
+    """
+    Update KPoint analysis
+    """
+    result = patch(f"api/kpoint-analysis/{analysis_id}/", payload=fields)
+    return result
