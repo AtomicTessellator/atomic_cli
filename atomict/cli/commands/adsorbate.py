@@ -4,7 +4,7 @@ from rich.table import Table
 from rich.console import Console
 from rich.panel import Panel
 import json
-from typing import Optional
+from typing import Optional, Tuple
 from atomict.cli.core.client import get_client
 
 console = Console()
@@ -19,8 +19,17 @@ def adsorbate():
 @adsorbate.command()
 @click.argument('id', required=False)
 @click.option('--json-output', is_flag=True, help='Output in JSON format')
-def get(id: Optional[str] = None, json_output: bool = False):
-    """Get adsorbate details or list all adsorbates"""
+@click.option('--search', help='Search term')
+@click.option('--filter', 'filters', multiple=True, help='Filter in format field=value')
+@click.option('--ordering', help='Field to order by (prefix with - for descending)')
+@click.option('--all', 'fetch_all', is_flag=True, help='Fetch all results (otherwise returns first page)')
+def get(id: Optional[str],
+         search: Optional[str] = None,
+         filters: Optional[Tuple] = None,  # Fixed syntax error and moved default value
+         ordering: Optional[str] = None,
+         fetch_all: bool = False,
+         json_output: bool = False):
+    """List adsorbates with optional filtering and search"""
     client = get_client()
 
     if id:
@@ -33,18 +42,64 @@ def get(id: Optional[str] = None, json_output: bool = False):
         console.print(f"ID: {result['id']}")
         # Add other relevant fields
     else:
-        results = client.get_all('/api/adsorbate/')
+        # Build query parameters
+        params = {}
+        if search:
+            params['search'] = search
+        if ordering:
+            params['ordering'] = ordering
+        if filters:
+            for f in filters:
+                try:
+                    key, value = f.split('=')
+                    params[key] = value
+                except ValueError:
+                    console.print(f"[red]Invalid filter format: {f}. Use field=value[/red]")
+                    return
+
+        if fetch_all:
+            # Get all results using the paginate method
+            results = client.get_all('/api/adsorbate/', params=params)
+        else:
+            # Get just the first page
+            results = client.get('/api/adsorbate/', params=params)
+
         if json_output:
             click.echo(json.dumps(results, indent=2))
             return
 
         table = Table(show_header=True)
         table.add_column("ID")
-        # Add other relevant columns
+        table.add_column("SMILES")
+        table.add_column("Binding Indices")
+        table.add_column("Reaction String")
+
+        # Handle both paginated and non-paginated responses
+        if fetch_all:
+            items = results  # get_all() already gives us the full list
+        else:
+            items = results.get('results', [])
+            
+        for item in items:
+            table.add_row(
+                str(item['id']),
+                str(item.get('smiles', '')),
+                str(item.get('binding_indices', [])),
+                str(item.get('reaction_string', ''))
+            )
+
+        console.print(table)  # Add this line to display the table
         
-        for item in results:
-            table.add_row(str(item['id']))
-            # Add other relevant fields
+        # Display pagination information if not fetching all
+        # TODO: clean this up
+        if not fetch_all and isinstance(results, dict):
+            count = results.get('count')
+            page_size = len(results.get('results', []))  # Calculate page size from results length
+            if count and page_size:
+                console.print(f"\nShowing page 1 of {(count - 1) // page_size + 1}")
+                console.print(f"Total items: {count}")
+                if results.get('next'):
+                    console.print("Use --all to fetch all results")
 
 
 @adsorbate.command()

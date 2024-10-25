@@ -105,7 +105,7 @@ cli.add_command(adsorbate.adsorbate)
 # raise commands to top-level
 cli.add_command(fhiaims.fhiaims_group)
 cli.add_command(kpoint.kpoint_group)
-cli.add_command(catalysis.catalysis_group)
+# cli.add_command(catalysis.catalysis_group)  # WIP
 cli.add_command(sqs.sqs_group)
 cli.add_command(soec.soecexploration_group)
 

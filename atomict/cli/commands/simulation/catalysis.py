@@ -124,6 +124,7 @@ def format_results_detail(results: Dict[str, Any]) -> None:
 @click.option('--json-output', is_flag=True, help='Output in JSON format')
 def get(id: Optional[str] = None, json_output: bool = False):
     """Get catalysis simulation details or list all"""
+    # TODO: support more options, filtering, and search
     client = get_client()
 
     if id:
@@ -137,7 +138,21 @@ def get(id: Optional[str] = None, json_output: bool = False):
         if json_output:
             click.echo(json.dumps(results, indent=2))
             return
-        console.print(format_catalysis_table(results))
+        
+        # Add pagination info
+        if isinstance(results, dict):
+            items = results.get('results', [])
+            count = results.get('count')
+            page_size = len(items)
+            if count and page_size:
+                console.print(f"\nShowing page 1 of {(count - 1) // page_size + 1}")
+                console.print(f"Total items: {count}")
+                if results.get('next'):
+                    console.print("Use --all to fetch all results")
+        else:
+            items = results
+
+        console.print(format_catalysis_table(items))  # Make sure we print the table
 
 
 @catalysis_group.group(name='results')
