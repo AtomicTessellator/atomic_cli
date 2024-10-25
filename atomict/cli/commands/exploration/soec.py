@@ -116,7 +116,7 @@ def create(name: Optional[str], description: Optional[str], project: str,
 
     # the API docs say this takes a FHIAims simulation object
     # the required data will have to be ironed out on the server side
-    # then this can be revisited
+    # TODO: if create fails, return the error to the client in a standard way
     exploration = client.post('/api/ea-exploration/', json=data)
     click.echo(f"Created exploration with ID: {exploration['id']}")
 

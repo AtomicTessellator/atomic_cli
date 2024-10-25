@@ -1,11 +1,7 @@
-import click
-from . import ea
+# import click
 
-
-@click.group(name='exploration')
-def exploration_group():
-    """Manage exploration tasks"""
-    pass
-
-
-exploration_group.add_command(ea.ea_group)
+# Use a flattened list of commands for now
+# @click.group(name='exploration')
+# def exploration_group():
+#     """Manage exploration tasks"""
+#     pass

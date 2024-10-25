@@ -13,9 +13,8 @@ from .commands import (
     adsorbate,
 )
 
-# from .commands.simulation import simulation
-from .commands.simulation import fhiaims, kpoint
-# from .commands.exploration import exploration_group
+from .commands.simulation import fhiaims, kpoint, catalysis
+
 from .commands.exploration import (
     sqs,
     soec,
@@ -95,7 +94,8 @@ eval "$(_AT_COMPLETE=fish_source at)"
 
 
 cli.add_command(completion)
-# cli.add_command(simulation)
+
+# TODO: rename these to group
 cli.add_command(task.task)
 cli.add_command(upload.upload)
 cli.add_command(project.project)
@@ -105,10 +105,13 @@ cli.add_command(adsorbate.adsorbate)
 # raise commands to top-level
 cli.add_command(fhiaims.fhiaims_group)
 cli.add_command(kpoint.kpoint_group)
+cli.add_command(catalysis.catalysis_group)
 cli.add_command(sqs.sqs_group)
 cli.add_command(soec.soecexploration_group)
 
+# from .commands.exploration import exploration_group
 # cli.add_command(exploration.exploration)  # move this
+# TBD: decide on how to group or put all commands at top level
 # standardize this later
 # cli.add_command(exploration_group)
 

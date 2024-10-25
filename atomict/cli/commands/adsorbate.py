@@ -11,12 +11,12 @@ console = Console()
 
 
 @click.group(name='adsorbate')
-def adsorbate_group():
+def adsorbate():
     """Manage adsorbates"""
     pass
 
 
-@adsorbate_group.command()
+@adsorbate.command()
 @click.argument('id', required=False)
 @click.option('--json-output', is_flag=True, help='Output in JSON format')
 def get(id: Optional[str] = None, json_output: bool = False):
@@ -47,7 +47,7 @@ def get(id: Optional[str] = None, json_output: bool = False):
             # Add other relevant fields
 
 
-@adsorbate_group.command()
+@adsorbate.command()
 @click.option('--ase-atoms', required=True, help='ASE atoms string representation')
 @click.option('--smiles', help='SMILES string representation of the molecule')
 @click.option('--binding-indices', multiple=True, type=int, 
@@ -78,7 +78,7 @@ def create(ase_atoms: Optional[str] = None,
     console.print(f"[green]Created adsorbate {result['id']}[/green]")
 
 
-@adsorbate_group.command()
+@adsorbate.command()
 @click.argument('id')
 @click.option('--ase-atoms', help='ASE atoms string representation')
 @click.option('--smiles', help='SMILES string representation of the molecule')
@@ -112,7 +112,7 @@ def update(id: str,
     console.print(f"[green]Updated adsorbate {result['id']}[/green]")
 
 
-@adsorbate_group.command()
+@adsorbate.command()
 @click.argument('id')
 def delete(id: str):
     """Delete an adsorbate"""
@@ -120,6 +120,3 @@ def delete(id: str):
     
     client.delete(f'/api/adsorbate/{id}/')
     console.print(f"[green]Deleted adsorbate {id}[/green]")
-
-
-adsorbate = adsorbate_group
