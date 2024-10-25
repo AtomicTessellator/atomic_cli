@@ -1,7 +1,9 @@
 import click
 from rich.console import Console
 from rich.table import Table
+from rich.box import ASCII_DOUBLE_HEAD
 from typing import Optional
+import json
 
 from atomict.cli.commands.helpers import format_datetime
 from atomict.cli.core.client import get_client
@@ -34,25 +36,27 @@ def fhiaims_group():
 @click.option('--search', help='Search term')
 @click.option('--ordering', help='Field to order results by')
 @click.option('--json-output', is_flag=True, help='Output in JSON format')
+@click.option('--all', 'fetch_all', is_flag=True, help='Fetch all results')
 def get(id: Optional[str] = None, search: Optional[str] = None, 
-        ordering: Optional[str] = None, json_output: bool = False):
+        ordering: Optional[str] = None, json_output: bool = False,
+        fetch_all: bool = False):
     """Get simulation details or list all simulations"""
     client = get_client()
     
     if id:
         simulation = client.get(f'/api/fhiaims-simulation/{id}/')
         if json_output:
-            click.echo(simulation)
-        else:
-            # Format single simulation output
-            console = Console()
-            console.print(f"ID: {simulation['id']}")
-            console.print(f"Name: {simulation.get('name', 'N/A')}")
-            console.print(f"Description: {simulation.get('description', 'N/A')}")
-            console.print(f"Created: {format_datetime(simulation['created_at'])}")
-            if simulation.get('task'):
-                status = get_status_string(simulation['task'].get('status'))
-                console.print(f"Status: {status}")
+            click.echo(json.dumps(simulation, indent=2))
+            return
+        # Format single simulation output
+        console = Console()
+        console.print(f"ID: {simulation['id']}")
+        console.print(f"Name: {simulation.get('name', 'N/A')}")
+        console.print(f"Description: {simulation.get('description', 'N/A')}")
+        console.print(f"Created: {format_datetime(simulation['created_at'])}")
+        if simulation.get('task'):
+            status = get_status_string(simulation['task'].get('status'))
+            console.print(f"Status: {status}")
     else:
         params = {}
         if search:
@@ -60,28 +64,70 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
         if ordering:
             params['ordering'] = ordering
             
-        simulations = client.get('/api/fhiaims-simulation/', params=params)
+        # Updated this section
+        if fetch_all:
+            # list
+            results = client.get_all('/api/fhiaims-simulation/', params=params)
+        else:
+            # dict
+            results = client.get('/api/fhiaims-simulation/', params=params)
         
         if json_output:
-            click.echo(simulations)
+            click.echo(json.dumps(results, indent=2))
+            return
+
+        # Handle pagination
+        if isinstance(results, dict):
+            items = results.get('results', [])
+            count = results.get('count')
+            page_size = len(items)
+            if count and page_size:
+                console = Console()
+                # console.print(f"\nShowing page 1 of {(count - 1) // page_size + 1}")
+                # console.print(f"Total items: {count}")
+                # if results.get('next'):
+                #     console.print("Use --all to fetch all results")
         else:
-            console = Console()
-            table = Table(show_header=True)
-            table.add_column("ID")
-            table.add_column("Name")
-            table.add_column("Created")
-            table.add_column("Status")
-            
-            for sim in simulations:
-                status_code = sim.get('task', {}).get('status')
-                status = get_status_string(status_code)
-                table.add_row(
-                    str(sim['id']),
-                    sim.get('name', 'N/A'),
-                    format_datetime(sim['created_at']),
-                    status
-                )
-            console.print(table)
+            items = results
+
+        if isinstance(results, dict):
+            # paginated
+            footer_string = f"Showing page 1 of {(count - 1) // page_size + 1}"
+            footer_string += ", " + f"Total items: {count}"
+            footer_string += ". " + "Use --all to fetch all results"
+        else:
+            footer_string = ""
+
+        # Display table
+        console = Console()
+        table = Table(
+            title="FHI-aims Simulations",
+            title_style="bold",
+            title_justify="center",
+            box=ASCII_DOUBLE_HEAD,
+            caption=footer_string,
+            caption_justify="center",
+            show_header=True,
+            header_style="bold cyan",
+            # show_footer=True,
+            # footer_style="bold cyan",
+            highlight=True,
+        )
+        table.add_column("ID")
+        table.add_column("Name")
+        table.add_column("Created")
+        table.add_column("Status")
+        
+        for item in items:
+            status_code = item.get('task', {}).get('status')
+            status = get_status_string(status_code)
+            table.add_row(
+                str(item['id']),
+                item.get('name', 'N/A'),
+                format_datetime(item['created_at']),
+                status
+            )
+        console.print(table)
 
 
 @fhiaims_group.command()
