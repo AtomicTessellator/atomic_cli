@@ -1,11 +1,15 @@
 # cli/commands/adsorbate.py
-import click
-from rich.table import Table
-from rich.console import Console
-from rich.panel import Panel
 import json
 from typing import Optional, Tuple
+
+import click
+from rich.console import Console
+from rich.panel import Panel
+from rich.pretty import pprint
+
 from atomict.cli.core.client import get_client
+from atomict.cli.commands.common import create_table
+from atomict.cli.core.utils import get_pagination_info
 
 console = Console()
 
@@ -65,41 +69,26 @@ def get(id: Optional[str],
             results = client.get('/api/adsorbate/', params=params)
 
         if json_output:
-            click.echo(json.dumps(results, indent=2))
+            pprint(results)
             return
 
-        table = Table(show_header=True)
-        table.add_column("ID")
-        table.add_column("SMILES")
-        table.add_column("Binding Indices")
-        table.add_column("Reaction String")
+        # Define columns with optional formatters
+        columns = [
+            ("ID", "id", None),  # Using default str formatter
+            ("SMILES", "smiles", None),
+            ("Binding Indices", "binding_indices", None),
+            ("Reaction String", "reaction_string", None),
+        ]
+        items, footer_string = get_pagination_info(results)
+        # Create and display the table
+        table = create_table(
+            columns=columns,
+            items=items,
+            title="Adsorbates",
+            caption=footer_string
+        )
 
-        # Handle both paginated and non-paginated responses
-        if fetch_all:
-            items = results  # get_all() already gives us the full list
-        else:
-            items = results.get('results', [])
-            
-        for item in items:
-            table.add_row(
-                str(item['id']),
-                str(item.get('smiles', '')),
-                str(item.get('binding_indices', [])),
-                str(item.get('reaction_string', ''))
-            )
-
-        console.print(table)  # Add this line to display the table
-        
-        # Display pagination information if not fetching all
-        # TODO: clean this up
-        if not fetch_all and isinstance(results, dict):
-            count = results.get('count')
-            page_size = len(results.get('results', []))  # Calculate page size from results length
-            if count and page_size:
-                console.print(f"\nShowing page 1 of {(count - 1) // page_size + 1}")
-                console.print(f"Total items: {count}")
-                if results.get('next'):
-                    console.print("Use --all to fetch all results")
+        console.print(table)
 
 
 @adsorbate.command()

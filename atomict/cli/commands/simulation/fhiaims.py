@@ -7,6 +7,8 @@ import json
 
 from atomict.cli.commands.helpers import format_datetime
 from atomict.cli.core.client import get_client
+from atomict.cli.commands.common import table_0
+from atomict.cli.core.utils import get_pagination_info
 
 
 def get_status_string(status_code: Optional[int]) -> str:
@@ -35,11 +37,13 @@ def fhiaims_group():
 @click.argument('id', required=False)
 @click.option('--search', help='Search term')
 @click.option('--ordering', help='Field to order results by')
+# filter should be enum to match DRF config
+@click.option('--filter', 'filters', multiple=True, help='Filter in format field=value')
 @click.option('--json-output', is_flag=True, help='Output in JSON format')
 @click.option('--all', 'fetch_all', is_flag=True, help='Fetch all results')
 def get(id: Optional[str] = None, search: Optional[str] = None, 
-        ordering: Optional[str] = None, json_output: bool = False,
-        fetch_all: bool = False):
+        ordering: Optional[str] = None, filters: tuple = (), 
+        json_output: bool = False, fetch_all: bool = False):
     """Get simulation details or list all simulations"""
     client = get_client()
     
@@ -52,7 +56,6 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
         console = Console()
         console.print(f"ID: {simulation['id']}")
         console.print(f"Name: {simulation.get('name', 'N/A')}")
-        console.print(f"Description: {simulation.get('description', 'N/A')}")
         console.print(f"Created: {format_datetime(simulation['created_at'])}")
         if simulation.get('task'):
             status = get_status_string(simulation['task'].get('status'))
@@ -63,6 +66,15 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
             params['search'] = search
         if ordering:
             params['ordering'] = ordering
+        
+        # Add filter parameters
+        for f in filters:
+            try:
+                field, value = f.split('=', 1)
+                params[field] = value
+            except ValueError:
+                click.echo(f"Invalid filter format: {f}. Use field=value", err=True)
+                return
             
         # Updated this section
         if fetch_all:
@@ -76,50 +88,28 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
             click.echo(json.dumps(results, indent=2))
             return
 
-        # Handle pagination
-        if isinstance(results, dict):
-            items = results.get('results', [])
-            count = results.get('count')
-            page_size = len(items)
-            if count and page_size:
-                console = Console()
-                # console.print(f"\nShowing page 1 of {(count - 1) // page_size + 1}")
-                # console.print(f"Total items: {count}")
-                # if results.get('next'):
-                #     console.print("Use --all to fetch all results")
-        else:
-            items = results
-
-        if isinstance(results, dict):
-            # paginated
-            footer_string = f"Showing page 1 of {(count - 1) // page_size + 1}"
-            footer_string += ", " + f"Total items: {count}"
-            footer_string += ". " + "Use --all to fetch all results"
-        else:
-            footer_string = ""
-
+        # Get the data from the results section and a string with page details
+        items, footer_string = get_pagination_info(results)
+        
         # Display table
         console = Console()
-        table = Table(
-            title="FHI-aims Simulations",
-            title_style="bold",
-            title_justify="center",
-            box=ASCII_DOUBLE_HEAD,
-            caption=footer_string,
-            caption_justify="center",
-            show_header=True,
-            header_style="bold cyan",
-            # show_footer=True,
-            # footer_style="bold cyan",
-            highlight=True,
-        )
+
+        if not items:
+            console.print(f"[white]No simulations found with the given criteria:[/white]\n[green]{params}")
+            return
+
+        table = table_0
+        table.title = "FHI-aims Simulations"
+        table.caption = footer_string
+
+        # TODO: discuss presentation. what to show?
         table.add_column("ID")
         table.add_column("Name")
         table.add_column("Created")
         table.add_column("Status")
-        
+
         for item in items:
-            status_code = item.get('task', {}).get('status')
+            status_code = item.get('task', {}).get('status')  # nested task
             status = get_status_string(status_code)
             table.add_row(
                 str(item['id']),
@@ -137,7 +127,7 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
 @click.option('--geometry-file', required=True, help='Geometry file content')
 @click.option('--generate-finite-diff', is_flag=True, help='Generate finite difference displacements')
 @click.option('--finite-diff-displacement', type=float, help='Finite difference displacement value')
-def create(name: Optional[str], description: Optional[str], 
+def create(name: Optional[str], description: Optional[str],
           control_file: str, geometry_file: str,
           generate_finite_diff: bool = False,
           finite_diff_displacement: Optional[float] = None):

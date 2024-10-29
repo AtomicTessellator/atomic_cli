@@ -29,6 +29,7 @@ def handle_connection_errors(func):
 class APIClient:
     def __init__(self, base_url: str = "http://localhost:5004"):
         self.base_url = base_url
+        self.params = {'limit': 20}
         self.client = httpx.Client(base_url=base_url, timeout=30.0)
         self._token: Optional[str] = None
 
@@ -86,6 +87,7 @@ class APIClient:
     @handle_connection_errors
     def get(self, path: str, params: Optional[Dict] = None) -> Dict[str, Any]:
         """Make GET request"""
+        params = {**self.params, **params} if params else self.params
         response = self.client.get(path, params=params)
         return self._handle_response(response)
 
