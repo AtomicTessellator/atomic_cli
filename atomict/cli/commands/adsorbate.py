@@ -39,7 +39,7 @@ def get(id: Optional[str],
     if id:
         result = client.get(f'/api/adsorbate/{id}/')
         if json_output:
-            click.echo(json.dumps(result, indent=2))
+            pprint(result)
             return
 
         console.print(Panel(f"[bold]Adsorbate Details[/bold]"))

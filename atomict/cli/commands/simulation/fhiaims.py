@@ -1,30 +1,12 @@
 import click
 from rich.console import Console
-from rich.table import Table
-from rich.box import ASCII_DOUBLE_HEAD
 from typing import Optional
 import json
 
-from atomict.cli.commands.helpers import format_datetime
+from atomict.cli.commands.helpers import format_datetime, get_status_string
 from atomict.cli.core.client import get_client
-from atomict.cli.commands.common import table_0
 from atomict.cli.core.utils import get_pagination_info
-
-
-def get_status_string(status_code: Optional[int]) -> str:
-    """Convert status code to human readable string"""
-    status_map = {
-        0: "Draft",
-        1: "Ready",
-        2: "Running",
-        3: "Completed",
-        4: "Error",
-        5: "Paused",
-        6: "User Aborted"
-    }
-    if status_code is None:
-        return "N/A"
-    return status_map.get(status_code, "Unknown")
+from atomict.cli.commands.common import create_table
 
 
 @click.group(name='fhiaims')
@@ -46,14 +28,13 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
         json_output: bool = False, fetch_all: bool = False):
     """Get simulation details or list all simulations"""
     client = get_client()
-    
+    console = Console()
     if id:
         simulation = client.get(f'/api/fhiaims-simulation/{id}/')
         if json_output:
             click.echo(json.dumps(simulation, indent=2))
             return
         # Format single simulation output
-        console = Console()
         console.print(f"ID: {simulation['id']}")
         console.print(f"Name: {simulation.get('name', 'N/A')}")
         console.print(f"Created: {format_datetime(simulation['created_at'])}")
@@ -88,35 +69,28 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
             click.echo(json.dumps(results, indent=2))
             return
 
-        # Get the data from the results section and a string with page details
+        # Define columns based on what's already in the table_0 setup
+        columns = [
+            ("ID", "id", None),
+            ("Name", "name", None),
+            ("Created", "created_at", format_datetime),
+            ("Status", "task", lambda x: get_status_string(x.get('status') if isinstance(x, dict) else None))
+
+        ]
+        
         items, footer_string = get_pagination_info(results)
         
-        # Display table
-        console = Console()
-
         if not items:
             console.print(f"[white]No simulations found with the given criteria:[/white]\n[green]{params}")
             return
 
-        table = table_0
-        table.title = "FHI-aims Simulations"
-        table.caption = footer_string
-
-        # TODO: discuss presentation. what to show?
-        table.add_column("ID")
-        table.add_column("Name")
-        table.add_column("Created")
-        table.add_column("Status")
-
-        for item in items:
-            status_code = item.get('task', {}).get('status')  # nested task
-            status = get_status_string(status_code)
-            table.add_row(
-                str(item['id']),
-                item.get('name', 'N/A'),
-                format_datetime(item['created_at']),
-                status
-            )
+        table = create_table(
+            columns=columns,
+            items=items,
+            title="FHI-aims Simulations",
+            caption=footer_string
+        )
+        
         console.print(table)
 
 
@@ -156,3 +130,83 @@ def delete(id: str):
     client = get_client()
     client.delete(f'/api/fhiaims-simulation/{id}/')
     click.echo(f"Deleted simulation {id}")
+
+
+@fhiaims_group.command()
+@click.argument('id', required=False)
+@click.option('--search', help='Search term')
+@click.option('--ordering', help='Field to order results by')
+@click.option('--filter', 'filters', multiple=True, help='Filter in format field=value')
+@click.option('--json-output', is_flag=True, help='Output in JSON format')
+@click.option('--all', 'fetch_all', is_flag=True, help='Fetch all results')
+def get_files(id: Optional[str] = None, search: Optional[str] = None, 
+              ordering: Optional[str] = None, filters: tuple = (), 
+              json_output: bool = False, fetch_all: bool = False):
+    """Get simulation file details or list all simulation files"""
+    client = get_client()
+    console = Console()
+
+    if id:
+        file = client.get(f'/api/fhiaims-simulation-file/{id}/')
+        if json_output:
+            click.echo(json.dumps(file, indent=2))
+            return
+        
+        # Format single file output
+        console.print(f"ID: {file['id']}")
+        console.print(f"Simulation ID: {file['simulation']['id']}")
+        if file.get('user_upload'):
+            console.print(f"File Name: {file['user_upload'].get('users_name', 'N/A')}")
+            console.print(f"Original Name: {file['user_upload'].get('orig_name', 'N/A')}")
+            console.print(f"Size: {file['user_upload'].get('size', 'N/A')} bytes")
+            console.print(f"Uploaded: {format_datetime(file['user_upload'].get('uploaded'))}")
+            if file['user_upload'].get('users_description'):
+                console.print(f"Description: {file['user_upload']['users_description']}")
+    else:
+        params = {}
+        if search:
+            params['search'] = search
+        if ordering:
+            params['ordering'] = ordering
+        
+        # Add filter parameters
+        for f in filters:
+            try:
+                field, value = f.split('=', 1)
+                params[field] = value
+            except ValueError:
+                click.echo(f"Invalid filter format: {f}. Use field=value", err=True)
+                return
+
+        if fetch_all:
+            results = client.get_all('/api/fhiaims-simulation-file/', params=params)
+        else:
+            results = client.get('/api/fhiaims-simulation-file/', params=params)
+
+        if json_output:
+            click.echo(json.dumps(results, indent=2))
+            return
+
+        columns = [
+            ("ID", "id", None),
+            ("Simulation", "simulation", lambda x: x.get('id') if isinstance(x, dict) else None),
+            ("File Name", "user_upload", lambda x: x.get('users_name') if isinstance(x, dict) else None),
+            ("Original Name", "user_upload", lambda x: x.get('orig_name') if isinstance(x, dict) else None),
+            ("Size (bytes)", "user_upload", lambda x: str(x.get('size')) if isinstance(x, dict) and x.get('size') is not None else None),
+            ("Uploaded", "user_upload", lambda x: format_datetime(x.get('uploaded')) if isinstance(x, dict) else None),
+        ]
+
+        items, footer_string = get_pagination_info(results)
+
+        if not items:
+            console.print(f"[white]No simulation files found with the given criteria:[/white]\n[green]{params}")
+            return
+
+        table = create_table(
+            columns=columns,
+            items=items,
+            title="FHI-aims Simulation Files",
+            caption=footer_string
+        )
+        
+        console.print(table)

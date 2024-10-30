@@ -1,10 +1,15 @@
+from typing import Optional, List
+\
 import click
 from rich.console import Console
-from rich.table import Table
-from typing import Optional, List
+from rich.panel import Panel
+from rich.pretty import pprint
 
 from atomict.cli.core.client import get_client
-from atomict.cli.commands.helpers import get_status_string
+from atomict.cli.core.utils import get_pagination_info
+from atomict.cli.commands.common import create_table
+from atomict.cli.commands.helpers import format_datetime, get_status_string
+from atomict.cli.core.client import get_client
 
 
 @click.group(name='kpoint')
@@ -17,24 +22,30 @@ def kpoint_group():
 @click.argument('id', required=False)
 @click.option('--search', help='Search term')
 @click.option('--ordering', help='Field to order results by')
+@click.option('--filter', 'filters', multiple=True, help='Filter in format field=value')
 @click.option('--json-output', is_flag=True, help='Output in JSON format')
+@click.option('--all', 'fetch_all', is_flag=True, help='Fetch all results')
 def get(id: Optional[str] = None, search: Optional[str] = None,
-        ordering: Optional[str] = None, json_output: bool = False):
+        ordering: Optional[str] = None, filters: tuple = (), 
+        json_output: bool = False, fetch_all: bool = False):
     """Get K-point simulation details or list all simulations"""
     client = get_client()
-    
+    console = Console()
+    # TODO: test this with real data
     if id:
         simulation = client.get(f'/api/kpoint-simulation/{id}/')
         if json_output:
-            click.echo(simulation)
-        else:
-            console = Console()
-            console.print(f"ID: {simulation['id']}")
-            console.print(f"Exploration: {simulation['exploration']}")
-            console.print(f"K-points: {simulation.get('k_points', [])}")
-            if simulation.get('simulation'):
-                status = get_status_string(simulation['simulation'].get('status'))
-                console.print(f"Status: {status}")
+            console.print_json(data=simulation)
+            return
+        
+        # Format single simulation output
+        console.print(Panel(f"[bold]K-point Simulation Details[/bold]"))
+        console.print(f"ID: {simulation['id']}")
+        console.print(f"Exploration: {simulation['exploration']}")
+        console.print(f"K-points: {simulation.get('k_points', [])}")
+        if simulation.get('simulation'):
+            status = get_status_string(simulation['simulation'].get('status'))
+            console.print(f"Status: {status}")
     else:
         params = {}
         if search:
@@ -42,28 +53,45 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
         if ordering:
             params['ordering'] = ordering
             
-        simulations = client.get('/api/kpoint-simulation/', params=params)
-        
-        if json_output:
-            click.echo(simulations)
+        # Add filter parameters
+        for f in filters:
+            try:
+                field, value = f.split('=', 1)
+                params[field] = value
+            except ValueError:
+                click.echo(f"Invalid filter format: {f}. Use field=value", err=True)
+                return
+
+        if fetch_all:
+            results = client.get_all('/api/kpoint-simulation/', params=params)
         else:
-            console = Console()
-            table = Table(show_header=True)
-            table.add_column("ID")
-            table.add_column("Exploration")
-            table.add_column("K-points")
-            table.add_column("Status")
-            
-            for sim in simulations:
-                status_code = sim.get('simulation', {}).get('status')
-                status = get_status_string(status_code)
-                table.add_row(
-                    str(sim['id']),
-                    str(sim['exploration']),
-                    str(sim.get('k_points', [])),
-                    status
-                )
-            console.print(table)
+            results = client.get('/api/kpoint-simulation/', params=params)
+
+        if json_output:
+            pprint(data=results)
+            return
+
+        columns = [
+            ("ID", "id", None),
+            ("Exploration", "exploration", None),
+            ("K-points", "k_points", str),
+            ("Status", "simulation", lambda x: get_status_string(x.get('status')) if isinstance(x, dict) else None),
+        ]
+
+        items, footer_string = get_pagination_info(results)
+
+        if not items:
+            console.print(f"[white]No simulations found with the given criteria:[/white]\n[green]{params}")
+            return
+
+        table = create_table(
+            columns=columns,
+            items=items,
+            title="K-point Simulations",
+            caption=footer_string
+        )
+        
+        console.print(table)
 
 
 @kpoint_group.command()
@@ -77,7 +105,7 @@ def create(exploration: str, k_points: List[float]):
         'k_points': list(k_points)
     }
         
-    simulation = client.post('/api/kpoint-simulation/', json=data)
+    simulation = client.post('/api/kpoint-simulation/', data=data)
     click.echo(f"Created simulation with ID: {simulation['id']}")
 
 
@@ -88,3 +116,82 @@ def delete(id: str):
     client = get_client()
     client.delete(f'/api/kpoint-simulation/{id}/')
     click.echo(f"Deleted simulation {id}")
+
+
+@kpoint_group.command()
+@click.argument('id', required=False)
+@click.option('--search', help='Search term')
+@click.option('--ordering', help='Field to order results by')
+@click.option('--filter', 'filters', multiple=True, help='Filter in format field=value')
+@click.option('--json-output', is_flag=True, help='Output in JSON format')
+@click.option('--all', 'fetch_all', is_flag=True, help='Fetch all results')
+def get_exploration(id: Optional[str] = None, search: Optional[str] = None, 
+                   ordering: Optional[str] = None, filters: tuple = (), 
+                   json_output: bool = False, fetch_all: bool = False):
+    """Get K-point exploration details or list all explorations"""
+    client = get_client()
+    console = Console()
+
+    if id:
+        exploration = client.get(f'/api/kpoint-exploration/{id}/')
+        if json_output:
+            console.print_json(data=exploration)
+            return
+        
+        # Format single exploration output
+        console.print(Panel(f"[bold]K-point Exploration Details[/bold]"))
+        console.print(f"ID: {exploration['id']}")
+        console.print(f"Name: {exploration.get('name', 'N/A')}")
+        console.print(f"Description: {exploration.get('description', 'N/A')}")
+        console.print(f"Created: {format_datetime(exploration.get('created_at'))}")
+        console.print(f"Updated: {format_datetime(exploration.get('updated_at'))}")
+        if exploration.get('task'):
+            console.print(f"Status: {get_status_string(exploration['task'].get('status'))}")
+        
+    else:
+        params = {}
+        if search:
+            params['search'] = search
+        if ordering:
+            params['ordering'] = ordering
+        
+        # Add filter parameters
+        for f in filters:
+            try:
+                field, value = f.split('=', 1)
+                params[field] = value
+            except ValueError:
+                click.echo(f"Invalid filter format: {f}. Use field=value", err=True)
+                return
+
+        if fetch_all:
+            results = client.get_all('/api/kpoint-exploration/', params=params)
+        else:
+            results = client.get('/api/kpoint-exploration/', params=params)
+
+        if json_output:
+            console.print_json(data=results)
+            return
+
+        columns = [
+            ("ID", "id", None),
+            ("Name", "name", None),
+            ("Status", "task", lambda x: get_status_string(x.get('status')) if isinstance(x, dict) else None),
+            ("Created", "created_at", format_datetime),
+            ("Updated", "updated_at", format_datetime),
+        ]
+
+        items, footer_string = get_pagination_info(results)
+
+        if not items:
+            console.print(f"[white]No explorations found with the given criteria:[/white]\n[green]{params}")
+            return
+
+        table = create_table(
+            columns=columns,
+            items=items,
+            title="K-point Explorations",
+            caption=footer_string
+        )
+        
+        console.print(table)
