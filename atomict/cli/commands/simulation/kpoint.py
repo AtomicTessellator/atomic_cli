@@ -31,7 +31,7 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
     """Get K-point simulation details or list all simulations"""
     client = get_client()
     console = Console()
-    # TODO: test this with real data
+    
     if id:
         simulation = client.get(f'/api/kpoint-simulation/{id}/')
         if json_output:
@@ -41,11 +41,16 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
         # Format single simulation output
         console.print(Panel(f"[bold]K-point Simulation Details[/bold]"))
         console.print(f"ID: {simulation['id']}")
-        console.print(f"Exploration: {simulation['exploration']}")
+        if simulation.get('exploration'):
+            console.print(f"Exploration: {simulation['exploration'].get('name', 'N/A')} ({simulation['exploration']['id']})")
+            status = get_status_string(simulation['exploration'].get('status'))
+            console.print(f"Status: {status}")
         console.print(f"K-points: {simulation.get('k_points', [])}")
         if simulation.get('simulation'):
+            console.print(f"Simulation Name: {simulation['simulation'].get('name', 'N/A')}")
             status = get_status_string(simulation['simulation'].get('status'))
             console.print(f"Status: {status}")
+
     else:
         params = {}
         if search:
@@ -73,9 +78,9 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
 
         columns = [
             ("ID", "id", None),
-            ("Exploration", "exploration", None),
+            ("Exploration Name", "exploration", lambda x: x.get('name') if isinstance(x, dict) else None),
+            ("Simulation Name", "simulation", lambda x: x.get('name') if isinstance(x, dict) else None),
             ("K-points", "k_points", str),
-            ("Status", "simulation", lambda x: get_status_string(x.get('status')) if isinstance(x, dict) else None),
         ]
 
         items, footer_string = get_pagination_info(results)
@@ -195,3 +200,130 @@ def get_exploration(id: Optional[str] = None, search: Optional[str] = None,
         )
         
         console.print(table)
+
+
+@kpoint_group.command()
+@click.option('--name', required=True, help='Exploration name')
+@click.option('--description', help='Exploration description')
+def create_exploration(name: str, description: Optional[str] = None):
+    """Create a new K-point exploration"""
+    client = get_client()
+    data = {
+        'name': name,
+    }
+    if description:
+        data['description'] = description
+        
+    exploration = client.post('/api/kpoint-exploration/', data=data)
+    click.echo(f"Created exploration with ID: {exploration['id']}")
+
+
+@kpoint_group.command()
+@click.argument('id')
+def delete_exploration(id: str):
+    """Delete a K-point exploration"""
+    client = get_client()
+    client.delete(f'/api/kpoint-exploration/{id}/')
+    click.echo(f"Deleted exploration {id}")
+
+
+@kpoint_group.command()
+@click.argument('id', required=False)
+@click.option('--search', help='Search term')
+@click.option('--ordering', help='Field to order results by')
+@click.option('--filter', 'filters', multiple=True, help='Filter in format field=value')
+@click.option('--json-output', is_flag=True, help='Output in JSON format')
+@click.option('--all', 'fetch_all', is_flag=True, help='Fetch all results')
+def get_analysis(id: Optional[str] = None, search: Optional[str] = None,
+                ordering: Optional[str] = None, filters: tuple = (), 
+                json_output: bool = False, fetch_all: bool = False):
+    """Get K-point analysis details or list all analyses"""
+    client = get_client()
+    console = Console()
+    
+    if id:
+        analysis = client.get(f'/api/kpoint-analysis/{id}/')
+        if json_output:
+            console.print_json(data=analysis)
+            return
+        
+        # Format single analysis output
+        console.print(Panel(f"[bold]K-point Analysis Details[/bold]"))
+        console.print(f"ID: {analysis['id']}")
+        console.print(f"Created: {format_datetime(analysis['created_at'])}")
+        if analysis.get('exploration'):
+            console.print(f"Exploration: {analysis['exploration'].get('name', 'N/A')} ({analysis['exploration']['id']})")
+        if analysis.get('task'):
+            console.print(f"Status: {get_status_string(analysis['task'].get('status'))}")
+    else:
+        params = {}
+        if search:
+            params['search'] = search
+        if ordering:
+            params['ordering'] = ordering
+            
+        # Add filter parameters
+        for f in filters:
+            try:
+                field, value = f.split('=', 1)
+                params[field] = value
+            except ValueError:
+                click.echo(f"Invalid filter format: {f}. Use field=value", err=True)
+                return
+
+        if fetch_all:
+            results = client.get_all('/api/kpoint-analysis/', params=params)
+        else:
+            results = client.get('/api/kpoint-analysis/', params=params)
+
+        if json_output:
+            console.print_json(data=results)
+            return
+
+        columns = [
+            ("ID", "id", None),
+            ("Exploration", "exploration", lambda x: x.get('name') if isinstance(x, dict) else None),
+            ("Status", "task", lambda x: get_status_string(x.get('status')) if isinstance(x, dict) else None),
+            ("Created", "created_at", format_datetime),
+        ]
+
+        items, footer_string = get_pagination_info(results)
+
+        if not items:
+            console.print(f"[white]No analyses found with the given criteria:[/white]\n[green]{params}")
+            return
+
+        table = create_table(
+            columns=columns,
+            items=items,
+            title="K-point Analyses",
+            caption=footer_string
+        )
+        
+        console.print(table)
+
+
+@kpoint_group.command()
+@click.argument('analysis')
+@click.option('--exploration', required=True, help='Exploration UUID')
+def create_analysis(exploration: str, analysis: str):
+    """Create a new K-point analysis. Takes JSON analysis data as main argument."""
+    client = get_client()
+    # TODO: what data would a user provide?
+    data = {
+        'analysis': analysis,
+    }
+    if exploration:
+        data['exploration'] = exploration
+        
+    analysis = client.post('/api/kpoint-analysis/', data=data)
+    click.echo(f"Created analysis with ID: {analysis['id']}")
+
+
+@kpoint_group.command()
+@click.argument('id')
+def delete_analysis(id: str):
+    """Delete a K-point analysis"""
+    client = get_client()
+    client.delete(f'/api/kpoint-analysis/{id}/')
+    click.echo(f"Deleted analysis {id}")

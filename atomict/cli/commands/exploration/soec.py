@@ -1,15 +1,18 @@
+import json
 import click
 from rich.console import Console
-from rich.table import Table
-from typing import Optional, List
+from rich.panel import Panel
+from typing import Optional
 
 from atomict.cli.core.client import get_client
+from atomict.cli.commands.common import create_table
 from atomict.cli.commands.helpers import format_datetime, get_status_string
+from atomict.cli.core.utils import get_pagination_info
 
 
-@click.group(name='soecexploration')
+@click.group(name='ea')
 def soecexploration_group():
-    """Manage SOEC explorations"""
+    """Manage EA explorations and related resources"""
     pass
 
 
@@ -17,114 +20,118 @@ def soecexploration_group():
 @click.argument('id', required=False)
 @click.option('--search', help='Search term')
 @click.option('--ordering', help='Field to order results by')
+@click.option('--filter', 'filters', multiple=True, help='Filter in format field=value')
 @click.option('--json-output', is_flag=True, help='Output in JSON format')
-@click.option('--limit', type=int, help='Number of results per page')
-@click.option('--offset', type=int, help='Results offset')
+@click.option('--all', 'fetch_all', is_flag=True, help='Fetch all results')
 def get(id: Optional[str] = None, search: Optional[str] = None,
-        ordering: Optional[str] = None, json_output: bool = False,
-        limit: Optional[int] = None, offset: Optional[int] = None):
-    """Get SOEC exploration details or list all explorations"""
+        ordering: Optional[str] = None, filters: tuple = (), 
+        json_output: bool = False, fetch_all: bool = False):
+    """Get EA exploration details or list all explorations"""
     client = get_client()
-    
+    console = Console()
+    # WIP
     if id:
-        exploration = client.get(f'/api/ea-exploration/{id}/')
+        result = client.get(f'/api/ea-exploration/{id}/')
         if json_output:
-            click.echo(exploration)
-        else:
-            console = Console()
-            console.print(f"ID: {exploration['id']}")
-            console.print(f"Name: {exploration.get('name', 'N/A')}")
-            console.print(f"Description: {exploration.get('description', 'N/A')}")
-            console.print(f"Created: {format_datetime(exploration['created_at'])}")
-            console.print(f"Edited: {format_datetime(exploration.get('edited_at', 'N/A'))}")
-            console.print(f"Stress Algorithm: {exploration.get('stress_algorithm', 'N/A')}")
-            console.print(f"Stress Method: {exploration.get('stress_method', 'N/A')}")
-            console.print(f"Number of Last Samples: {exploration.get('num_last_samples', 'N/A')}")
-            console.print(f"Strains List: {exploration.get('strains_list', [])}")
-            if exploration.get('task'):
-                status = get_status_string(exploration['task'].get('status'))
-                console.print(f"Status: {status}")
+            console.print_json(data=result)
+            return
+
+        console.print(Panel(f"[bold]EA Exploration Details[/bold]"))
+        console.print(f"ID: {result['id']}")
+        console.print(f"Name: {result.get('name', 'N/A')}")
+        console.print(f"Project: {result['project'].get('name', 'N/A')} ({result['project']['id']})")
+        console.print(f"Status: {get_status_string(result.get('status'))}")
+        console.print(f"Created: {format_datetime(result.get('created_at'))}")
+        console.print(f"Updated: {format_datetime(result.get('updated_at'))}")
+        
+        if result.get('parameters'):
+            console.print("\n[bold]Parameters[/bold]")
+            console.print_json(data=result['parameters'])
     else:
         params = {}
-        if search:
+        if search is not None:
             params['search'] = search
         if ordering:
             params['ordering'] = ordering
-        if limit:
-            params['limit'] = limit
-        if offset:
-            params['offset'] = offset
-            
-        response = client.get('/api/ea-exploration/', params=params)
         
-        if json_output:
-            click.echo(response)
+        for f in filters:
+            try:
+                field, value = f.split('=', 1)
+                params[field] = value
+            except ValueError:
+                console.print(f"[red]Invalid filter format: {f}. Use field=value[/red]")
+                return
+
+        if fetch_all:
+            results = client.get_all('/api/ea-exploration/', params=params)
         else:
-            console = Console()
-            table = Table(show_header=True)
-            table.add_column("ID")
-            table.add_column("Name")
-            table.add_column("Created")
-            table.add_column("Stress Method")
-            table.add_column("Status")
-            
-            for exp in response['results']:
-                status_code = exp.get('task', {}).get('status')
-                status = get_status_string(status_code)
-                table.add_row(
-                    str(exp['id']),
-                    exp.get('name', 'N/A'),
-                    format_datetime(exp['created_at']),
-                    exp.get('stress_method', 'N/A'),
-                    status
-                )
-            console.print(table)
+            results = client.get('/api/ea-exploration/', params=params)
+
+        if json_output:
+            console.print_json(data=results)
+            return
+
+        columns = [
+            ("ID", "id", None),
+            ("Name", "name", None),
+            ("Project", "project", lambda x: x.get('name') if isinstance(x, dict) else None),
+            ("Status", "status", get_status_string),
+            ("Created", "created_at", format_datetime),
+            ("Updated", "updated_at", format_datetime),
+        ]
+
+        items, footer_string = get_pagination_info(results)
+
+        if not items:
+            console.print(f"[white]No EA explorations found with the given criteria:[/white]\n[green]{params}")
+            return
+
+        table = create_table(
+            columns=columns,
+            items=items,
+            title="EA Explorations",
+            caption=footer_string
+        )
+        
+        console.print(table)
 
 
 @soecexploration_group.command()
-@click.option('--name', help='Exploration name')
-@click.option('--description', help='Exploration description')
+@click.option('--name', required=True, help='Exploration name')
 @click.option('--project', required=True, help='Project ID')
-@click.option('--stress-algorithm', help='Stress algorithm to use')
-@click.option('--stress-method', help='Stress method to use')
-@click.option('--num-last-samples', type=int, help='Number of last samples')
-@click.option('--strains', multiple=True, help='List of strains')
-@click.option('--relaxed-structure', help='Relaxed structure ID')
-def create(name: Optional[str], description: Optional[str], project: str,
-           stress_algorithm: Optional[str] = None, stress_method: Optional[str] = None,
-           num_last_samples: Optional[int] = None, strains: Optional[List[str]] = None,
-           relaxed_structure: Optional[str] = None):
-    """Create a new SOEC exploration"""
+@click.option('--parameters', required=True, help='Exploration parameters (JSON string)')
+@click.option('--json-output', is_flag=True, help='Output in JSON format')
+def create(name: str, project: str, parameters: str, json_output: bool = False):
+    """Create a new EA exploration"""
     client = get_client()
+    console = Console()
+    #WIP
+    try:
+        params_data = json.loads(parameters)
+    except json.JSONDecodeError:
+        console.print("[red]Invalid JSON format for parameters[/red]")
+        return
+    
     data = {
-        'project': project
+        'name': name,
+        'project': project,
+        'parameters': params_data
     }
-    if name:
-        data['name'] = name
-    if description:
-        data['description'] = description
-    if stress_algorithm:
-        data['stress_algorithm'] = stress_algorithm
-    if stress_method:
-        data['stress_method'] = stress_method
-    if num_last_samples is not None:
-        data['num_last_samples'] = num_last_samples
-    if strains:
-        data['strains_list'] = list(strains)
-    if relaxed_structure:
-        data['relaxed_structure'] = relaxed_structure
-
-    # the API docs say this takes a FHIAims simulation object
-    # the required data will have to be ironed out on the server side
-    # TODO: if create fails, return the error to the client in a standard way
-    exploration = client.post('/api/ea-exploration/', json=data)
-    click.echo(f"Created exploration with ID: {exploration['id']}")
+        
+    result = client.post('/api/ea-exploration/', data=data)
+    
+    if json_output:
+        console.print_json(data=result)
+    else:
+        console.print(f"[green]Created EA exploration '{name}' with ID: {result['id']}[/green]")
 
 
 @soecexploration_group.command()
 @click.argument('id')
 def delete(id: str):
-    """Delete a SOEC exploration"""
+    """Delete an EA exploration"""
+    #WIP
     client = get_client()
     client.delete(f'/api/ea-exploration/{id}/')
-    click.echo(f"Deleted exploration {id}")
+    console = Console()
+    console.print(f"[green]Deleted EA exploration {id}[/green]") 

@@ -28,5 +28,5 @@ def get_pagination_info(results: dict | list) -> tuple[list, str]:
         
         return items, ""
     
-    # Handle non-paginated results
-    raise ValueError("Results are not paginated")
+    # All pages were fetched
+    return results, f"All {len(results)} results"

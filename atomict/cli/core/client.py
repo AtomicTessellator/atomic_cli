@@ -18,10 +18,10 @@ def handle_connection_errors(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except (httpx.ConnectError, httpx.ReadError) as e:
+        except (httpx.ConnectError, httpx.ReadError, httpx.ReadTimeout) as e:
             console.print("[red]Connection error: Unable to communicate with the server.[/red]")
             console.print("[white]Make sure the server is running and accessible.[/white]")
-            logger.debug(f"Connection error: {str(e)}")
+            logger.error(f"Connection error: {str(e)}")
             sys.exit(1)
     return wrapper
 
@@ -46,6 +46,9 @@ class APIClient:
         """Handle API response and common status codes"""
         try:
             response.raise_for_status()
+            if response.request.method in ('DELETE', 'HEAD', 'TRACE'):
+                # no JSON returned
+                return
             return response.json()
         except httpx.ConnectError as e:
             console.print("[red]Unable to connect to the server. Please check if the server is running and accessible.[/red]")
@@ -115,16 +118,11 @@ class APIClient:
         params = params or {}
         while path:
             response = self.get(path, params)
-            # Handle case where response is a list directly
             if isinstance(response, list):
-                for item in response:
-                    yield item
-                break
-            # Handle paginated response with 'results' key
+                raise RuntimeError("Not supported. Please contact support with this error.")
             elif isinstance(response, dict):
                 for result in response.get('results', []):
                     yield result
-
                 path = response.get('next')
                 # If there's a next page, convert full URL back to path
                 if path:
