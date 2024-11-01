@@ -64,8 +64,10 @@ class APIClient:
                 error_data = e.response.json()
             except ValueError:
                 pass
-
-            error_message = error_data.get('errors', e.response.text)
+            
+            # TODO: standardize error message responses
+            if isinstance(error_data, dict):
+                error_message = error_data.get('errors', e.response.text)
 
             if e.response.status_code == 400:
                 console.print("[red]Invalid request. Please check your input.[/red]")

@@ -40,7 +40,7 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
     if id:
         cluster = client.get(f'/api/k8s-cluster/{id}/')
         if json_output:
-            pprint(cluster)
+            console.print_json(data=cluster)
             return
         
         # Format single cluster output
@@ -76,7 +76,7 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
             results = client.get('/api/k8s-cluster/', params=params)
 
         if json_output:
-            pprint(results)
+            console.print_json(data=results)
             return
 
         columns = [
@@ -121,7 +121,7 @@ def get_job(id: Optional[str] = None, search: Optional[str] = None,
     if id:
         job = client.get(f'/api/k8s-job/{id}/')
         if json_output:
-            pprint(job)
+            console.print_json(data=job)
             return
         
         # Format single job output
@@ -156,7 +156,7 @@ def get_job(id: Optional[str] = None, search: Optional[str] = None,
             results = client.get('/api/k8s-job/', params=params)
 
         if json_output:
-            pprint(results)
+            console.print_json(data=results)
             return
 
         columns = [

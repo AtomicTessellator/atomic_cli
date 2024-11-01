@@ -39,7 +39,7 @@ def get(id: Optional[str],
     if id:
         result = client.get(f'/api/adsorbate/{id}/')
         if json_output:
-            pprint(result)
+            console.print_json(data=result)
             return
 
         console.print(Panel(f"[bold]Adsorbate Details[/bold]"))
@@ -69,7 +69,7 @@ def get(id: Optional[str],
             results = client.get('/api/adsorbate/', params=params)
 
         if json_output:
-            pprint(results)
+            console.print_json(data=results)
             return
 
         # Define columns with optional formatters

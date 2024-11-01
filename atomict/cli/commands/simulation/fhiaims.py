@@ -32,7 +32,7 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
     if id:
         simulation = client.get(f'/api/fhiaims-simulation/{id}/')
         if json_output:
-            click.echo(json.dumps(simulation, indent=2))
+            console.print_json(data=simulation)
             return
         # Format single simulation output
         console.print(f"ID: {simulation['id']}")
@@ -66,7 +66,7 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
             results = client.get('/api/fhiaims-simulation/', params=params)
         
         if json_output:
-            click.echo(json.dumps(results, indent=2))
+            console.print_json(data=results)
             return
 
         # Define columns based on what's already in the table_0 setup

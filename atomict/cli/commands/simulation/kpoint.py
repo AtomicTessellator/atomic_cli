@@ -73,7 +73,7 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
             results = client.get('/api/kpoint-simulation/', params=params)
 
         if json_output:
-            pprint(data=results)
+            console.print_json(data=results)
             return
 
         columns = [
