@@ -39,7 +39,7 @@ def create(file_path: str, file_type: Optional[str], description: Optional[str])
                 'type': file_type,
                 'description': description
             }
-            result = client.post('/api/uploads/', data)
+            result = client.post('/api/user-upload/', data)
             
         progress.update(task, completed=path.stat().st_size)
     
@@ -61,7 +61,7 @@ def list(limit: Optional[int], file_type: Optional[str], json_output: bool):
         params['type'] = file_type
 
     client = get_client()
-    results = client.get_all('/api/uploads/', params)
+    results = client.get_all('/api/user-upload/', params)
 
     if json_output:
         click.echo(json.dumps(results, indent=2))

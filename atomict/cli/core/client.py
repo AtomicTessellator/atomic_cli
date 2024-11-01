@@ -68,6 +68,10 @@ class APIClient:
             # TODO: standardize error message responses
             if isinstance(error_data, dict):
                 error_message = error_data.get('errors', e.response.text)
+            elif isinstance(error_data, list):
+                error_message = ', '.join(error_data)
+            else:
+                error_message = ""
 
             if e.response.status_code == 400:
                 console.print("[red]Invalid request. Please check your input.[/red]")

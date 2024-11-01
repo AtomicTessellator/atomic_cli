@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional
 from datetime import datetime
 
 
+# TODO: move to common?
 def get_status_string(status_code: Optional[int]) -> str:
     """Convert status code to human readable string"""
     status_map = {
@@ -17,7 +18,7 @@ def get_status_string(status_code: Optional[int]) -> str:
     }
     if status_code is None:
         return "N/A"
-    return status_map.get(status_code, "Unknown")
+    return status_map.get(status_code, "N/A")
 
 
 def format_datetime(dt_str: str) -> str:
