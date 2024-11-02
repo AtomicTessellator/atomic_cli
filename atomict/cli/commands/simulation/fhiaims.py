@@ -9,6 +9,9 @@ from atomict.cli.core.utils import get_pagination_info
 from atomict.cli.commands.common import create_table
 
 
+console = Console()
+
+
 @click.group(name='fhiaims')
 def fhiaims_group():
     """Manage FHI-aims simulations"""
@@ -28,7 +31,7 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
         json_output: bool = False, fetch_all: bool = False):
     """Get simulation details or list all simulations"""
     client = get_client()
-    console = Console()
+
     if id:
         simulation = client.get(f'/api/fhiaims-simulation/{id}/')
         if json_output:
@@ -120,7 +123,7 @@ def create(name: Optional[str], description: Optional[str],
         data['finite_diff_displacement'] = finite_diff_displacement
         
     simulation = client.post('/api/fhiaims-simulation/', data=data)
-    click.echo(f"Created simulation with ID: {simulation['id']}")
+    console.print(f"[green]Created simulation with ID: {simulation['id']}[/green]")
 
 
 @fhiaims_group.command()
@@ -129,7 +132,7 @@ def delete(id: str):
     """Delete a FHI-aims simulation"""
     client = get_client()
     client.delete(f'/api/fhiaims-simulation/{id}/')
-    click.echo(f"Deleted simulation {id}")
+    console.print(f"[green]Deleted simulation {id}[/green]")
 
 
 @fhiaims_group.command()
@@ -144,12 +147,11 @@ def get_files(id: Optional[str] = None, search: Optional[str] = None,
               json_output: bool = False, fetch_all: bool = False):
     """Get simulation file details or list all simulation files"""
     client = get_client()
-    console = Console()
 
     if id:
         file = client.get(f'/api/fhiaims-simulation-file/{id}/')
         if json_output:
-            click.echo(json.dumps(file, indent=2))
+            console.print_json(data=file)
             return
         
         # Format single file output
@@ -184,7 +186,7 @@ def get_files(id: Optional[str] = None, search: Optional[str] = None,
             results = client.get('/api/fhiaims-simulation-file/', params=params)
 
         if json_output:
-            click.echo(json.dumps(results, indent=2))
+            console.print_json(data=results)
             return
 
         columns = [

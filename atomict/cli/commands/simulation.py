@@ -124,14 +124,14 @@ def get(id: Optional[str] = None, json_output: bool = False):
     if id:
         result = client.get(f'/api/catalysis-simulation/{id}/')
         if json_output:
-            click.echo(json.dumps(result, indent=2))
+            console.print_json(data=result)
             return
         
         format_simulation_detail(result)
     else:
         results = client.get_all('/api/catalysis-simulation/')
         if json_output:
-            click.echo(json.dumps(results, indent=2))
+            console.print_json(data=results)
             return
         
         console.print(format_simulation_table(results))

@@ -58,7 +58,7 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
                 field, value = f.split('=', 1)
                 params[field] = value
             except ValueError:
-                console.print(f"[red]Invalid filter format: {f}. Use field=value[/red]")
+                click.echo(f"[red]Invalid filter format: {f}. Use field=value[/red]", err=True)
                 return
 
         if fetch_all:
@@ -208,7 +208,7 @@ def get_sample(id: Optional[str] = None, search: Optional[str] = None,
                 field, value = f.split('=', 1)
                 params[field] = value
             except ValueError:
-                console.print(f"[red]Invalid filter format: {f}. Use field=value[/red]")
+                click.echo(f"[red]Invalid filter format: {f}. Use field=value[/red]", err=True)
                 return
 
         if fetch_all:
@@ -317,7 +317,7 @@ def get_analysis(id: Optional[str] = None, search: Optional[str] = None,
                 field, value = f.split('=', 1)
                 params[field] = value
             except ValueError:
-                console.print(f"[red]Invalid filter format: {f}. Use field=value[/red]")
+                click.echo(f"[red]Invalid filter format: {f}. Use field=value[/red]", err=True)
                 return
 
         if fetch_all:

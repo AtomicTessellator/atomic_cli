@@ -3,11 +3,11 @@ from typing import Optional
 
 import click
 from rich.console import Console
-import json
+from rich.panel import Panel
 
 from atomict.cli.core.client import get_client
 from atomict.cli.commands.helpers import get_status_string, format_datetime
-from atomict.cli.commands.common import table_0
+from atomict.cli.commands.common import create_table
 from atomict.cli.core.utils import get_pagination_info
 
 console = Console()
@@ -24,28 +24,13 @@ def task():
 def cancel(id: str):
     """Cancel a running task"""
     client = get_client()
-    client.post(f'/api/tasks/{id}/cancel/', {})
+    
+    data = {
+        'status': 6
+    }
+    
+    client.patch(f'/api/tasks/{id}/', data=data)
     console.print(f"[green]Task {id} has been cancelled[/green]")
-
-
-@task.command()
-@click.argument('id')
-@click.option('--json-output', is_flag=True, help='Output in JSON format')
-def status(id: str, json_output: bool):
-    """Get detailed task status"""
-    client = get_client()
-    result = client.get(f'/api/tasks/{id}/status/')
-
-    if json_output:
-        click.echo(json.dumps(result, indent=2))
-        return
-
-    console.print("[bold]Task Status Details[/bold]")
-    console.print(f"ID: {result['id']}")
-    console.print(f"Status: {result.get('status', 'N/A')}")
-    console.print(f"Progress: {result.get('progress', 'N/A')}")
-    if result.get('error'):
-        console.print(f"[red]Error: {result['error']}[/red]")
 
 
 @task.command()
@@ -55,7 +40,7 @@ def status(id: str, json_output: bool):
                                              'task_type', '-task_type']), 
               default='-created_at',
               help='Order results by field (prefix with - for descending)')
-@click.option('--status', type=click.Choice(['pending', 'running', 'completed', 'failed']),
+@click.option('--status', type=click.Choice(['pending', 'running', 'completed', 'failed', 'aborted']),
               help='Filter by status')
 @click.option('--all', 'fetch_all', is_flag=True, help='Fetch all results')
 @click.option('--json-output', is_flag=True, help='Output in JSON format')
@@ -64,45 +49,33 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
         status: Optional[str] = None,
         fetch_all: bool = False,
         json_output: bool = False):
-    """
-    Get task details. If no ID is provided, lists all tasks.
-
-    Search:
-        Search across multiple fields including task ID, type, status, and error messages.
-        Example: --search="training" will find tasks with "training" in any searchable field.
-
-    Ordering options:
-        created_at: Order by creation date (ascending)
-        -created_at: Order by creation date (descending) [default]
-        status: Order by status (ascending)
-        -status: Order by status (descending)
-        task_type: Order by task type (ascending)
-        -task_type: Order by task type (descending)
+    """Get task details or list all tasks
+    
+    When no ID is provided, lists all tasks with optional filtering and ordering.
     """
     client = get_client()
-    params = {}
-    # as it stands if you pass limit, you will just get page sizes of 20 instead of 20 total objects
-    # if limit:
-    #     params['limit'] = limit
-    if status:
-        params['status'] = status
 
     if id:
         result = client.get(f'/api/tasks/{id}/')
         if json_output:
-            click.echo(json.dumps(result, indent=2))
+            console.print_json(data=result)
             return
 
-        # console.print(Panel("[bold]Task Details[/bold]"))
-        console.print(f"ID:     {result['id']}")
-        console.print(f"Type:   {result.get('task_type', 'N/A')}")
+        console.print(Panel.fit(f"[bold]Task Details[/bold]"))
+        console.print(f"ID: {result['id']}")
+        console.print(f"Type: {result.get('task_type', 'N/A')}")
         console.print(f"Model Name: {result.get('model_name', 'N/A')}")
-        console.print(f"Status: {result.get('status', 'N/A')}")
-        # ... detailed view with nested data ...
-
+        console.print(f"Status: {get_status_string(result.get('status', 'N/A'))}")
+        console.print(f"Created: {format_datetime(result.get('created_at'))}")
+        console.print(f"Updated: {format_datetime(result.get('updated_at'))}")
+        if result.get('error'):
+            console.print(f"[red]Error: {result['error']}[/red]")
+        if result.get('input_params'):
+            console.print("\n[bold]Input Parameters:[/bold]")
+            console.print_json(data=result['input_params'])
     else:
         params = {}
-        if search:
+        if search is not None:
             params['search'] = search
         if ordering:
             params['ordering'] = ordering
@@ -113,29 +86,63 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
             results = client.get_all('/api/tasks/', params=params)
         else:
             results = client.get('/api/tasks/', params=params)
+
         if json_output:
-            click.echo(json.dumps(results, indent=2))
+            console.print_json(data=results)
             return
 
-        results, footer_string = get_pagination_info(results)
-        table = table_0
-        table.title = "Tasks"
-        table.caption = footer_string
+        columns = [
+            ("ID", "id", None),
+            ("Type", "task_type", None),
+            ("Status", "status", get_status_string),
+            ("Error", "error", None),
+            ("Created", "created_at", format_datetime),
+        ]
 
-        table.add_column("ID")
-        table.add_column("Type")
-        # table.add_column("Input Params")  # usually blank ATM
-        table.add_column("Status")
-        table.add_column("Errors")
-        table.add_column("Created")
+        items, footer_string = get_pagination_info(results)
 
-        for task in results:
-            table.add_row(
-                task.get('id', 'N/A'),
-                task.get('task_type', 'N/A'),
-                # task.get('input_params', 'N/A'),
-                get_status_string(task.get('status')),
-                task.get('error', 'N/A'),
-                format_datetime(task.get('created_at', 'N/A'))
-            )
+        if not items:
+            console.print(f"[white]No tasks found with the given criteria:[/white]\n[green]{params}")
+            return
+
+        table = create_table(
+            columns=columns,
+            items=items,
+            title="Tasks",
+            caption=footer_string
+        )
+        
         console.print(table)
+
+
+@task.command()
+@click.argument('task_id')
+@click.option('--json-output', is_flag=True, help='Output in JSON format')
+def get_status_history(task_id: str, json_output: bool = False):
+    """Get status history for a task"""
+    client = get_client()
+    results = client.get('/api/task-status-history/', params={'id': task_id})
+
+    if json_output: 
+        console.print_json(data=results)
+        return
+
+    columns = [
+        ("NewStatus", "new_status", get_status_string),
+        ("Timestamp", "timestamp", format_datetime),
+    ]
+
+    items, footer_string = get_pagination_info(results)
+
+    if not items:
+        console.print(f"[white]No status history found for task {task_id}[/white]")
+        return
+
+    table = create_table(
+        columns=columns,
+        items=items,
+        title=f"Status History: {task_id}",
+        caption=footer_string
+    )
+    
+    console.print(table)

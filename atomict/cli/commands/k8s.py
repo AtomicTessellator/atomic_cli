@@ -67,7 +67,7 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
                 field, value = f.split('=', 1)
                 params[field] = value
             except ValueError:
-                click.echo(f"Invalid filter format: {f}. Use field=value", err=True)
+                click.echo(f"[red]Invalid filter format: {f}. Use field=value[/red]", err=True)
                 return
 
         if fetch_all:
@@ -147,7 +147,7 @@ def get_job(id: Optional[str] = None, search: Optional[str] = None,
                 field, value = f.split('=', 1)
                 params[field] = value
             except ValueError:
-                click.echo(f"Invalid filter format: {f}. Use field=value", err=True)
+                click.echo(f"[red]Invalid filter format: {f}. Use field=value[/red]", err=True)
                 return
 
         if fetch_all:
@@ -188,7 +188,7 @@ def get_job(id: Optional[str] = None, search: Optional[str] = None,
 @click.argument('id')
 def logs(id: str):
     """Stream logs from a K8s job"""
-    raise NotImplementedError("Not implemented")
+    raise NotImplementedError("Not implemented.")
     from atomict.cli.core.client import get_client
     
     client = get_client()

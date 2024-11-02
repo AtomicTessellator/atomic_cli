@@ -130,13 +130,13 @@ def get(id: Optional[str] = None, json_output: bool = False):
     if id:
         result = client.get(f'/api/catalysis-simulation/{id}/')
         if json_output:
-            click.echo(json.dumps(result, indent=2))
+            console.print_json(data=result)
             return
         format_catalysis_detail(result)
     else:
         results = client.get_all('/api/catalysis-simulation/')
         if json_output:
-            click.echo(json.dumps(results, indent=2))
+            console.print_json(data=results)
             return
         
         # Add pagination info
@@ -182,13 +182,13 @@ def results_get(id: Optional[str] = None,
     if id:
         result = client.get(f'/api/catalysis-simulation-results/{id}/')
         if json_output:
-            click.echo(json.dumps(result, indent=2))
+            console.print_json(data=result)
             return
         format_results_detail(result)
     else:
         results = client.get_all('/api/catalysis-simulation-results/', params)
         if json_output:
-            click.echo(json.dumps(results, indent=2))
+            console.print_json(data=results)
             return
         
         table = Table(show_header=True)

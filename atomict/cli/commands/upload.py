@@ -64,7 +64,7 @@ def list(limit: Optional[int], file_type: Optional[str], json_output: bool):
     results = client.get_all('/api/user-upload/', params)
 
     if json_output:
-        click.echo(json.dumps(results, indent=2))
+        console.print_json(data=results)
         return
 
     table = Table(show_header=True)

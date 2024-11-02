@@ -5,6 +5,7 @@ from functools import wraps
 
 from typing import Optional, Dict, Any, Iterator, List, Union
 import httpx
+from click import echo
 from rich.console import Console
 
 from .config import Config
@@ -117,6 +118,12 @@ class APIClient:
         """Make DELETE request"""
         response = self.client.delete(path)
         self._handle_response(response)
+
+    @handle_connection_errors
+    def patch(self, path: str, data: Dict) -> Dict[str, Any]:
+        """Make PATCH request"""
+        response = self.client.patch(path, json=data)
+        return self._handle_response(response)
 
     @handle_connection_errors
     def paginate(self, path: str, params: Optional[Dict] = None) -> Iterator[Dict[str, Any]]:

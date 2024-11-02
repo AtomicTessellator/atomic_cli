@@ -12,6 +12,8 @@ from atomict.cli.commands.helpers import format_datetime, get_status_string
 from atomict.cli.core.client import get_client
 
 
+console = Console()
+
 @click.group(name='kpoint')
 def kpoint_group():
     """Manage K-point simulations"""
@@ -111,7 +113,7 @@ def create(exploration: str, k_points: List[float]):
     }
         
     simulation = client.post('/api/kpoint-simulation/', data=data)
-    click.echo(f"Created simulation with ID: {simulation['id']}")
+    console.print(f"[green]Created simulation with ID: {simulation['id']}[/green]")
 
 
 @kpoint_group.command()
@@ -120,7 +122,7 @@ def delete(id: str):
     """Delete a K-point simulation"""
     client = get_client()
     client.delete(f'/api/kpoint-simulation/{id}/')
-    click.echo(f"Deleted simulation {id}")
+    console.print(f"[green]Deleted simulation {id}[/green]")
 
 
 @kpoint_group.command()
@@ -215,7 +217,7 @@ def create_exploration(name: str, description: Optional[str] = None):
         data['description'] = description
         
     exploration = client.post('/api/kpoint-exploration/', data=data)
-    click.echo(f"Created exploration with ID: {exploration['id']}")
+    console.print(f"[green]Created exploration with ID: {exploration['id']}[/green]")
 
 
 @kpoint_group.command()
@@ -224,7 +226,7 @@ def delete_exploration(id: str):
     """Delete a K-point exploration"""
     client = get_client()
     client.delete(f'/api/kpoint-exploration/{id}/')
-    click.echo(f"Deleted exploration {id}")
+    console.print(f"[green]Deleted exploration {id}[/green]")
 
 
 @kpoint_group.command()
@@ -239,7 +241,6 @@ def get_analysis(id: Optional[str] = None, search: Optional[str] = None,
                 json_output: bool = False, fetch_all: bool = False):
     """Get K-point analysis details or list all analyses"""
     client = get_client()
-    console = Console()
     
     if id:
         analysis = client.get(f'/api/kpoint-analysis/{id}/')
@@ -317,7 +318,7 @@ def create_analysis(exploration: str, analysis: str):
         data['exploration'] = exploration
         
     analysis = client.post('/api/kpoint-analysis/', data=data)
-    click.echo(f"Created analysis with ID: {analysis['id']}")
+    console.print(f"[green]Created analysis with ID: {analysis['id']}[/green]")
 
 
 @kpoint_group.command()
@@ -326,4 +327,4 @@ def delete_analysis(id: str):
     """Delete a K-point analysis"""
     client = get_client()
     client.delete(f'/api/kpoint-analysis/{id}/')
-    click.echo(f"Deleted analysis {id}")
+    console.print(f"[green]Deleted analysis {id}[/green]")

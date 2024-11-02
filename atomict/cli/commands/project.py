@@ -102,7 +102,7 @@ def get(id: Optional[str] = None, search: Optional[str] = None,
                 field, value = f.split('=', 1)
                 params[field] = value
             except ValueError:
-                console.print(f"[red]Invalid filter format: {f}. Use field=value[/red]")
+                click.echo(f"[red]Invalid filter format: {f}. Use field=value[/red]", err=True)
                 return
 
         if fetch_all:
@@ -211,7 +211,7 @@ def get_note(id: Optional[str] = None, search: Optional[str] = None,
                 field, value = f.split('=', 1)
                 params[field] = value
             except ValueError:
-                console.print(f"[red]Invalid filter format: {f}. Use field=value[/red]")
+                click.echo(f"[red]Invalid filter format: {f}. Use field=value[/red]", err=True)
                 return
 
         if fetch_all:
@@ -318,7 +318,7 @@ def get_star(id: Optional[str] = None, search: Optional[str] = None,
                 field, value = f.split('=', 1)
                 params[field] = value
             except ValueError:
-                console.print(f"[red]Invalid filter format: {f}. Use field=value[/red]")
+                click.echo(f"[red]Invalid filter format: {f}. Use field=value[/red]", err=True)
                 return
 
         if fetch_all:
@@ -419,7 +419,7 @@ def get_tag(id: Optional[str] = None, search: Optional[str] = None,
                 field, value = f.split('=', 1)
                 params[field] = value
             except ValueError:
-                console.print(f"[red]Invalid filter format: {f}. Use field=value[/red]")
+                click.echo(f"[red]Invalid filter format: {f}. Use field=value[/red]", err=True)
                 return
 
         if fetch_all:
@@ -523,7 +523,7 @@ def get_tag_project(id: Optional[str] = None, search: Optional[str] = None,
                 field, value = f.split('=', 1)
                 params[field] = value
             except ValueError:
-                console.print(f"[red]Invalid filter format: {f}. Use field=value[/red]")
+                click.echo(f"[red]Invalid filter format: {f}. Use field=value[/red]", err=True)
                 return
 
         if fetch_all:
@@ -746,7 +746,7 @@ def get_molecule(id: Optional[str] = None, search: Optional[str] = None,
                 field, value = f.split('=', 1)
                 params[field] = value
             except ValueError:
-                console.print(f"[red]Invalid filter format: {f}. Use field=value[/red]")
+                click.echo(f"[red]Invalid filter format: {f}. Use field=value[/red]", err=True)
                 return
 
         if fetch_all:

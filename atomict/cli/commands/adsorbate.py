@@ -58,7 +58,7 @@ def get(id: Optional[str],
                     key, value = f.split('=')
                     params[key] = value
                 except ValueError:
-                    console.print(f"[red]Invalid filter format: {f}. Use field=value[/red]")
+                    click.echo(f"[red]Invalid filter format: {f}. Use field=value[/red]", err=True)
                     return
 
         if fetch_all:

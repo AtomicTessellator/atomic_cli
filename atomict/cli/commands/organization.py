@@ -23,6 +23,7 @@ def org_group():
 @click.option('--json-output', is_flag=True, help='Output in JSON format')
 def get(id: Optional[str] = None, json_output: bool = False):
     """Get organization details or list all organizations"""
+    # WIP
     from atomict.cli.core.client import get_client
     client = get_client()
 

@@ -12,7 +12,7 @@ console = Console()
 
 @click.group(name='ai-assist')
 def ai_assist_group():
-    """Manage AI assistance features"""
+    """Manage AI assistance features (WIP)"""
     pass
 
 

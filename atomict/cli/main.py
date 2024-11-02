@@ -4,6 +4,8 @@ from rich.console import Console
 import logging
 import os
 
+from atomict.cli.commands import user
+
 # Import command groups
 from .commands import (
     task,
@@ -11,9 +13,10 @@ from .commands import (
     project,
     k8s,
     adsorbate,
+    catalysis,
 )
 
-from .commands.simulation import fhiaims, kpoint, catalysis
+from .commands.simulation import fhiaims, kpoint
 
 from .commands.exploration import (
     sqs,
@@ -105,9 +108,10 @@ cli.add_command(adsorbate.adsorbate)
 # raise commands to top-level
 cli.add_command(fhiaims.fhiaims_group)
 cli.add_command(kpoint.kpoint_group)
-# cli.add_command(catalysis.catalysis_group)  # WIP
+cli.add_command(catalysis.catalysis_group)  # WIP
 cli.add_command(sqs.sqs_group)
 cli.add_command(soec.soecexploration_group)
+cli.add_command(user.user_group)
 
 # from .commands.exploration import exploration_group
 # cli.add_command(exploration.exploration)  # move this
@@ -115,6 +119,11 @@ cli.add_command(soec.soecexploration_group)
 # standardize this later
 # cli.add_command(exploration_group)
 
+# we could do `at [exploration/simulation/project/user/etc] [get/create/delete] [id]`
+# OR
+# `at [get/create/delete] [exploration/simulation/project/user/etc] [id]`
+# OR 
+# some other grouping that reflects a user's workflow
 
 def main():
     cli()
