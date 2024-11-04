@@ -20,8 +20,8 @@ class Config:
     def load_config(self):
         """Load config from file and environment variables"""
         # First try environment variables
-        self.username = os.getenv("AT_USERNAME")
-        self.password = os.getenv("AT_PASSWORD")
+        self.username = os.getenv("AT_USER")
+        self.password = os.getenv("AT_PASS")
 
         # Then try config file
         if CONFIG_FILE.exists():
