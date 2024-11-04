@@ -36,7 +36,8 @@ class APIClient:
 
     def set_auth(self, username: str, password: str):
         """Set basic auth credentials"""
-        self.client.auth = (username, password)
+        # TODO: use httpx.BasicAuth
+        self.auth = httpx.BasicAuth(username=username, password=password)
 
     def set_token(self, token: str):
         """Set bearer token"""
@@ -159,5 +160,10 @@ def get_client() -> APIClient:
     else:
         config.ensure_auth()
         client.set_auth(config.username, config.password)
-        
+        # TODO: basic auth
+        response = client.post("api-auth/", {"username": config.username, "password": config.password})
+        token = response["token"]
+        config.save_token(token)
+        client.set_token(token)
+            
     return client
