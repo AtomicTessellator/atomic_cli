@@ -5,7 +5,6 @@ from functools import wraps
 
 from typing import Optional, Dict, Any, Iterator, List, Union
 import httpx
-from click import echo
 from rich.console import Console
 
 from .config import Config
@@ -160,10 +159,13 @@ def get_client() -> APIClient:
     else:
         config.ensure_auth()
         client.set_auth(config.username, config.password)
-        # TODO: basic auth
         response = client.post("api-auth/", {"username": config.username, "password": config.password})
-        token = response["token"]
-        config.save_token(token)
-        client.set_token(token)
+        token = response.get("token")
+        if token:
+            config.save_token(token)
+            client.set_token(token)
+        else:
+            console.print("[red]Failed to authenticate. Please check your credentials.[/red]")
+            sys.exit(1)
             
     return client
