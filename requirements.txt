@@ -1,19 +1,25 @@
-ase
-certifi
-charset-normalizer
-contourpy
-cycler
-fonttools
-idna
-kiwisolver
-matplotlib
-numpy
-packaging
-pillow
-pynvml
-pyparsing
-python-dateutil
-requests
-scipy
-six
-urllib3
+
+# certifi
+# charset-normalizer
+
+# cycler
+# fonttools
+# idna
+
+# matplotlib
+# numpy
+# packaging
+
+
+# pyparsing
+# python-dateutil
+# requests
+
+# six
+# urllib3
+
+# cli
+httpx
+click
+rich
+pytest
