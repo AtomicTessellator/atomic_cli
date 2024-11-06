@@ -1,4 +1,5 @@
 # cli/core/client.py
+import os
 import logging
 import sys
 from functools import wraps
@@ -27,10 +28,10 @@ def handle_connection_errors(func):
 
 
 class APIClient:
-    def __init__(self, base_url: str = "http://localhost:5004"):
-        self.base_url = base_url
+    def __init__(self, base_url: str = "https://api.atomictessellator.com"):
+        self.base_url = os.getenv("AT_SERVER", base_url)
         self.params = {'limit': 20}
-        self.client = httpx.Client(base_url=base_url, timeout=30.0)
+        self.client = httpx.Client(base_url=self.base_url, timeout=30.0)
         self._token: Optional[str] = None
 
     def set_auth(self, username: str, password: str):
