@@ -4,7 +4,8 @@ from rich.console import Console
 import logging
 import os
 
-from atomict.cli.commands import user
+from atomict.__version__ import __version__
+from atomict.cli.commands import auth, user
 
 # Import command groups
 from .commands import (
@@ -58,7 +59,7 @@ def setup_logging(verbose: bool):
 
 @click.group()
 @click.option('-v', '--verbose', is_flag=True, default=False, help='Enable verbose output')
-@click.version_option(version='0.1.0')
+@click.version_option(prog_name='at', version=__version__)
 def cli(verbose: bool):
     """Atomic Tessellator CLI - Manage simulations and computational resources"""
     setup_logging(verbose)
@@ -112,7 +113,7 @@ cli.add_command(catalysis.catalysis_group)  # WIP
 cli.add_command(sqs.sqs_group)
 cli.add_command(soec.soecexploration_group)
 cli.add_command(user.user_group)
-
+cli.add_command(auth.login)
 # from .commands.exploration import exploration_group
 # cli.add_command(exploration.exploration)  # move this
 # TBD: decide on how to group or put all commands at top level

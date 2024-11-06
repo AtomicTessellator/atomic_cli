@@ -38,10 +38,10 @@ def test_get_all_adsorbates(runner, mock_client):
         {'id': '456', 'smiles': 'CH4'}
     ]
 
-    result = runner.invoke(get)
+    result = runner.invoke(get, ['--all'])
     
     assert result.exit_code == 0
-    mock_client.get_all.assert_called_once_with('/api/adsorbate/')
+    mock_client.get_all.assert_called_once_with('/api/adsorbate/', params={})
 
 
 def test_create_adsorbate(runner, mock_client):

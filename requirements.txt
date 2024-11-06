@@ -1,25 +1,7 @@
-
-# certifi
-# charset-normalizer
-
-# cycler
-# fonttools
-# idna
-
-# matplotlib
-# numpy
-# packaging
-
-
-# pyparsing
-# python-dateutil
-# requests
-
-# six
-# urllib3
+numpy~=2.0
+requests
 
 # cli
 httpx
-click
-rich
-pytest
+click~=8.0
+rich~=13.0

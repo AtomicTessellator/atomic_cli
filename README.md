@@ -5,17 +5,37 @@
 pip install atomict
 ```
 
+## Development installation
+```
+pip install -e ".[dev]"
+```
 
 ## CLI Usage
 ```
-# Show available public datasets
+Usage: at [OPTIONS] COMMAND [ARGS]...
 
-    > at list_datasets
+  Atomic Tessellator CLI - Manage simulations and computational resources
 
-# Download a dataset
+Options:
+  -v, --verbose  Enable verbose output
+  --version      Show the version and exit.
+  --help         Show this message and exit.
 
-    > at download_dataset tox21
+Commands:
+  adsorbate  Manage adsorbates
+  catalysis  Manage catalysis explorations
+  ea         Manage EA / SOEC explorations and related resources
+  fhiaims    Manage FHI-aims simulations
+  k8s        Manage Kubernetes jobs and clusters
+  kpoint     Manage K-point simulations
+  project    Manage projects and their related resources
+  sqs        Manage Special Quasirandom Structure (SQS) explorations
+  task       Manage tasks and their status
+  upload     Manage file uploads
+  user       Manage users and user uploads
+
 ```
+Tab completion is available for all commands. To generate the script to enable this, run the hidden command`at completion`. It will print out the script with instructions.
 
 ## SDK Usage
 ```

@@ -1,12 +1,9 @@
 # cli/commands/k8s.py
-import json
 from typing import Optional
 
 import click
-from rich.table import Table
 from rich.console import Console
 from rich.panel import Panel
-from rich.pretty import pprint
 
 from atomict.cli.commands.common import create_table
 from atomict.cli.commands.helpers import format_datetime
@@ -184,13 +181,11 @@ def get_job(id: Optional[str] = None, search: Optional[str] = None,
         
         console.print(table)
 
-@k8s.command()
+# TBD: not supported
+# @k8s.command()
 @click.argument('id')
 def logs(id: str):
     """Stream logs from a K8s job"""
-    raise NotImplementedError("Not implemented.")
-    from atomict.cli.core.client import get_client
-    
     client = get_client()
     
     try:
