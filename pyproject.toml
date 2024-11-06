@@ -68,14 +68,3 @@ strict_optional = true
 # Python 3.10+ specific settings
 enable_error_code = ["union-attr"]
 strict_concatenate = true
-
-[tool.flake8]
-max-line-length = 88
-extend-ignore = "E203"
-max-complexity = 10
-exclude = [
-    ".git",
-    "__pycache__",
-    "build",
-    "dist",
-]

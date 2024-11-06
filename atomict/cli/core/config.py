@@ -1,8 +1,9 @@
 # cli/core/config.py
-import os
 import json
+import os
 from pathlib import Path
 from typing import Optional
+
 import click
 from rich.prompt import Prompt
 

@@ -1,16 +1,10 @@
 # cli/commands/simulation/__init__.py
 import click
-from . import (
-    catalysis,
-    fhiaims,
-    # qe,
-    # phonon,
-    # kpoint,
 
-)
+from . import catalysis, fhiaims  # qe,; phonon,; kpoint,
 
 
-@click.group(name='simulation')
+@click.group(name="simulation")
 def simulation_group():
     """Manage all types of simulations"""
     pass
