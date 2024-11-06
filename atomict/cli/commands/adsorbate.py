@@ -4,7 +4,6 @@ from typing import Optional, Tuple
 import click
 from rich.console import Console
 from rich.panel import Panel
-from rich.pretty import pprint
 
 from atomict.cli.commands.common import create_table
 from atomict.cli.core.client import get_client
@@ -48,7 +47,7 @@ def get(
             console.print_json(data=result)
             return
 
-        console.print(Panel(f"[bold]Adsorbate Details[/bold]"))
+        console.print(Panel("[bold]Adsorbate Details[/bold]"))
         console.print(f"ID: {result['id']}")
         # Add other relevant fields
     else:

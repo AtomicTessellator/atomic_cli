@@ -1,5 +1,4 @@
 # cli/commands/upload.py
-from pathlib import Path
 from typing import Optional
 
 import click

@@ -1,11 +1,9 @@
 # cli/commands/project.py
-import json
 from typing import Optional
 
 import click
 from rich.console import Console
 from rich.panel import Panel
-from rich.table import Table
 from rich.tree import Tree
 
 from atomict.cli.commands.common import create_table

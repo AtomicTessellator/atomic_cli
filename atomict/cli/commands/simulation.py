@@ -1,5 +1,4 @@
 # cli/commands/simulation.py
-import json
 import logging
 from typing import Any, Dict, Optional
 

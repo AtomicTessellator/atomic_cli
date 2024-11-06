@@ -1,5 +1,4 @@
 # cli/commands/simulation/catalysis.py
-import json
 from typing import Any, Dict, Optional
 
 import click
