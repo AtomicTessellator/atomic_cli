@@ -5,9 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "atomict"
 authors = [
-    { name = "Alain Richardt", email = "alain@atomictessellator.com" },
+    {name = "Steven Anderson", email = "steven@atomictessellator.com"},
+    {name = "Alain Richardt", email = "alain@atomictessellator.com"},
 ]
 description = "The client application for the https://atomictessellator.com/"
+keywords = ["atomic", "tessellator", "cli", "client", "fhi-aims", "kpoint", "sqs", "adsorbate"]
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -26,3 +28,12 @@ exclude = ["tests*", "tests.*"]
 [tool.setuptools.dynamic]
 version = {attr = "atomict.__version__.__version__"}
 dependencies = {file = ["requirements.txt"]}
+
+[project.optional-dependencies]
+dev = [
+    "pytest~=8.0",
+    "black",
+    "isort",
+    "mypy",
+    "flake8",
+]
