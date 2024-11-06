@@ -4,6 +4,7 @@ from rich.console import Console
 import logging
 import os
 
+from atomict.__version__ import __version__
 from atomict.cli.commands import user
 
 # Import command groups
@@ -58,7 +59,7 @@ def setup_logging(verbose: bool):
 
 @click.group()
 @click.option('-v', '--verbose', is_flag=True, default=False, help='Enable verbose output')
-@click.version_option(version='0.1.0')
+@click.version_option(prog_name='at', version=__version__)
 def cli(verbose: bool):
     """Atomic Tessellator CLI - Manage simulations and computational resources"""
     setup_logging(verbose)
