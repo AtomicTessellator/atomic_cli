@@ -30,36 +30,34 @@ console = Console()
 
 def setup_logging(verbose: bool):
     """Configure logging based on verbose flag and AT_DEBUG env var"""
-    if os.getenv('AT_DEBUG'):
+    if os.getenv("AT_DEBUG"):
         # Most verbose logging when AT_DEBUG is set
         logging.basicConfig(
             level=logging.DEBUG,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            handlers=[
-                logging.StreamHandler(),
-                logging.FileHandler('atomict.log')
-            ]
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            handlers=[logging.StreamHandler(), logging.FileHandler("atomict.log")],
         )
         # Also enable HTTP library debugging
-        logging.getLogger('httpx').setLevel(logging.DEBUG)
-        logging.getLogger('httpcore').setLevel(logging.DEBUG)
-  
+        logging.getLogger("httpx").setLevel(logging.DEBUG)
+        logging.getLogger("httpcore").setLevel(logging.DEBUG)
+
         # Log some debug info
-        logging.debug('Debug mode enabled via AT_DEBUG')
+        logging.debug("Debug mode enabled via AT_DEBUG")
         logging.debug(f'Python path: {os.getenv("PYTHONPATH")}')
-        logging.debug(f'Working directory: {os.getcwd()}')
+        logging.debug(f"Working directory: {os.getcwd()}")
     else:
         # Normal logging based on verbose flag
         level = logging.DEBUG if verbose else logging.ERROR
         logging.basicConfig(
-            level=level,
-            format='%(asctime)s - %(levelname)s - %(message)s'
+            level=level, format="%(asctime)s - %(levelname)s - %(message)s"
         )
 
 
 @click.group()
-@click.option('-v', '--verbose', is_flag=True, default=False, help='Enable verbose output')
-@click.version_option(prog_name='at', version=__version__)
+@click.option(
+    "-v", "--verbose", is_flag=True, default=False, help="Enable verbose output"
+)
+@click.version_option(prog_name="at", version=__version__)
 def cli(verbose: bool):
     """Atomic Tessellator CLI - Manage simulations and computational resources"""
     setup_logging(verbose)
@@ -67,34 +65,36 @@ def cli(verbose: bool):
 
 # Add a completion command
 @cli.command(hidden=True)
-@click.argument('shell', type=click.Choice(['bash', 'zsh', 'fish']), required=False)
+@click.argument("shell", type=click.Choice(["bash", "zsh", "fish"]), required=False)
 def completion(shell):
     """Generate shell completion script"""
     if shell is None:
-        shell = os.environ.get('SHELL', '')
-        shell = shell.split('/')[-1]
-        if shell not in ['bash', 'zsh', 'fish']:
-            shell = 'bash'  # default to bash if shell not detected
+        shell = os.environ.get("SHELL", "")
+        shell = shell.split("/")[-1]
+        if shell not in ["bash", "zsh", "fish"]:
+            shell = "bash"  # default to bash if shell not detected
 
     completion_script = None
-    if shell == 'bash':
-        completion_script = '''
+    if shell == "bash":
+        completion_script = """
             # Add to ~/.bashrc:
 eval "$(_AT_COMPLETE=bash_source at)"
-            '''
-    elif shell == 'zsh':
-        completion_script = '''
+            """
+    elif shell == "zsh":
+        completion_script = """
             # Add to ~/.zshrc:
 eval "$(_AT_COMPLETE=zsh_source at)"
-            '''
-    elif shell == 'fish':
-        completion_script = '''
+            """
+    elif shell == "fish":
+        completion_script = """
             # Add to ~/.config/fish/config.fish:
 eval "$(_AT_COMPLETE=fish_source at)"
-'''
+"""
     click.echo(f"# Shell completion for {shell}")
     click.echo(completion_script.strip())
-    click.echo("# Don't forget to source your rc file! `source ~/.bashrc` or `source ~/.zshrc` ...")
+    click.echo(
+        "# Don't forget to source your rc file! `source ~/.bashrc` or `source ~/.zshrc` ..."
+    )
 
 
 cli.add_command(completion)
@@ -123,12 +123,13 @@ cli.add_command(auth.login)
 # we could do `at [exploration/simulation/project/user/etc] [get/create/delete] [id]`
 # OR
 # `at [get/create/delete] [exploration/simulation/project/user/etc] [id]`
-# OR 
+# OR
 # some other grouping that reflects a user's workflow
+
 
 def main():
     cli()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

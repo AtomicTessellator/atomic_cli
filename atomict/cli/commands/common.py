@@ -17,7 +17,7 @@ table_0 = Table(
 
 
 def create_table(
-    columns: List[Tuple[str, str, Optional[Callable]]], 
+    columns: List[Tuple[str, str, Optional[Callable]]],
     items: List[dict],
     *,
     title: Optional[str] = None,
@@ -27,9 +27,9 @@ def create_table(
     caption: Optional[str] = None,
 ) -> Table:
     """Create a styled Rich table with the given columns and items.
-    
+
     Args:
-        columns: List of (header, key, formatter) tuples. 
+        columns: List of (header, key, formatter) tuples.
                 formatter is optional and defaults to str
         items: List of dictionaries containing the data
         title: Optional table title

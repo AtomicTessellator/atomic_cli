@@ -6,11 +6,10 @@ from . import (
     # qe,
     # phonon,
     # kpoint,
-
 )
 
 
-@click.group(name='simulation')
+@click.group(name="simulation")
 def simulation_group():
     """Manage all types of simulations"""
     pass
