@@ -21,6 +21,7 @@ at = "atomict.cli.main:main"
 
 [tool.setuptools.packages.find]
 include = ["atomict*"]
+exclude = ["tests*", "tests.*"]
 
 [tool.setuptools.dynamic]
 version = {attr = "atomict.__version__.__version__"}
