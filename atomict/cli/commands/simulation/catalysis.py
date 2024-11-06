@@ -1,17 +1,18 @@
 # cli/commands/simulation/catalysis.py
-import click
 import json
-from rich.table import Table
+from typing import Any, Dict, Optional
+
+import click
+from rich.console import Console
 from rich.panel import Panel
-from typing import Optional, Dict, Any
-from atomict.cli.core.client import get_client
+from rich.table import Table
+
 from atomict.cli.commands.helpers import (
-    format_datetime,
     create_detail_table,
+    format_datetime,
     format_task_status,
 )
-from rich.console import Console
-
+from atomict.cli.core.client import get_client
 
 console = Console()
 

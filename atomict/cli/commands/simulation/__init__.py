@@ -1,12 +1,7 @@
 # cli/commands/simulation/__init__.py
 import click
-from . import (
-    catalysis,
-    fhiaims,
-    # qe,
-    # phonon,
-    # kpoint,
-)
+
+from . import catalysis, fhiaims  # qe,; phonon,; kpoint,
 
 
 @click.group(name="simulation")

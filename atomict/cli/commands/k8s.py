@@ -10,7 +10,6 @@ from atomict.cli.commands.helpers import format_datetime
 from atomict.cli.core.client import get_client
 from atomict.cli.core.utils import get_pagination_info
 
-
 console = Console()
 
 

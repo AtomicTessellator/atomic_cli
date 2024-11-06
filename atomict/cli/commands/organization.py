@@ -1,13 +1,12 @@
 # cli/commands/organization.py
+import json
 import logging
+from typing import Optional
 
 import click
-from rich.table import Table
 from rich.console import Console
 from rich.panel import Panel
-from typing import Optional
-import json
-
+from rich.table import Table
 
 console = Console()
 logger = logging.getLogger(__name__)

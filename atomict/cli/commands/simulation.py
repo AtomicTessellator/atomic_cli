@@ -1,13 +1,13 @@
 # cli/commands/simulation.py
+import json
 import logging
+from typing import Any, Dict, Optional
 
 import click
-from rich.table import Table
 from rich.console import Console
 from rich.panel import Panel
-from typing import Optional, Any, Dict
-import json
 from rich.progress import Progress
+from rich.table import Table
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -144,8 +144,9 @@ def get(id: Optional[str] = None, json_output: bool = False):
 @click.option("--output", "-o", help="Output file path")
 def download_results(id: str, output: Optional[str]):
     """Download simulation results file"""
-    from atomict.cli.core.client import get_client
     from pathlib import Path
+
+    from atomict.cli.core.client import get_client
 
     client = get_client()
 

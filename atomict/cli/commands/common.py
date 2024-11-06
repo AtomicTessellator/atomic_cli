@@ -1,7 +1,7 @@
-from rich.table import Table
-from rich.box import ASCII_DOUBLE_HEAD
-from typing import List, Tuple, Any, Optional, Callable
+from typing import Any, Callable, List, Optional, Tuple
 
+from rich.box import ASCII_DOUBLE_HEAD
+from rich.table import Table
 
 table_0 = Table(
     title_style="bold",

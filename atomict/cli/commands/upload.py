@@ -1,15 +1,14 @@
 # cli/commands/upload.py
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
 import click
 from rich.console import Console
 
-from atomict.cli.core.client import get_client
 from atomict.cli.commands.common import create_table
 from atomict.cli.commands.helpers import format_datetime
+from atomict.cli.core.client import get_client
 from atomict.cli.core.utils import get_pagination_info
-
 
 console = Console()
 

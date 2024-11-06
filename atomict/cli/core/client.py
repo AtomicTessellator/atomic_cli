@@ -1,10 +1,10 @@
 # cli/core/client.py
-import os
 import logging
+import os
 import sys
 from functools import wraps
+from typing import Any, Dict, Iterator, List, Optional, Union
 
-from typing import Optional, Dict, Any, Iterator, List, Union
 import httpx
 from rich.console import Console
 

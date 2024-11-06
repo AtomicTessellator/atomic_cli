@@ -1,13 +1,13 @@
+import json
+from typing import Optional
+
 import click
 from rich.console import Console
-from typing import Optional
-import json
 
+from atomict.cli.commands.common import create_table
 from atomict.cli.commands.helpers import format_datetime, get_status_string
 from atomict.cli.core.client import get_client
 from atomict.cli.core.utils import get_pagination_info
-from atomict.cli.commands.common import create_table
-
 
 console = Console()
 

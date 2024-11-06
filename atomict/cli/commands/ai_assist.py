@@ -1,10 +1,12 @@
 # cli/commands/ai_assist.py
-import click
-from rich.table import Table
-from rich.console import Console
-from rich.panel import Panel
 import json
 from typing import Optional
+
+import click
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+
 from atomict.cli.core.client import get_client
 
 console = Console()

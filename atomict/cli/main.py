@@ -1,29 +1,17 @@
 # cli/main.py
-import click
-from rich.console import Console
 import logging
 import os
+
+import click
+from rich.console import Console
 
 from atomict.__version__ import __version__
 from atomict.cli.commands import auth, user
 
 # Import command groups
-from .commands import (
-    task,
-    upload,
-    project,
-    k8s,
-    adsorbate,
-    catalysis,
-)
-
+from .commands import adsorbate, catalysis, k8s, project, task, upload
+from .commands.exploration import soec, sqs
 from .commands.simulation import fhiaims, kpoint
-
-from .commands.exploration import (
-    sqs,
-    soec,
-)
-
 
 console = Console()
 

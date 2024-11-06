@@ -1,16 +1,14 @@
-from typing import Optional, List
+from typing import List, Optional
 
 import click
 from rich.console import Console
 from rich.panel import Panel
 from rich.pretty import pprint
 
-from atomict.cli.core.client import get_client
-from atomict.cli.core.utils import get_pagination_info
 from atomict.cli.commands.common import create_table
 from atomict.cli.commands.helpers import format_datetime, get_status_string
 from atomict.cli.core.client import get_client
-
+from atomict.cli.core.utils import get_pagination_info
 
 console = Console()
 

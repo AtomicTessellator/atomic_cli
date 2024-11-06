@@ -1,7 +1,8 @@
 # cli/commands/simulation/helpers.py
-from rich.table import Table
-from typing import Any, Dict, Optional
 from datetime import datetime
+from typing import Any, Dict, Optional
+
+from rich.table import Table
 
 
 # TODO: move to common?
