@@ -35,19 +35,14 @@ Commands:
   user       Manage users and user uploads
 
 ```
-Tab completion is available for all commands. To generate the script to enable this, run the hidden command`at completion`. It will print out the script with instructions.
-
-## SDK Usage
-```
-from atomict.datasets import get
-
-df = get('tox21')
-```
+Tab completion is available for all commands. To generate the script to enable this, run the hidden command:
+```at completion```
+This will print out the script with instructions.
 
 ## Roadmap
 - [x] CLI
 - [x] Download Public Datasets
 - [ ] Local dataset caching
-- [ ] Authentication
+- [x] Authentication
 - [ ] Reality Server API endpoints - Simulations
 
