@@ -153,3 +153,30 @@ def get_status_history(task_id: str, json_output: bool = False):
     )
 
     console.print(table)
+
+
+@task.command(hidden=True)
+@click.argument("id")
+@click.argument("status", type=int)
+def update_status(id: str, status: int):
+    """Update a task's status (Development only)
+    
+    Status codes:
+    0: Draft
+    1: Ready
+    2: Running
+    3: Completed
+    4: Error
+    5: Paused
+    6: User Aborted
+    """
+    if status not in range(7):
+        console.print("[red]Invalid status code. Must be between 0 and 6.[/red]")
+        return
+
+    client = get_client()
+    data = {"status": status}
+
+    client.patch(f"/api/tasks/{id}/", data=data)
+    console.print(f"[green]Task {id} status updated to {get_status_string(status)}[/green]")
+
