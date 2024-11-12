@@ -1,5 +1,4 @@
 # infra
-numpy~=1.26.4
 requests
 ase==3.23.0
 
