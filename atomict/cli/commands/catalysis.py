@@ -129,12 +129,14 @@ def get(
 @catalysis_group.command()
 @click.option("--name", required=True, help="Name of the exploration")
 @click.option("--structure", required=True, help="Starting structure ID")
+@click.option("--project", required=True, help="Project ID")
 @click.option("--element", "elements", multiple=True, help="Target elements")
 @click.option("--weight", "weights", multiple=True, type=float, help="Target weights")
 @click.option("--json-output", is_flag=True, help="Output in JSON format")
 def create(
     name: str,
     structure: str,
+    project: str,
     elements: Tuple[str],
     weights: Tuple[float],
     json_output: bool = False,
@@ -152,6 +154,7 @@ def create(
     data = {
         "name": name,
         "starting_structure": structure,
+        "project": project,
         "target_concentrations": [
             {"element": elem, "weight": weight}
             for elem, weight in zip(elements, weights)
