@@ -3,18 +3,6 @@ from typing import Any, Callable, List, Optional, Tuple
 from rich.box import ASCII_DOUBLE_HEAD
 from rich.table import Table
 
-table_0 = Table(
-    title_style="bold",
-    title_justify="center",
-    box=ASCII_DOUBLE_HEAD,
-    caption_justify="center",
-    show_header=True,
-    header_style="bold cyan",
-    # show_footer=True,
-    # footer_style="bold cyan",
-    highlight=True,
-)
-
 
 def create_table(
     columns: List[Tuple[str, str, Optional[Callable]]],
