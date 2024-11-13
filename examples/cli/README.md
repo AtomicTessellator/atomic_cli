@@ -42,3 +42,11 @@ This will prompt you for your username and password.
 ```$ at task get --status completed```
 
 ![Alt text](img/at_task_get_completed.png?raw=true "at task get --status completed")
+
+# Configuration
+
+Tab completion is available. Run the hidden command:
+
+```at completion```
+
+This will print out the instructions for enabling tab completion for your shell.
