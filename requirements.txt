@@ -1,7 +1,6 @@
 # infra
-numpy~=2.0
 requests
-ase==3.23.0
+ase~=3.23.0
 
 # cli
 httpx

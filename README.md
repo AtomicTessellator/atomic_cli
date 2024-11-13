@@ -39,10 +39,3 @@ Tab completion is available for all commands. To generate the script to enable t
 ```at completion```
 This will print out the script with instructions.
 
-## Roadmap
-- [x] CLI
-- [x] Download Public Datasets
-- [ ] Local dataset caching
-- [x] Authentication
-- [ ] Reality Server API endpoints - Simulations
-

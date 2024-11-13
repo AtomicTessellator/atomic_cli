@@ -8,6 +8,7 @@ def create_simulation(
     action: str,
     name: str = None,
     description: str = None,
+    extra_simulation_kwargs: dict = None,
 ) -> dict:
 
     if action not in ["DRAFT", "LAUNCH"]:
@@ -21,6 +22,9 @@ def create_simulation(
         "name": name,
         "description": description,
     }
+
+    if extra_simulation_kwargs:
+        payload.update(extra_simulation_kwargs)
 
     result = post(
         "api/fhiaims-simulation/",
