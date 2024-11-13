@@ -5,9 +5,15 @@
 pip install atomict
 ```
 
-## Development installation
+## Installation for devs
 ```
 pip install -e ".[dev]"
+```
+
+Enable verbose logging for debugging:
+
+```
+export AT_DEBUG=enabled
 ```
 
 ## CLI Usage
@@ -35,7 +41,12 @@ Commands:
   user       Manage users and user uploads
 
 ```
-Tab completion is available for all commands. To generate the script to enable this, run the hidden command:
+
+# Configuration
+
+Tab completion is available. Run the hidden command:
+
 ```at completion```
-This will print out the script with instructions.
+
+This will print out the instructions for enabling tab completion for your shell.
 

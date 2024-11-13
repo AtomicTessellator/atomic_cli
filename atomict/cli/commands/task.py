@@ -12,6 +12,16 @@ from atomict.cli.core.utils import get_pagination_info
 
 console = Console()
 
+STATUS_MAP = {
+    "draft": 0,
+    "ready": 1,
+    "running": 2,
+    "completed": 3,
+    "error": 4,
+    "paused": 5,
+    "aborted": 6
+}
+
 
 @click.group(name="task")
 def task():
@@ -44,7 +54,7 @@ def cancel(id: str):
 )
 @click.option(
     "--status",
-    type=click.Choice(["pending", "running", "completed", "failed", "aborted"]),
+    type=click.Choice(["draft", "ready", "running", "completed", "error", "paused", "aborted"], case_sensitive=False),
     help="Filter by status",
 )
 @click.option("--all", "fetch_all", is_flag=True, help="Fetch all results")
@@ -82,13 +92,13 @@ def get(
             console.print("\n[bold]Input Parameters:[/bold]")
             console.print_json(data=result["input_params"])
     else:
-        params = {}
+        params = {"depth": 2}
         if search is not None:
             params["search"] = search
         if ordering:
             params["ordering"] = ordering
         if status:
-            params["status"] = status
+            params["status"] = STATUS_MAP[status.lower()]
 
         if fetch_all:
             results = client.get_all("/api/tasks/", params=params)
@@ -101,7 +111,8 @@ def get(
 
         columns = [
             ("ID", "id", None),
-            ("Type", "task_type", None),
+            ("Project name", "project", lambda x: x.get("name", "N/A")),
+            ("Progress", "progress", None),
             ("Status", "status", get_status_string),
             ("Error", "error", None),
             ("Created", "created_at", format_datetime),
@@ -159,29 +170,12 @@ def get_status_history(task_id: str, json_output: bool = False):
 @click.argument("id")
 @click.argument(
     "status",
-    type=click.Choice(
-        ["draft", "ready", "running", "completed", "error", "paused", "aborted"],
-        case_sensitive=False
-    )
+    type=click.Choice(list(STATUS_MAP.keys()), case_sensitive=False)
 )
 def update_status(id: str, status: str):
     """Update a task's status (Development only)"""
-    status_map = {
-        "draft": 0,
-        "ready": 1,
-        "running": 2,
-        "completed": 3,
-        "error": 4,
-        "paused": 5,
-        "aborted": 6
-    }
-
     client = get_client()
-    status_code = status_map.get(status.lower())
-    if status_code is None:
-        console.print(f"[red]Invalid status: {status}[/red]")
-        return
-
+    status_code = STATUS_MAP[status.lower()]
     data = {"status": status_code}
     client.patch(f"/api/tasks/{id}/", data=data)
     console.print(f"[green]Task {id} status updated to {status}[/green]")
