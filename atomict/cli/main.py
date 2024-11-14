@@ -18,7 +18,7 @@ console = Console()
 
 def setup_logging(verbose: bool):
     """Configure logging based on verbose flag and AT_DEBUG env var"""
-    if os.getenv("AT_DEBUG"):
+    if os.getenv("AT_DEBUG") == "enabled":
         # Most verbose logging when AT_DEBUG is set
         logging.basicConfig(
             level=logging.DEBUG,
