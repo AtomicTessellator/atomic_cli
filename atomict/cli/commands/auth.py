@@ -26,7 +26,7 @@ def login(username: str, password: str):
         client.set_token(token)
         console.print("[green]✓ Successfully logged in![/green]")
     else:
-        console.print(
+        Console(stderr=True).print(
             "[red]✗ Failed to authenticate. Please check your credentials.[/red]"
         )
         sys.exit(1)

@@ -72,6 +72,7 @@ def get(
     When no ID is provided, lists all tasks with optional filtering and ordering.
     """
     client = get_client()
+    params = {"depth": 2}
 
     if id:
         result = client.get(f"/api/tasks/{id}/")
@@ -87,12 +88,11 @@ def get(
         console.print(f"Created: {format_datetime(result.get('created_at'))}")
         console.print(f"Updated: {format_datetime(result.get('updated_at'))}")
         if result.get("error"):
-            console.print(f"[red]Error: {result['error']}[/red]")
+            console.print(f"Error: {result['error']}")
         if result.get("input_params"):
             console.print("\n[bold]Input Parameters:[/bold]")
             console.print_json(data=result["input_params"])
     else:
-        params = {"depth": 2}
         if search is not None:
             params["search"] = search
         if ordering:

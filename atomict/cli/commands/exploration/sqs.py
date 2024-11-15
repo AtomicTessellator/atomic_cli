@@ -90,10 +90,11 @@ def get(
             ("Name", "name", None),
             (
                 "Project",
-                "project",
-                lambda x: x.get("name") if isinstance(x, dict) else None,
+                "task",
+                lambda x: x.get("project", "N/A") if isinstance(x, dict) else None,
             ),
             ("Max Size", "auto_max_size", lambda x: "Auto" if x else None),
+            ("Cluster Cutoffs", "cluster_cutoffs", None),
             (
                 "Status",
                 "task",

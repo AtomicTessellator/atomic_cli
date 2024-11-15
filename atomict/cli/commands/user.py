@@ -68,6 +68,7 @@ def get(
             ("Email", "email", None),
             ("First Name", "first_name", None),
             ("Last Name", "last_name", None),
+            ("OpenAPI Key", "openapi_key", None),
             ("Date Joined", "date_joined", format_datetime),
             ("Last Login", "last_login", format_datetime),
         ]
