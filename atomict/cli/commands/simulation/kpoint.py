@@ -36,20 +36,19 @@ def get(
     """Get K-point simulation details or list all simulations"""
     client = get_client()
     console = Console()
+    params = {}
 
     if id:
         simulation = client.get(f"/api/kpoint-simulation/{id}/")
         if json_output:
-            console.print_json(data=simulation)
+            console.print_json(data=simulation, params=params)
             return
 
         # Format single simulation output
         console.print(Panel(f"[bold]K-point Simulation Details[/bold]"))
         console.print(f"ID: {simulation['id']}")
         if simulation.get("exploration"):
-            console.print(
-                f"Exploration: {simulation['exploration'].get('name', 'N/A')} ({simulation['exploration']['id']})"
-            )
+            console.print(f"Exploration: {simulation['exploration'].get('name', 'N/A')}")
             status = get_status_string(simulation["exploration"].get("status"))
             console.print(f"Status: {status}")
         console.print(f"K-points: {simulation.get('k_points', [])}")
@@ -61,7 +60,6 @@ def get(
             console.print(f"Status: {status}")
 
     else:
-        params = {}
         if search:
             params["search"] = search
         if ordering:
@@ -90,7 +88,7 @@ def get(
             (
                 "Exploration Name",
                 "exploration",
-                lambda x: x.get("name") if isinstance(x, dict) else None,
+                None
             ),
             (
                 "Simulation Name",

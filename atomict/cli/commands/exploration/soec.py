@@ -80,6 +80,10 @@ def get(
         columns = [
             ("ID", "id", None),
             ("Name", "name", None),
+            ("Strains list", "strains_list", None),
+            ("Stress algorithm", "stress_algorithm", None),
+            ("Stress method", "stress_method", None),
+            ("Num last samples", "num_last_samples", None),
             ("Status", "status", get_status_string),
             ("Created", "created_at", format_datetime),
             ("Updated", "updated_at", format_datetime),

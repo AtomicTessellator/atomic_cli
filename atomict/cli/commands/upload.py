@@ -70,10 +70,10 @@ def list(limit: Optional[int], file_type: Optional[str], json_output: bool):
 
     columns = [
         ("ID", "id", None),
-        ("Filename", "filename", None),
+        ("Filename", "orig_name", None),
         ("Type", "type", None),
         ("Size", "size", None),
-        ("Uploaded", "created_at", format_datetime),
+        ("Uploaded", "uploaded", format_datetime),
     ]
     items, footer_string = get_pagination_info(results)
 

@@ -49,6 +49,7 @@ def get(
         console.print(Panel(f"[bold]Project Details[/bold]"))
         console.print(f"ID: {result['id']}")
         console.print(f"Name: {result.get('name', 'N/A')}")
+        console.print(f"Smiles: {result.get('thumbnail_smiles', 'N/A')}")
         console.print(f"Created: {format_datetime(result.get('created_at', 'N/A'))}")
         console.print(f"Updated: {format_datetime(result.get('updated_at', 'N/A'))}")
         if result.get("description_html"):
@@ -122,6 +123,7 @@ def get(
         columns = [
             ("ID", "id", None),
             ("Name", "name", None),
+            ("Smiles", "thumbnail_smiles", None),
             ("Created", "created_at", format_datetime),
             ("Updated", "updated_at", format_datetime),
         ]

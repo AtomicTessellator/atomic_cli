@@ -48,7 +48,7 @@ def get(
         console.print(Panel(f"[bold]Kubernetes Cluster Details[/bold]"))
         console.print(f"ID: {cluster['id']}")
         console.print(f"Name: {cluster.get('name', 'N/A')}")
-        console.print(f"URL: {cluster.get('url', 'N/A')}")
+        console.print(f"Loki URL: {cluster.get('loki_url', 'N/A')}")
         console.print(f"Active: {cluster.get('active', False)}")
         if cluster.get("description"):
             console.print(f"Description: {cluster['description']}")
@@ -85,7 +85,7 @@ def get(
         columns = [
             ("ID", "id", None),
             ("Name", "name", None),
-            ("URL", "url", None),
+            ("Loki URL", "loki_url", None),
             ("Active", "active", str),
             ("Created", "created_at", format_datetime),
             ("Updated", "updated_at", format_datetime),

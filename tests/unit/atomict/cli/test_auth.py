@@ -55,3 +55,17 @@ def test_get_client_auth_flow(mock_config, mock_client):
     )
     mock_config.save_token.assert_called_once_with('new_token')
     mock_client.set_token.assert_called_once_with('new_token')
+
+
+def test_auth_fail_writes_stderr(mock_config, mock_client, capsys):
+    # Setup
+    mock_config.token = None
+    mock_client.post.side_effect = Exception("Login failed")
+    
+    # Execute and Assert
+    with pytest.raises(Exception):
+        client = get_client()
+    
+    # Check stderr output
+    captured = capsys.readouterr()
+    assert "Login failed" in captured.err
