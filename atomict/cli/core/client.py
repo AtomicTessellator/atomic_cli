@@ -33,16 +33,18 @@ def handle_connection_errors(func):
 
 
 class APIClient:
-    def __init__(self, base_url: str = "https://api.atomictessellator.com"):
+    def __init__(self, config: Config = None, base_url: str = "https://api.atomictessellator.com"):
         self.base_url = os.getenv("AT_SERVER", base_url)
         self.params = {"limit": 20}
         self.client = httpx.Client(base_url=self.base_url, timeout=30.0)
-        self._token: Optional[str] = None
-
-    def set_auth(self, username: str, password: str):
-        """Set basic auth credentials"""
-        # TODO: use httpx.BasicAuth
-        self.auth = httpx.BasicAuth(username=username, password=password)
+        self.username = None
+        self.password = None
+        self._token = None
+        if config and config.username and config.password:
+            self.username = config.username
+            self.password = config.password
+        if config and config.token:
+            self.set_token(config.token)
 
     def set_token(self, token: str):
         """Set bearer token"""
@@ -91,7 +93,7 @@ class APIClient:
                         console.print(f"[red]  {field}: {', '.join(errors)}[/red]")
             elif e.response.status_code == 401:
                 console.print(
-                    "[red]Authentication failed. Please check your credentials or log in again.[/red]"
+                    "[red]Authentication failed. Please check your credentials/env variables or log in again.[/red]"
                 )
             elif e.response.status_code == 403:
                 console.print(
@@ -142,6 +144,11 @@ class APIClient:
         """Make PATCH request"""
         response = self.client.patch(path, json=data)
         return self._handle_response(response)
+    
+    @handle_connection_errors
+    def auth(self, username: Union[str, None] = None, password: Union[str, None] = None) -> None:
+        """ Login via username and password """
+        return self.post("api-auth/", {"username": username or self.username, "password": password or self.password})
 
     @handle_connection_errors
     def paginate(
@@ -174,24 +181,22 @@ class APIClient:
 def get_client() -> APIClient:
     """Get a configured API client instance"""
     config = Config()
-    client = APIClient()
+    client = APIClient(config=config)
 
-    if config.token:
-        client.set_token(config.token)
+    if client._token:
+        return client
+    
+    config.ensure_auth()
+    client.set_auth(config.username, config.password)
+    response = client.auth()
+    token = response.get("token")
+    if token:
+        config.save_token(token)
+        client.set_token(token)
     else:
-        config.ensure_auth()
-        client.set_auth(config.username, config.password)
-        response = client.post(
-            "api-auth/", {"username": config.username, "password": config.password}
+        console.print(
+            "[red]✗ Failed to authenticate (no token returned). Please check your credentials and/or environment variables.[/red]"
         )
-        token = response.get("token")
-        if token:
-            config.save_token(token)
-            client.set_token(token)
-        else:
-            console.print(
-                "[red]Failed to authenticate. Please check your credentials.[/red]"
-            )
-            sys.exit(1)
+        sys.exit(1)
 
     return client

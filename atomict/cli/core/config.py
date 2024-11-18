@@ -13,18 +13,13 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 
 class Config:
     def __init__(self):
-        self.username: Optional[str] = None
-        self.password: Optional[str] = None
+        self.username: Optional[str] = os.getenv("AT_USER")
+        self.password: Optional[str] = os.getenv("AT_PASS")
         self.token: Optional[str] = None
         self.load_config()
 
     def load_config(self):
-        """Load config from file and environment variables"""
-        # First try environment variables
-        self.username = os.getenv("AT_USER")
-        self.password = os.getenv("AT_PASS")
-
-        # Then try config file
+        """Load config from file. """
         if CONFIG_FILE.exists():
             try:
                 with open(CONFIG_FILE) as f:
