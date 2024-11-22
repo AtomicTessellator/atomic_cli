@@ -6,9 +6,9 @@ import requests
 from requests.exceptions import (
     HTTPError,
     ConnectionError,
-    Timeout
+    Timeout,
 )
-from tenacity import retry, stop_after_attempt, wait_exponential, before_log, after_log
+from tenacity import retry, stop_after_attempt, wait_exponential, before_log, after_log, retry_if_exception_type, retry_if_exception
 
 from atomict.exceptions import APIValidationError, PermissionDenied
 
@@ -16,20 +16,17 @@ from atomict.exceptions import APIValidationError, PermissionDenied
 logger = logging.getLogger(__name__)
 
 
-def should_retry_exception(exception):
+def is_http_5xx_error(exception):
     """These are the HTTP errors that we should attempt to retry on."""
-    if isinstance(exception, HTTPError):
-        return 500 <= exception.response.status_code < 600
-
-    return isinstance(exception, (ConnectionError, Timeout))
+    return isinstance(exception, HTTPError) and 500 <= exception.response.status_code < 600
 
 
 @retry(
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=2, min=1, max=30),
-    retry=should_retry_exception,
-    before=before_log(logger, logging.WARNING),
-    after=after_log(logger, logging.WARNING)
+    retry=(retry_if_exception_type((ConnectionError, Timeout)) | retry_if_exception(is_http_5xx_error)),
+    before=before_log(logger, logging.INFO),
+    after=after_log(logger, logging.INFO)
 )
 def get(path: str):
     api_root = os.environ.get("AT_SERVER", "https://api.atomictessellator.com")
@@ -69,9 +66,9 @@ def get(path: str):
 @retry(
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=2, min=1, max=30),
-    retry=should_retry_exception,
-    before=before_log(logger, logging.WARNING),
-    after=after_log(logger, logging.WARNING)
+    retry=(retry_if_exception_type((ConnectionError, Timeout)) | retry_if_exception(is_http_5xx_error)),
+    before=before_log(logger, logging.INFO),
+    after=after_log(logger, logging.INFO)
 )
 def post(path: str, payload: dict, files=None, extra_headers={}):
     # Jesus christ this logic needs cleaning up
@@ -118,9 +115,9 @@ def post(path: str, payload: dict, files=None, extra_headers={}):
 @retry(
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=2, min=1, max=30),
-    retry=should_retry_exception,
-    before=before_log(logger, logging.WARNING),
-    after=after_log(logger, logging.WARNING)
+    retry=(retry_if_exception_type((ConnectionError, Timeout)) | retry_if_exception(is_http_5xx_error)),
+    before=before_log(logger, logging.INFO),
+    after=after_log(logger, logging.INFO)
 )
 def patch(path: str, payload: dict):
     payload_enc = json.dumps(payload)
@@ -151,9 +148,9 @@ def patch(path: str, payload: dict):
 @retry(
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=2, min=1, max=30),
-    retry=should_retry_exception,
-    before=before_log(logger, logging.WARNING),
-    after=after_log(logger, logging.WARNING)
+    retry=(retry_if_exception_type((ConnectionError, Timeout)) | retry_if_exception(is_http_5xx_error)),
+    before=before_log(logger, logging.INFO),
+    after=after_log(logger, logging.INFO)
 )
 def delete(path: str):
     headers = {}
