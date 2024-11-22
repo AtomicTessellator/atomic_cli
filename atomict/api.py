@@ -1,11 +1,36 @@
 import json
 import os
+import logging
 
 import requests
+from requests.exceptions import (
+    HTTPError,
+    ConnectionError,
+    Timeout
+)
+from tenacity import retry, stop_after_attempt, wait_exponential, before_log, after_log
 
 from atomict.exceptions import APIValidationError, PermissionDenied
 
 
+logger = logging.getLogger(__name__)
+
+
+def should_retry_exception(exception):
+    """These are the HTTP errors that we should attempt to retry on."""
+    if isinstance(exception, HTTPError):
+        return 500 <= exception.response.status_code < 600
+
+    return isinstance(exception, (ConnectionError, Timeout))
+
+
+@retry(
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=2, min=1, max=30),
+    retry=should_retry_exception,
+    before=before_log(logger, logging.WARNING),
+    after=after_log(logger, logging.WARNING)
+)
 def get(path: str):
     api_root = os.environ.get("AT_SERVER", "https://api.atomictessellator.com")
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
@@ -41,6 +66,13 @@ def get(path: str):
         response.raise_for_status()
 
 
+@retry(
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=2, min=1, max=30),
+    retry=should_retry_exception,
+    before=before_log(logger, logging.WARNING),
+    after=after_log(logger, logging.WARNING)
+)
 def post(path: str, payload: dict, files=None, extra_headers={}):
     # Jesus christ this logic needs cleaning up
     if not files and "Content-Type" not in extra_headers:
@@ -83,6 +115,13 @@ def post(path: str, payload: dict, files=None, extra_headers={}):
         response.raise_for_status()
 
 
+@retry(
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=2, min=1, max=30),
+    retry=should_retry_exception,
+    before=before_log(logger, logging.WARNING),
+    after=after_log(logger, logging.WARNING)
+)
 def patch(path: str, payload: dict):
     payload_enc = json.dumps(payload)
     headers = {"Content-Type": "application/json"}
@@ -109,6 +148,13 @@ def patch(path: str, payload: dict):
         response.raise_for_status()
 
 
+@retry(
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=2, min=1, max=30),
+    retry=should_retry_exception,
+    before=before_log(logger, logging.WARNING),
+    after=after_log(logger, logging.WARNING)
+)
 def delete(path: str):
     headers = {}
 
