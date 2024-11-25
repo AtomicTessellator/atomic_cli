@@ -21,7 +21,7 @@ def get_kpoint_simulation_list(exploration_id: str):
     """
     Get kpoints for a simulation
     """
-    result = get(f"api/kpoint-simulation/?exploration_id={exploration_id}")
+    result = get(f"api/kpoint-simulation/?exploration__id={exploration_id}")
     return result
 
 
@@ -40,7 +40,7 @@ def create_kpoint_simulation(
     Create KPoint simulation
     """
     result = post(
-        f"api/kpoint-simulation/",
+        "api/kpoint-simulation/",
         payload={
             "exploration": exploration_id,
             "simulation": simulation_id,
