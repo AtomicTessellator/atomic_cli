@@ -40,7 +40,7 @@ def create_kpoint_simulation(
     Create KPoint simulation
     """
     result = post(
-        f"api/kpoint-simulation/",
+        "api/kpoint-simulation/",
         payload={
             "exploration": exploration_id,
             "simulation": simulation_id,
