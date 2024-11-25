@@ -14,7 +14,7 @@ def read_final_geometry(workspace_dir: str, simulation_id: str):
     next_step_path = f"{workspace_dir}/starting_structure/geometry.in.next_step"
     if os.path.exists(next_step_path):
         try:
-            return read(next_step_path)
+            return read(next_step_path, foramt='aims')
         except UnknownFileTypeError:
             logging.warning(f"Could not read {next_step_path}, falling back to output file")
 
