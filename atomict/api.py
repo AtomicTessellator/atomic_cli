@@ -8,7 +8,7 @@ from requests.exceptions import (
     ConnectionError,
     Timeout,
 )
-from tenacity import retry, stop_after_attempt, wait_exponential, before_log, after_log, retry_if_exception_type, retry_if_exception
+from tenacity import retry, stop_after_attempt, wait_exponential, before_log, after_log, retry_if_exception_type, retry_if_exception, before_sleep_log
 
 from atomict.exceptions import APIValidationError, PermissionDenied
 
@@ -26,7 +26,8 @@ def is_http_5xx_error(exception):
     wait=wait_exponential(multiplier=2, min=1, max=30),
     retry=(retry_if_exception_type((ConnectionError, Timeout)) | retry_if_exception(is_http_5xx_error)),
     before=before_log(logger, logging.INFO),
-    after=after_log(logger, logging.INFO)
+    after=after_log(logger, logging.INFO),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
 )
 def get(path: str):
     api_root = os.environ.get("AT_SERVER", "https://api.atomictessellator.com")
@@ -68,7 +69,8 @@ def get(path: str):
     wait=wait_exponential(multiplier=2, min=1, max=30),
     retry=(retry_if_exception_type((ConnectionError, Timeout)) | retry_if_exception(is_http_5xx_error)),
     before=before_log(logger, logging.INFO),
-    after=after_log(logger, logging.INFO)
+    after=after_log(logger, logging.INFO),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
 )
 def post(path: str, payload: dict, files=None, extra_headers={}):
     # Jesus christ this logic needs cleaning up
@@ -117,7 +119,8 @@ def post(path: str, payload: dict, files=None, extra_headers={}):
     wait=wait_exponential(multiplier=2, min=1, max=30),
     retry=(retry_if_exception_type((ConnectionError, Timeout)) | retry_if_exception(is_http_5xx_error)),
     before=before_log(logger, logging.INFO),
-    after=after_log(logger, logging.INFO)
+    after=after_log(logger, logging.INFO),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
 )
 def patch(path: str, payload: dict):
     payload_enc = json.dumps(payload)
@@ -150,7 +153,8 @@ def patch(path: str, payload: dict):
     wait=wait_exponential(multiplier=2, min=1, max=30),
     retry=(retry_if_exception_type((ConnectionError, Timeout)) | retry_if_exception(is_http_5xx_error)),
     before=before_log(logger, logging.INFO),
-    after=after_log(logger, logging.INFO)
+    after=after_log(logger, logging.INFO),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
 )
 def delete(path: str):
     headers = {}
