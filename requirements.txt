@@ -1,6 +1,6 @@
 # infra
 requests
-ase~=3.23.0
+ase~=3.0
 
 # cli
 httpx
