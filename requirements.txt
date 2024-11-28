@@ -1,6 +1,6 @@
 # infra
 requests  # no longer being developed
-ase~=3.0
+ase>=3.23.0  # needed for ase.io.aims functions
 tenacity~=9.0
 
 # cli
