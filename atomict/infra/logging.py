@@ -11,5 +11,12 @@ def config_loggers(prefix: str = '', *args, **kwargs):
             "console": {"class": "logging.StreamHandler", "formatter": "verbose"}
         },
         root={"handlers": ["console"], "level": "INFO"},
+        loggers={
+            "atomict.api": {
+                "handlers": ["console"],
+                "level": "INFO",
+                "propagate": False
+            }
+        }
     )
     dictConfig(logging_config)
