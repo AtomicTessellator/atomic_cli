@@ -8,9 +8,10 @@ from requests.exceptions import (
     ConnectionError,
     Timeout,
 )
-from tenacity import retry, stop_after_attempt, wait_exponential, before_log, after_log, retry_if_exception_type, retry_if_exception, before_sleep_log
+from tenacity import retry, stop_after_attempt, wait_exponential, after_log, retry_if_exception_type, retry_if_exception, before_sleep_log
 
 from atomict.exceptions import APIValidationError, PermissionDenied
+from atomict.utils.tenacity import before_log
 
 
 logger = logging.getLogger(__name__)
