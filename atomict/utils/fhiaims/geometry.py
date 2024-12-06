@@ -1,9 +1,17 @@
-from atomict.io.fhiaims import read_aims_output
-from ase import Atoms
-from ase.io import read
-from ase.io.formats import UnknownFileTypeError
 import os
 import logging
+
+try:
+    from ase import Atoms
+    from ase.io import read
+    from ase.io.formats import UnknownFileTypeError
+except ImportError:
+    raise ImportError(
+        "The 'ase' package is required for JSON operations with Atoms objects. "
+        "To install the optional dependency, use atomict[utils]"
+    )
+
+from atomict.io.fhiaims import read_aims_output
 
 
 def read_final_geometry(workspace_dir: str, simulation_id: str):
