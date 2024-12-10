@@ -11,7 +11,7 @@ from atomict.cli.commands import login, user
 # Import command groups
 from .commands import adsorbate, catalysis, k8s, project, task, upload
 from .commands.exploration import soec, sqs
-from .commands.simulation import fhiaims, kpoint
+from .commands.simulation import fhiaims, kpoint, vibes
 
 console = Console()
 
@@ -102,6 +102,7 @@ cli.add_command(sqs.sqs_group)
 cli.add_command(soec.soecexploration_group)
 cli.add_command(user.user_group)
 cli.add_command(login._login)
+cli.add_command(vibes.vibes_group)
 # from .commands.exploration import exploration_group
 # cli.add_command(exploration.exploration)  # move this
 # TBD: decide on how to group or put all commands at top level
