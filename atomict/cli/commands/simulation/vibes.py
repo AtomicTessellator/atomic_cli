@@ -109,27 +109,27 @@ def get(
 @click.option("--description", help="Simulation description")
 @click.option("--starting-structure-id", help="ID of the starting FHI-aims structure")
 @click.option(
-    "--calculator-parameters",
-    type=click.JSON,
-    help="Calculator parameters as JSON (e.g. '{\"xc\": \"pw-lda\"}')",
+    "--xc",
+    type=str,
+    help="Phonopy.in setting: Exchange-correlation functional (e.g. 'pw-lda')",
 )
 @click.option(
-    "--calculator-kpoints",
-    type=click.JSON,
-    help="Calculator k-points as JSON (e.g. '{\"density\": 3.5}')",
+    "--kpoint-density",
+    type=float,
+    help="Phonopy.in setting: K-point density (e.g. 3.5)",
 )
 @click.option(
-    "--calculator-basis-set",
-    type=click.JSON,
-    help="Calculator basis set as JSON (e.g. '{\"default\": \"light\"}')",
+    "--basis-set",
+    type=str,
+    help="Phonopy.in setting: Basis set (e.g. 'light')",
 )
 def create(
     name: Optional[str],
     description: Optional[str],
     starting_structure_id: Optional[str],
-    calculator_parameters: Optional[dict],
-    calculator_kpoints: Optional[dict],
-    calculator_basis_set: Optional[dict],
+    xc: Optional[str],
+    kpoint_density: Optional[float],
+    basis_set: Optional[str],
 ):
     """Create a new VIBES simulation"""
     client = get_client()
@@ -141,12 +141,12 @@ def create(
         data["description"] = description
     if starting_structure_id:
         data["starting_structure"] = starting_structure_id
-    if calculator_parameters:
-        data["calculator_parameters"] = calculator_parameters
-    if calculator_kpoints:
-        data["calculator_kpoints"] = calculator_kpoints
-    if calculator_basis_set:
-        data["calculator_basis_set"] = calculator_basis_set
+    if xc:
+        data["calculator_parameters"] = {"xc": xc}
+    if kpoint_density:
+        data["calculator_kpoints"] = {"density": kpoint_density}
+    if basis_set:
+        data["calculator_basis_set"] = {"default": basis_set}
 
     simulation = client.post("/api/vibes-simulation/", data=data)
     console.print(f"[green]Created simulation with ID: {simulation['id']}[/green]")
