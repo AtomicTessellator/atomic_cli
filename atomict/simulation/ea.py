@@ -30,7 +30,11 @@ def associate_user_upload_with_ea_exploration(user_upload_id: str, analysis_id: 
 
 
 def create_exploration_sample(
-    exploration_id: str, simulation_id: str, strain: float = None, matrix: int = None
+    exploration_id: str,
+    simulation_id: str,
+    mlrelax_id: str = None,
+    strain: float = None,
+    matrix: int = None,
 ):
     """
     Create an exploration sample
@@ -41,14 +45,24 @@ def create_exploration_sample(
     matrix: int - The matrix to associate with the sample
     """
 
+    if simulation_id is None and mlrelax_id is None:
+        raise ValueError("Either simulation_id or mlrelax_id must be provided")
+
+    payload = {
+        "exploration": exploration_id,
+        "strain": strain,
+        "matrix": matrix,
+    }
+
+    if simulation_id:
+        payload["simulation"] = simulation_id
+
+    if mlrelax_id:
+        payload["mlrelax"] = mlrelax_id
+
     result = post(
         "api/ea-exploration-sample/",
-        payload={
-            "exploration": exploration_id,
-            "simulation": simulation_id,
-            "strain": strain,
-            "matrix": matrix,
-        },
+        payload=payload,
     )
 
     return result
