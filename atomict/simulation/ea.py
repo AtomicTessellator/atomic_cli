@@ -31,7 +31,7 @@ def associate_user_upload_with_ea_exploration(user_upload_id: str, analysis_id: 
 
 def create_exploration_sample(
     exploration_id: str,
-    simulation_id: str,
+    simulation_id: str = None,
     mlrelax_id: str = None,
     strain: float = None,
     matrix: int = None,
@@ -56,13 +56,10 @@ def create_exploration_sample(
 
     if simulation_id:
         payload["simulation"] = simulation_id
-
-    if mlrelax_id:
+    elif mlrelax_id:
         payload["mlrelax"] = mlrelax_id
 
-    result = post(
+    return post(
         "api/ea-exploration-sample/",
         payload=payload,
     )
-
-    return result
