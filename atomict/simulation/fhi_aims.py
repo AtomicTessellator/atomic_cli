@@ -68,5 +68,5 @@ def get_simulation_files(simulation_id: str):
     """
     Get the files associated with a FHI-aims simulation
     """
-    result = get(f"api/fhiaims-simulation-file/?simulation_uuid={simulation_id}")
+    result = get(f"api/fhiaims-simulation-file/?simulation__id={simulation_id}")
     return result
