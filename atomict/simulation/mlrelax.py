@@ -73,3 +73,11 @@ def create_mlrelaxation(
 
     result = post("api/mlrelax/", payload)
     return result
+
+
+def get_mlrelax_files(mlrelax_id: str):
+    """
+    Get the files associated with a MLRelaxation
+    """
+    result = get(f"api/mlrelax-file/?mlrelax_id={mlrelax_id}")
+    return result
