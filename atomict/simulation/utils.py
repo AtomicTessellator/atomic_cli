@@ -66,8 +66,8 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
         return atoms[-1]
 
     elif sim["starting_structure_userupload"]:
-        logging.info(f"Previous UserUpload: {sim['starting_structure_userupload']['id']}")
-        download_file(sim["starting_structure_userupload"]["id"], workbench_dir + "/relaxed.cif")
+        logging.info(f"Previous UserUpload: {sim['starting_structure_userupload']['uuid']}")
+        download_file(sim["starting_structure_userupload"]["uuid"], workbench_dir + "/relaxed.cif")
         atoms = read(workbench_dir + "/relaxed.cif")
         return atoms
     else:
