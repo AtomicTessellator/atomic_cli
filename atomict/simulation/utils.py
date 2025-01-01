@@ -63,12 +63,21 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
 
         traj_file = os.path.join(mlrelax_dir, "relax.traj")
         atoms = read(traj_file)
-        return atoms[-1]
+        
+        if isinstance(atoms, list):
+            return atoms[-1]
+        else:
+            return atoms
 
     elif sim["starting_structure_userupload"]:
         logging.info(f"Previous UserUpload: {sim['starting_structure_userupload']['uuid']}")
+
         download_file(sim["starting_structure_userupload"]["uuid"], workbench_dir + "/relaxed.cif")
         atoms = read(workbench_dir + "/relaxed.cif")
-        return atoms
+
+        if isinstance(atoms, list):
+            return atoms[-1]
+        else:
+            return atoms
     else:
         raise ValueError("No relaxed structure simulation found")
