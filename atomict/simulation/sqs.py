@@ -21,5 +21,5 @@ def associate_user_upload_with_sqs_simulation(
     """
     result = post(
         "api/sqs-simulation-file/",
-        payload={"user_upload": user_upload_id, "exploration": sqs_simulation_id},
+        payload={"user_upload_id": user_upload_id, "exploration_id": sqs_simulation_id},
     )
