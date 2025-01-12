@@ -21,11 +21,10 @@ def get_ea_exploration_analysis_file(analysis_file_id: str):
     return get(f"api/ea-exploration-analysis-file/{analysis_file_id}/")
 
 
-
 def associate_user_upload_with_ea_exploration(user_upload_id: str, analysis_id: str):
     return post(
         "api/ea-exploration-analysis-file/",
-        payload={"user_upload": user_upload_id, "analysis": analysis_id},
+        payload={"user_upload_id": user_upload_id, "analysis_id": analysis_id},
     )
 
 
@@ -49,7 +48,7 @@ def create_exploration_sample(
         raise ValueError("Either simulation_id or mlrelax_id must be provided")
 
     payload = {
-        "exploration": exploration_id,
+        "exploration_id": exploration_id,
         "strain": strain,
         "matrix": matrix,
     }

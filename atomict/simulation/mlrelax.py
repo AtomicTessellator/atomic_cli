@@ -21,7 +21,7 @@ def associate_user_upload_with_mlrelaxation(user_upload_id: str, mlrelax_id: str
     """
     result = post(
         "api/mlrelax-file/",
-        payload={"user_upload": user_upload_id, "mlrelax": mlrelax_id},
+        payload={"user_upload_id": user_upload_id, "mlrelax_id": mlrelax_id},
     )
     return result
 
