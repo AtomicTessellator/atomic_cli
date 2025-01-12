@@ -59,7 +59,7 @@ def associate_user_upload_with_fhiaims_simulation(
     """
     result = post(
         "api/fhiaims-simulation-file/",
-        payload={"user_upload": user_upload_id, "simulation": fhi_simulation_id},
+        payload={"user_upload_id": user_upload_id, "simulation_id": fhi_simulation_id},
     )
     return result
 
