@@ -54,9 +54,9 @@ def create_exploration_sample(
     }
 
     if simulation_id:
-        payload["simulation"] = simulation_id
+        payload["simulation_id"] = simulation_id
     elif mlrelax_id:
-        payload["mlrelax"] = mlrelax_id
+        payload["mlrelax_id"] = mlrelax_id
 
     return post(
         "api/ea-exploration-sample/",
