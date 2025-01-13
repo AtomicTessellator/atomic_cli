@@ -59,7 +59,7 @@ def create_mlrelaxation(
 
     payload = {
         "project": project_id,
-        "source_geometry": source_geometry_id,
+        "source_geometry_id": source_geometry_id,
         "action": action,
         "name": name,
         "description": description,
