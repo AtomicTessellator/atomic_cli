@@ -15,7 +15,7 @@ def create_simulation(
         raise ValueError("Action must be 'DRAFT' or 'LAUNCH'")
 
     payload = {
-        "project": project_id,
+        "project_id": project_id,
         "control_file": control_file,
         "geometry_file": geometry_file,
         "action": action,
