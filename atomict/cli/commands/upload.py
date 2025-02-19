@@ -53,8 +53,9 @@ def upload():
 @click.option("--limit", type=int, help="Number of results to return")
 @click.option("--type", "file_type", help="Filter by file type")
 @click.option("--json-output", is_flag=True, help="Output in JSON format")
-def list(limit: Optional[int], file_type: Optional[str], json_output: bool):
-    """List uploaded files"""
+@click.option("--all", "fetch_all", is_flag=True, help="Fetch all results")
+def get(limit: Optional[int], file_type: Optional[str], json_output: bool = False, fetch_all: bool = False):
+    """Get uploaded files"""
     params = {}
     if limit:
         params["limit"] = limit
@@ -62,7 +63,11 @@ def list(limit: Optional[int], file_type: Optional[str], json_output: bool):
         params["type"] = file_type
 
     client = get_client()
-    results = client.get_all("/api/user-upload/", params)
+    
+    if fetch_all:
+        results = client.get_all("/api/user-upload/", params)
+    else:
+        results = client.get("/api/user-upload/", params)
 
     if json_output:
         console.print_json(data=results)
