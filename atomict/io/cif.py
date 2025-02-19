@@ -1,6 +1,13 @@
 import logging
-import ase.io
-import spglib
+
+try:
+    import ase.io
+    import spglib
+except ImportError:
+    raise ImportError(
+        "The 'ase' and 'spglib' packages are required for CIF operations. "
+        "To install the optional dependency, use atomict[utils]"
+    )
 
 
 class CIFAnalyzer:

@@ -1,8 +1,14 @@
 import io
 import json
 
-from ase import Atoms
-from ase.io import read, write
+try:
+    from ase import Atoms
+    from ase.io import read, write
+except ImportError:
+    raise ImportError(
+        "The 'ase' package is required for JSON operations with Atoms objects. "
+        "To install the optional dependency, use atomict[utils]"
+    )
 
 
 def atoms_to_json(atoms: Atoms) -> str:
