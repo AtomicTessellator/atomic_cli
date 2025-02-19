@@ -1,5 +1,12 @@
-from ase import Atoms
-from ase.io import read
+try:
+    from ase import Atoms
+    from ase.io import read
+except ImportError:
+    raise ImportError(
+        "The 'ase' package is required for JSON operations with Atoms objects. "
+        "To install the optional dependency, use atomict[utils]"
+    )
+
 import logging
 import os
 

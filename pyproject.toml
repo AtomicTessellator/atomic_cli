@@ -8,6 +8,17 @@ authors = [
     {name = "Steven Anderson", email = "steven@atomictessellator.com"},
     {name = "Alain Richardt", email = "alain@atomictessellator.com"},
 ]
+classifiers = [
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
 description = "The client application for the https://atomictessellator.com/"
 keywords = ["atomic", "tessellator", "cli", "client", "fhi-aims", "kpoint", "sqs", "adsorbate"]
 readme = "README.md"
@@ -30,6 +41,8 @@ version = {attr = "atomict.__version__.__version__"}
 dependencies = {file = ["requirements.txt"]}
 
 [project.optional-dependencies]
+utils = ["ase==3.23.0", "spglib==2.5.0"]
+
 dev = [
     "pytest~=8.0",
     "black",

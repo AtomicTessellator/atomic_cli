@@ -1,7 +1,13 @@
 import pytest
 import numpy as np
 from atomict.utils.fhiaims.geometry import fhi_to_ase
-from ase import Atoms
+try:
+    from ase import Atoms
+except ImportError:
+    raise ImportError(
+        "The 'ase' package is required for JSON operations with Atoms objects. "
+        "To install the optional dependency, use atomict[utils]"
+    )
 
 
 @pytest.fixture
