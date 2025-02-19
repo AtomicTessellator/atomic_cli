@@ -13,8 +13,16 @@ from ..core.config import Config, CONFIG_FILE
 @click.option("--username", prompt=True)
 @click.option("--password", prompt=True, hide_input=True)
 def _login(username: str, password: str):
-    response = APIClient().auth(username, password)
+    client = APIClient()
+    response = client.auth(username, password)
     token = response.get("token")
+    redirect = response.get("redirect")
+
+    if redirect in ['terms', 'verify_email']:
+        Console().print(
+            f"[yellow]Terms and account verification need to be accepted. Please use a browser to login: {client.base_url}/login[/yellow]"
+        )
+        sys.exit(1)
 
     if token:
         Config().save_token(token)

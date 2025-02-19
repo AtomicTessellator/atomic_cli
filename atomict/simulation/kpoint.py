@@ -42,8 +42,8 @@ def create_kpoint_simulation(
     result = post(
         "api/kpoint-simulation/",
         payload={
-            "exploration": exploration_id,
-            "simulation": simulation_id,
+            "exploration_id": exploration_id,
+            "simulation_id": simulation_id,
             "k_points": k_points,
         },
     )
