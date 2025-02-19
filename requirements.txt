@@ -1,5 +1,5 @@
 # infra
-requests  # no longer being developed
+requests
 tenacity~=9.0
 
 # cli
