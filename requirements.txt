@@ -8,3 +8,4 @@ spglib==2.5.0
 httpx
 click~=8.0
 rich~=13.0
+google-cloud-logging==3.11.3
