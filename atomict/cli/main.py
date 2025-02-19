@@ -9,7 +9,7 @@ from atomict.__version__ import __version__
 from atomict.cli.commands import login, user
 
 # Import command groups
-from .commands import adsorbate, catalysis, k8s, project, task, upload
+from .commands import adsorbate, catalysis, k8s, project, task, upload, ngatlas
 from .commands.exploration import soec, sqs
 from .commands.simulation import fhiaims, kpoint, vibes
 
@@ -90,6 +90,7 @@ cli.add_command(completion)
 # TODO: rename these to group
 cli.add_command(task.task)
 cli.add_command(upload.upload)
+cli.add_command(ngatlas.ngatlas)
 cli.add_command(project.project)
 cli.add_command(k8s.k8s)
 cli.add_command(adsorbate.adsorbate)
