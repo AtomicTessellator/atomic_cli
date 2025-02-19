@@ -3,6 +3,9 @@
 ## Installation
 ```
 pip install atomict
+
+# install utils package with scientific extensions (ase, spglib) 
+pip install atomict[utils]
 ```
 
 ## Installation for devs
