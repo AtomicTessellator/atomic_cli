@@ -51,10 +51,12 @@ class APIClient:
         self._token = token
         self.client.headers["Authorization"] = f"Token {token}"
 
-    def _handle_response(self, response: httpx.Response) -> Union[List, Dict[str, Any]]:
+    def _handle_response(self, response: httpx.Response, expect_file: bool = False) -> Union[List, Dict[str, Any], httpx.Response]:
         """Handle API response and common status codes"""
         try:
             response.raise_for_status()
+            if expect_file:
+                return response
             if response.request.method in ("DELETE", "HEAD", "TRACE"):
                 # no JSON returned
                 return
@@ -115,11 +117,11 @@ class APIClient:
             sys.exit(1)
 
     @handle_connection_errors
-    def get(self, path: str, params: Optional[Dict] = None) -> Dict[str, Any]:
+    def get(self, path: str, expect_file: bool = False, params: Optional[Dict] = None) -> Dict[str, Any]:
         """Make GET request"""
         params = {**self.params, **params} if params else self.params
         response = self.client.get(path, params=params)
-        return self._handle_response(response)
+        return self._handle_response(response, expect_file=expect_file)
 
     @handle_connection_errors
     def post(self, path: str, data: Dict) -> Dict[str, Any]:

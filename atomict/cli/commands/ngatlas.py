@@ -56,3 +56,17 @@ def get(atomic_number: Optional[int] = None, json_output: bool = False, fetch_al
     )
 
     console.print(table)
+
+
+@ngatlas.command()
+@click.argument("isotope_id", type=str)
+def download(isotope_id: str):
+    """Download a .dat file for the specified isotope to the current directory."""
+    client = get_client()
+    response = client.get(f"/api/ngatlas/{isotope_id}/download/", expect_file=True)
+
+    # Assuming the response contains the file content
+    with open(f"{isotope_id}.dat", "wb") as file:
+        file.write(response.content)
+
+    console.print(f"Downloaded {isotope_id}.dat")
