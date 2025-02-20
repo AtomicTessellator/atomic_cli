@@ -70,3 +70,14 @@ def download(isotope_id: str):
         file.write(response.content)
 
     console.print(f"Downloaded {isotope_id}.dat")
+
+
+@ngatlas.command()
+@click.argument("isotope_id", type=str)
+def coords(isotope_id: str):
+    """Fetch coordinates for the specified isotope."""
+    client = get_client()
+    response = client.get(f"/api/ngatlas/{isotope_id}/download/coords/")
+
+    # Assuming the response contains JSON data
+    console.print_json(data=response)
