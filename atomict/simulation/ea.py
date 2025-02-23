@@ -1,24 +1,77 @@
 from atomict.api import get, post
 
 
-def get_ea_exploration(exploration_id: str):
-    return get(f"api/ea-exploration/{exploration_id}/")
+def get_ea_exploration(exploration_id: str, **params):
+    """
+    Get EA exploration
+    
+    Args:
+        exploration_id: str - The ID of the exploration
+        **params: Additional GET parameters to pass to the API
+    """
+    query_string = '&'.join(f"{k}={v}" for k, v in params.items())
+    base_url = f"api/ea-exploration/{exploration_id}/"
+    url = f"{base_url}?{query_string}" if query_string else base_url
+    return get(url)
 
 
-def get_ea_exploration_sample(sample_id: str):
-    return get(f"api/ea-exploration-sample/{sample_id}/")
+def get_ea_exploration_sample(sample_id: str, **params):
+    """
+    Get EA exploration sample
+    
+    Args:
+        sample_id: str - The ID of the sample
+        **params: Additional GET parameters to pass to the API
+    """
+    query_string = '&'.join(f"{k}={v}" for k, v in params.items())
+    base_url = f"api/ea-exploration-sample/{sample_id}/"
+    url = f"{base_url}?{query_string}" if query_string else base_url
+    return get(url)
 
 
-def get_ea_exploration_samples(exploration_id: str):
-    return get(f"api/ea-exploration-sample/?exploration={exploration_id}")
+def get_ea_exploration_samples(exploration_id: str, **params):
+    """
+    Get EA exploration samples
+    
+    Args:
+        exploration_id: str - The ID of the exploration
+        **params: Additional GET parameters to pass to the API
+    """
+    # Start with the required exploration parameter
+    query_params = params.copy()
+    query_params['exploration'] = exploration_id
+    
+    query_string = '&'.join(f"{k}={v}" for k, v in query_params.items())
+    url = f"api/ea-exploration-sample/?{query_string}"
+    return get(url)
 
 
-def get_ea_exploration_analysis(analysis_id: str):
-    return get(f"api/ea-exploration-analysis/{analysis_id}/")
+def get_ea_exploration_analysis(analysis_id: str, **params):
+    """
+    Get EA exploration analysis
+    
+    Args:
+        analysis_id: str - The ID of the analysis
+        **params: Additional GET parameters to pass to the API
+    """
+    query_string = '&'.join(f"{k}={v}" for k, v in params.items())
+    base_url = f"api/ea-exploration-analysis/{analysis_id}/"
+    url = f"{base_url}?{query_string}" if query_string else base_url
+    return get(url)
 
 
-def get_ea_exploration_analysis_file(analysis_file_id: str):
-    return get(f"api/ea-exploration-analysis-file/{analysis_file_id}/")
+def get_ea_exploration_analysis_file(analysis_file_id: str, **params):
+    """
+    Get EA exploration analysis file
+    
+    Args:
+        analysis_file_id: str - The ID of the analysis file
+        **params: Additional GET parameters to pass to the API
+    """
+    query_string = '&'.join(f"{k}={v}" for k, v in params.items())
+    base_url = f"api/ea-exploration-analysis-file/{analysis_file_id}/"
+    url = f"{base_url}?{query_string}" if query_string else base_url
+    return get(url)
 
 
 def associate_user_upload_with_ea_exploration(user_upload_id: str, analysis_id: str):
