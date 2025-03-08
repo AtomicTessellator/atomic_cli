@@ -20,7 +20,7 @@ def create_md_simulation_file(data: dict):
 def associate_user_upload_with_md_simulation(user_upload_id: str, simulation_id: str):
     return post(
         "api/md-file/",
-        payload={"user_upload_id": user_upload_id, "analysis_id": simulation_id},
+        payload={"user_upload_id": user_upload_id, "md_id": simulation_id},
     )
 
 
