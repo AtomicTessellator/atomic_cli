@@ -1,13 +1,8 @@
 import logging
-
-try:
-    import ase.io
-    import spglib
-except ImportError:
-    raise ImportError(
-        "The 'ase' and 'spglib' packages are required for CIF operations. "
-        "To install the optional dependency, use atomict[utils]"
-    )
+import ase.io
+import spglib
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+from pymatgen.core import Structure
 
 
 class CIFAnalyzer:
@@ -117,7 +112,17 @@ class CIFAnalyzer:
                     for letter in set(dataset.wyckoffs)
                 }
                 
-                return {
+                # Convert ASE atoms to pymatgen Structure for SpacegroupAnalyzer
+                lattice = self.atoms.get_cell()
+                species = self.atoms.get_chemical_symbols()
+                coords = self.atoms.get_scaled_positions()
+                structure = Structure(lattice, species, coords)
+                
+                # Now use SpacegroupAnalyzer with the pymatgen Structure
+                analyzer = SpacegroupAnalyzer(structure)
+                bravais = analyzer.get_lattice_type()
+
+                symmetry_info = {
                     'symmetry': {
                         'space_group_number': dataset.number,
                         'space_group_international': dataset.international,
@@ -129,9 +134,11 @@ class CIFAnalyzer:
                         'transformation_matrix': dataset.transformation_matrix.tolist(),
                         'origin_shift': dataset.origin_shift.tolist(),
                         'asymmetric_unit_atoms': len(unique_equiv),
-                        'wyckoff_multiplicities': wyckoff_multiplicities
+                        'wyckoff_multiplicities': wyckoff_multiplicities,
+                        'bravais_lattice': bravais
                     }
                 }
+                return symmetry_info
         except Exception as e:
             logging.warning(f'Could not determine symmetry information: {str(e)}')
         
