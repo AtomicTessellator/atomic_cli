@@ -45,7 +45,7 @@ def setup_logging(verbose: bool):
 @click.option(
     "-v", "--verbose", is_flag=True, default=False, help="Enable verbose output"
 )
-@click.version_option(prog_name="at", version=__version__)
+@click.version_option(prog_name="tess", version=__version__)
 def cli(verbose: bool):
     """Atomic Tessellator CLI - Manage simulations and computational resources"""
     setup_logging(verbose)
@@ -66,17 +66,23 @@ def completion(shell):
     if shell == "bash":
         completion_script = """
             # Add to ~/.bashrc:
-eval "$(_TESS_COMPLETE=bash_source tess)"
+if tess --version > /dev/null 2>&1; then
+    eval "$(_TESS_COMPLETE=bash_source tess)"
+fi
             """
     elif shell == "zsh":
         completion_script = """
             # Add to ~/.zshrc:
-eval "$(_TESS_COMPLETE=zsh_source tess)"
+if tess --version > /dev/null 2>&1; then
+    eval "$(_TESS_COMPLETE=zsh_source tess)"
+fi
             """
     elif shell == "fish":
         completion_script = """
             # Add to ~/.config/fish/config.fish:
-eval "$(_TESS_COMPLETE=fish_source tess)"
+if type -q tess
+    eval (env _TESS_COMPLETE=fish_source tess)
+end
 """
     click.echo(f"# Shell completion for {shell}")
     click.echo(completion_script.strip())
