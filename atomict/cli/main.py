@@ -66,17 +66,17 @@ def completion(shell):
     if shell == "bash":
         completion_script = """
             # Add to ~/.bashrc:
-eval "$(_AT_COMPLETE=bash_source at)"
+eval "$(_TESS_COMPLETE=bash_source tess)"
             """
     elif shell == "zsh":
         completion_script = """
             # Add to ~/.zshrc:
-eval "$(_AT_COMPLETE=zsh_source at)"
+eval "$(_TESS_COMPLETE=zsh_source tess)"
             """
     elif shell == "fish":
         completion_script = """
             # Add to ~/.config/fish/config.fish:
-eval "$(_AT_COMPLETE=fish_source at)"
+eval "$(_TESS_COMPLETE=fish_source tess)"
 """
     click.echo(f"# Shell completion for {shell}")
     click.echo(completion_script.strip())
