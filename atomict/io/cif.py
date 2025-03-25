@@ -7,7 +7,7 @@ try:
 except ImportError:
     raise ImportError(
         "The 'ase' package is required for FHI-aims operations. "
-        "To install the optional dependency, use atomict[utils]"
+        "To install the optional dependencies such as ase, spglib, pymatgen, use atomict[utils]"
     )
 
 

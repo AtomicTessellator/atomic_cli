@@ -8,7 +8,7 @@ try:
 except ImportError:
     raise ImportError(
         "The 'ase' package is required for JSON operations with Atoms objects. "
-        "To install the optional dependency, use atomict[utils]"
+        "To install the optional dependencies such as ase, spglib, pymatgen, use `pip install atomict[utils]`"
     )
 
 from atomict.io.fhiaims import read_aims_output
