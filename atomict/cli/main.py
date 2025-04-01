@@ -9,7 +9,7 @@ from atomict.__version__ import __version__
 from atomict.cli.commands import login, user
 
 # Import command groups
-from .commands import adsorbate, catalysis, k8s, project, task, upload
+from .commands import adsorbate, catalysis, k8s, project, task, traj, upload
 from .commands.exploration import soec, sqs
 from .commands.simulation import fhiaims, kpoint, vibes
 
@@ -106,6 +106,7 @@ cli.add_command(kpoint.kpoint_group)
 cli.add_command(catalysis.catalysis_group)  # WIP
 cli.add_command(sqs.sqs_group)
 cli.add_command(soec.soecexploration_group)
+cli.add_command(traj.traj)
 cli.add_command(user.user_group)
 cli.add_command(login._login)
 cli.add_command(vibes.vibes_group)
