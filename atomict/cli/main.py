@@ -1,6 +1,7 @@
 # cli/main.py
 import logging
 import os
+import sys
 
 import click
 from rich.console import Console
@@ -124,7 +125,11 @@ cli.add_command(vibes.vibes_group)
 
 
 def main():
-    cli()
+    try:
+        cli()
+    except Exception as exc:
+        Console().print(f"[red]Error: {exc}. Exiting...[/red]")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
