@@ -2,9 +2,6 @@
 requests
 tenacity~=9.0
 
-# utils
-ase==3.24.0
-
 # cli
 httpx
 click~=8.0
