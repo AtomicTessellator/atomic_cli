@@ -4,6 +4,7 @@ import os
 import sys
 from functools import wraps
 from typing import Any, Dict, Iterator, List, Optional, Union
+from urllib.parse import urlparse
 
 import httpx
 from rich.console import Console
@@ -35,6 +36,21 @@ def handle_connection_errors(func):
 class APIClient:
     def __init__(self, config: Config = None, base_url: str = "https://api.atomictessellator.com"):
         self.base_url = os.getenv("AT_SERVER", base_url)
+        
+        try:
+            parsed_url = urlparse(self.base_url)
+            if not all([parsed_url.scheme in ('http', 'https'), parsed_url.netloc]):
+                console.print(
+                    f"[red]Invalid URL format: {self.base_url}[/red]"
+                )
+                console.print(
+                    "[yellow]AT_SERVER URL must start with http:// or https:// and include a valid domain.[/yellow]"
+                )
+                sys.exit(1)
+        except Exception as e:
+            console.print(f"[red]URL validation error: {str(e)}[/red]")
+            sys.exit(1)
+            
         self.params = {"limit": 20}
         self.client = httpx.Client(base_url=self.base_url, timeout=30.0)
         self.username = None
