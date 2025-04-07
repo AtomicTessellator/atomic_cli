@@ -128,7 +128,7 @@ def main():
     try:
         cli()
     except Exception as exc:
-        Console().print(f"[red]Error: {exc}. Exiting...[/red]")
+        Console().print(f"[red]Error: {str(exc)}. Exiting...[/red]")
         sys.exit(1)
 
 
