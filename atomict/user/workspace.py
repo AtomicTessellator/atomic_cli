@@ -73,9 +73,7 @@ def upload_workspace(
     uploaded_size = 0
     last_update_percent = starting_percent
 
-    update_task_status(
-        sim["task"]["id"],
-        TaskStatus.RUNNING,
+    update_task_status(sim["task"]["id"],
         percent=last_update_percent,
         progress_indeterminate=False,
     )
@@ -106,7 +104,5 @@ def upload_workspace(
 
             # Update status if at least 2% has changed
             if current_percent - last_update_percent >= 2:
-                update_task_status(
-                    sim["task"]["id"], TaskStatus.RUNNING, percent=current_percent
-                )
+                update_task_status(sim["task"]["id"], percent=current_percent)
                 last_update_percent = current_percent
