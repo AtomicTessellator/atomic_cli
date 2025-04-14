@@ -35,11 +35,14 @@ def create_simulation(
     return result
 
 
-def get_simulation(simulation_id: str):
+def get_simulation(simulation_id: str, **params):
     """
     Get a FHI aims simulation
     """
-    result = get(f"api/fhiaims-simulation/{simulation_id}/")
+    query_string = '&'.join(f"{k}={v}" for k, v in params.items())
+    base_url = f"api/fhiaims-simulation/{simulation_id}/"
+    url = f"{base_url}?{query_string}" if query_string else base_url
+    result = get(url)
     return result
 
 

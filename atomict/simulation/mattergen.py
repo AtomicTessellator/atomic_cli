@@ -9,12 +9,12 @@ def get_mattergen(id: str):
     return result
 
 
-def associate_user_upload_with_mattergen(user_upload_id: str, mattergen_id: str):
+def associate_user_upload_with_mattergen(user_upload_id: str, exploration_id: str):
     """
     Associate a user upload with a MatterGen
     """
     result = post(
         "api/mattergen-exploration-file/",
-        payload={"user_upload_id": user_upload_id, "mattergen_id": mattergen_id},
+        payload={"user_upload_id": user_upload_id, "exploration_id": exploration_id},
     )
     return result

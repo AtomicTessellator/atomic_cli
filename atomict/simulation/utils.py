@@ -29,7 +29,7 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
     """
 
     if sim["starting_structure"]:
-        previous_simulation = fhi_get_simulation(sim["starting_structure"]["id"])
+        previous_simulation = fhi_get_simulation(sim["starting_structure"]["id"], include_ht=True)
         logging.info(f"Previous simulation: {previous_simulation['id']}")
         files = fhi_get_simulation_files(previous_simulation["id"])
 
@@ -52,7 +52,7 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
 
     elif sim["starting_structure_mlrelax"]:
         
-        previous_mlrelax = get_mlrelax(sim["starting_structure_mlrelax"]["id"])
+        previous_mlrelax = get_mlrelax(sim["starting_structure_mlrelax"]["id"], include_ht=True)
         logging.info(f"Previous MLRelaxation: {previous_mlrelax['id']}")
         files = get_mlrelax_files(previous_mlrelax["id"])
 

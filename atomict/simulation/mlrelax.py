@@ -7,11 +7,22 @@ MODEL_ORB_D3_V2 = 0
 MODEL_MATTERSIM_1_0_0_5M = 1
 
 
-def get_mlrelax(id: str):
+def get_mlrelax(id: str, **params):
     """
     Get MLRelaxation
+
+    Args:
+        id: str - The ID of the MLRelaxation
+        **params: Additional GET parameters to pass to the API
     """
-    result = get(f"api/mlrelax/{id}/")
+    # Build query string from parameters
+    query_string = '&'.join(f"{k}={v}" for k, v in params.items())
+    base_url = f"api/mlrelax/{id}/"
+    
+    # Add query string if we have parameters
+    url = f"{base_url}?{query_string}" if query_string else base_url
+    
+    result = get(url)
     return result
 
 
