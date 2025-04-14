@@ -116,8 +116,8 @@ def create(
     Create a new adsorbate.
 
     Examples:
-        at adsorbate create --smiles "CC(=O)O" --binding-indices 1 --binding-indices 2
-        at adsorbate create --ase-atoms "Atoms(...)" --reaction-string "A + B -> C"
+        tess adsorbate create --smiles "CC(=O)O" --binding-indices 1 --binding-indices 2
+        tess adsorbate create --ase-atoms "Atoms(...)" --reaction-string "A + B -> C"
     """
     client = get_client()
 
@@ -155,8 +155,8 @@ def update(
     Update an existing adsorbate.
 
     Examples:
-        at adsorbate update 123 --smiles "CC(=O)O" --binding-indices 1 --binding-indices 2
-        at adsorbate update 456 --ase-atoms "Atoms(...)" --reaction-string "A + B -> C"
+        tess adsorbate update 123 --smiles "CC(=O)O" --binding-indices 1 --binding-indices 2
+        tess adsorbate update 456 --ase-atoms "Atoms(...)" --reaction-string "A + B -> C"
     """
     client = get_client()
 

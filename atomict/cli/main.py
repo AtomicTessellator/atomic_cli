@@ -1,6 +1,7 @@
 # cli/main.py
 import logging
 import os
+import sys
 
 import click
 from rich.console import Console
@@ -9,7 +10,7 @@ from atomict.__version__ import __version__
 from atomict.cli.commands import login, user
 
 # Import command groups
-from .commands import adsorbate, catalysis, k8s, project, task, upload
+from .commands import adsorbate, catalysis, k8s, project, task, traj, upload
 from .commands.exploration import soec, sqs
 from .commands.simulation import fhiaims, kpoint, vibes
 
@@ -45,7 +46,7 @@ def setup_logging(verbose: bool):
 @click.option(
     "-v", "--verbose", is_flag=True, default=False, help="Enable verbose output"
 )
-@click.version_option(prog_name="at", version=__version__)
+@click.version_option(prog_name="tess", version=__version__)
 def cli(verbose: bool):
     """Atomic Tessellator CLI - Manage simulations and computational resources"""
     setup_logging(verbose)
@@ -66,23 +67,23 @@ def completion(shell):
     if shell == "bash":
         completion_script = """
             # Add to ~/.bashrc:
-if at -v > /dev/null 2>&1; then
-    eval "$(_AT_COMPLETE=bash_source at)"
+if tess --version > /dev/null 2>&1; then
+    eval "$(_TESS_COMPLETE=bash_source tess)"
 fi
             """
     elif shell == "zsh":
         completion_script = """
             # Add to ~/.zshrc:
-if at -v > /dev/null 2>&1; then
-    eval "$(_AT_COMPLETE=zsh_source at)"
+if tess --version > /dev/null 2>&1; then
+    eval "$(_TESS_COMPLETE=zsh_source tess)"
 fi
             """
     elif shell == "fish":
         completion_script = """
             # Add to ~/.config/fish/config.fish:
-if at -v > /dev/null 2>&1; then
-    eval "$(_AT_COMPLETE=fish_source at)"
-fi
+if type -q tess
+    eval (env _TESS_COMPLETE=fish_source tess)
+end
 """
     click.echo(f"# Shell completion for {shell}")
     click.echo(completion_script.strip())
@@ -106,6 +107,7 @@ cli.add_command(kpoint.kpoint_group)
 cli.add_command(catalysis.catalysis_group)  # WIP
 cli.add_command(sqs.sqs_group)
 cli.add_command(soec.soecexploration_group)
+cli.add_command(traj.traj)
 cli.add_command(user.user_group)
 cli.add_command(login._login)
 cli.add_command(vibes.vibes_group)
@@ -123,7 +125,11 @@ cli.add_command(vibes.vibes_group)
 
 
 def main():
-    cli()
+    try:
+        cli()
+    except Exception as exc:
+        Console().print(f"[red]Error: {str(exc)}. Exiting...[/red]")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
