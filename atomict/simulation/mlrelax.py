@@ -5,6 +5,8 @@ COMPUTATION_TYPE_SINGLE_POINT = 1
 
 MODEL_ORB_D3_V2 = 0
 MODEL_MATTERSIM_1_0_0_5M = 1
+MODEL_ORB_V3_CONSERVATIVE = 2
+MODEL_ESEN_30M_OAM = 3
 
 
 def get_mlrelax(id: str, **params):
@@ -63,9 +65,14 @@ def create_mlrelaxation(
             "Invalid computation type. Please use COMPUTATION_TYPE_RELAXATION (0) or COMPUTATION_TYPE_SINGLE_POINT (1)."
         )
 
-    if model not in [MODEL_ORB_D3_V2, MODEL_MATTERSIM_1_0_0_5M]:
+    if model not in [
+        MODEL_ORB_D3_V2,
+        MODEL_MATTERSIM_1_0_0_5M,
+        MODEL_ORB_V3_CONSERVATIVE,
+        MODEL_ESEN_30M_OAM,
+    ]:
         raise ValueError(
-            "Invalid model. Please use MODEL_ORB_D3_V2 (0) or MODEL_MATTERSIM_1_0_0_5M (1)."
+            "Invalid model. Please use MODEL_ORB_D3_V2 (0), MODEL_MATTERSIM_1_0_0_5M (1), MODEL_ORB_V3_CONSERVATIVE (2), or MODEL_ESEN_30M_OAM (3)."
         )
 
     payload = {
