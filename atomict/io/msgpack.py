@@ -98,31 +98,31 @@ def save_msgpack(atoms: Union['ase.Atoms', List['ase.Atoms']], filename: str):
     data['symbols'] = symbols_map.reshape([len(atoms_list), -1]).astype(np.uint16)
     
     # Store positions as float32 for better space efficiency
-    data['positions'] = np.array([a.get_positions() for a in atoms_list], dtype=np.float32)
-    data['cell'] = np.array([a.get_cell() for a in atoms_list], dtype=np.float32)
-    data['pbc'] = np.array([a.get_pbc() for a in atoms_list], dtype=bool)
+    data['positions'] = np.asarray([a.get_positions() for a in atoms_list], dtype=np.float32)
+    data['cell'] = np.asarray([a.get_cell() for a in atoms_list], dtype=np.float32)
+    data['pbc'] = np.asarray([a.get_pbc() for a in atoms_list], dtype=bool)
     
     # Only include non-default properties if they have values
     # Check first atom to see if we need to include these properties
     if any(atoms_list[0].get_tags() != 0):
-        data['tags'] = np.array([a.get_tags() for a in atoms_list], dtype=np.int32)
+        data['tags'] = np.asarray([a.get_tags() for a in atoms_list], dtype=np.int32)
     
     # Check if masses are non-default
     default_masses = atoms_list[0].get_masses() / atoms_list[0].get_atomic_numbers()
     if not np.allclose(default_masses, default_masses[0], rtol=1e-5):
-        data['masses'] = np.array([a.get_masses() for a in atoms_list], dtype=np.float32)
+        data['masses'] = np.asarray([a.get_masses() for a in atoms_list], dtype=np.float32)
     
     # Only include momenta if non-zero
     if np.any([np.any(a.get_momenta()) for a in atoms_list]):
-        data['momenta'] = np.array([a.get_momenta() for a in atoms_list], dtype=np.float32)
+        data['momenta'] = np.asarray([a.get_momenta() for a in atoms_list], dtype=np.float32)
     
     # Only include charges if non-zero
     if np.any([np.any(a.get_initial_charges()) for a in atoms_list]):
-        data['initial_charges'] = np.array([a.get_initial_charges() for a in atoms_list], dtype=np.float32)
+        data['initial_charges'] = np.asarray([a.get_initial_charges() for a in atoms_list], dtype=np.float32)
     
     # Only include magnetic moments if non-zero
     if np.any([np.any(a.get_initial_magnetic_moments()) for a in atoms_list]):
-        data['initial_magmoms'] = np.array([a.get_initial_magnetic_moments() for a in atoms_list], dtype=np.float32)
+        data['initial_magmoms'] = np.asarray([a.get_initial_magnetic_moments() for a in atoms_list], dtype=np.float32)
     
     # Pack and save
     with open(filename, 'wb') as f:
