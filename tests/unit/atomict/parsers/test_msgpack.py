@@ -7,7 +7,7 @@ from unittest import mock
 from ase import Atoms
 from ase.build import molecule
 from atomict.io.msgpack import load_msgpack, save_msgpack
-
+from ase.io import Trajectory
 
 @pytest.fixture
 def temp_dir():
