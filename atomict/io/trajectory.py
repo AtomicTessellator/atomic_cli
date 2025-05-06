@@ -182,6 +182,34 @@ class TrajectoryWriter:
         # Make a copy of the atoms to save
         atoms_copy = atoms.copy()
         
+        # Explicitly preserve masses and initial_charges which might not copy correctly
+        if 'masses' in atoms.arrays:
+            # Store original masses in a special info field to ensure they're preserved
+            atoms_copy.info['_original_masses'] = atoms.arrays['masses'].copy()
+            
+        if 'initial_charges' in atoms.arrays or hasattr(atoms, 'initial_charges'):
+            # Get charges from either the arrays or the property
+            if 'initial_charges' in atoms.arrays:
+                initial_charges = atoms.arrays['initial_charges'].copy()
+            else:
+                initial_charges = atoms.get_initial_charges()
+            atoms_copy.info['_original_initial_charges'] = initial_charges
+        
+        # Store all custom arrays with a special prefix to ensure they're preserved
+        # First, identify which arrays are custom (not standard ASE arrays)
+        standard_arrays = {'numbers', 'positions', 'momenta', 'masses', 'tags', 'charges'}
+        custom_arrays = {key: atoms.arrays[key] for key in atoms.arrays if key not in standard_arrays}
+        
+        # Store the custom arrays in info with a special prefix
+        for key, value in custom_arrays.items():
+            atoms_copy.info[f'_array_{key}'] = value
+        
+        # Store all user info with a special prefix to avoid conflicts with internal keys
+        for key, value in atoms.info.items():
+            # Skip internal keys that might already be in the info dictionary
+            if not key.startswith('_'):
+                atoms_copy.info[f'_user_info_{key}'] = value
+        
         # Handle calculator data
         calc = atoms.calc
         
@@ -226,6 +254,10 @@ class TrajectoryWriter:
         # Always store description and ASE version in atoms info as well
         atoms_copy.info['_traj_description'] = self.description
         atoms_copy.info['_ase_version'] = __version__
+        
+        # Make sure PBC settings are preserved
+        # (This should be handled by default, but making it explicit)
+        atoms_copy._pbc = atoms.pbc.copy()
             
         self._frames.append(atoms_copy)
         self._frames_since_last_flush += 1
@@ -347,6 +379,16 @@ class TrajectoryReader:
             
         atoms = self._frames[i].copy()
         
+        # Restore masses if they were explicitly saved
+        if '_original_masses' in atoms.info:
+            masses = atoms.info.pop('_original_masses')
+            atoms.set_masses(masses)
+            
+        # Restore initial charges if they were explicitly saved
+        if '_original_initial_charges' in atoms.info:
+            initial_charges = atoms.info.pop('_original_initial_charges')
+            atoms.set_initial_charges(initial_charges)
+        
         # Process calculator data if present
         if '_calc_data' in atoms.info:
             calc_data = atoms.info.pop('_calc_data')
@@ -372,6 +414,22 @@ class TrajectoryReader:
         if '_constraints' in atoms.info:
             constraints_data = atoms.info.pop('_constraints')
             atoms.constraints = [dict2constraint(d) for d in decode(constraints_data)]
+        
+        # Restore custom arrays
+        array_keys = [k for k in atoms.info if k.startswith('_array_')]
+        for key in array_keys:
+            # Extract the original array name by removing the '_array_' prefix
+            array_name = key[7:]  # len('_array_') = 7
+            # Store in atoms.arrays and remove from info
+            atoms.arrays[array_name] = atoms.info.pop(key)
+            
+        # Restore user info
+        info_keys = [k for k in atoms.info if k.startswith('_user_info_')]
+        for key in info_keys:
+            # Extract the original info name by removing the '_user_info_' prefix
+            info_name = key[11:]  # len('_user_info_') = 11
+            # Store in atoms.info and remove the prefixed version
+            atoms.info[info_name] = atoms.info.pop(key)
             
         # Clean up any remaining metadata keys
         for key in ['_traj_description', '_description', '_ase_version']:

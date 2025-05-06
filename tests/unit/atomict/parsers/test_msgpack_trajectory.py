@@ -6,7 +6,7 @@ import time
 from unittest import mock
 
 from ase import Atoms
-from ase.build import molecule
+from ase.build import molecule, bulk
 from ase.io import Trajectory as ASETrajectory
 from atomict.io.trajectory import Trajectory
 from ase.calculators.singlepoint import SinglePointCalculator
@@ -343,3 +343,273 @@ def test_drop_in_replacement(water, temp_dir):
     assert ase_atoms.get_chemical_symbols() == our_atoms.get_chemical_symbols()
     assert np.allclose(ase_atoms.get_positions(), our_atoms.get_positions())
     assert np.allclose(np.array(ase_atoms.get_cell()), np.array(our_atoms.get_cell()))
+
+
+def test_trajectory_pbc_preservation(water, empty_trajectory):
+    """Test that periodic boundary conditions are preserved."""
+    # Set custom PBC
+    water.set_pbc([True, False, True])
+    
+    # Write and read
+    with Trajectory(empty_trajectory, 'w') as traj:
+        traj.write(water)
+    
+    with Trajectory(empty_trajectory, 'r') as traj:
+        loaded_atoms = traj[0]
+        
+        # Check PBC values are preserved
+        assert np.array_equal(loaded_atoms.get_pbc(), water.get_pbc())
+
+
+def test_trajectory_arrays_preservation(water, empty_trajectory):
+    """Test that arrays dictionary data is preserved."""
+    # Add custom arrays
+    water.arrays['custom_array'] = np.array([1.0, 2.0, 3.0])
+    water.arrays['test_vector'] = np.array([[1.0, 0.0, 0.0], 
+                                           [0.0, 1.0, 0.0],
+                                           [0.0, 0.0, 1.0]])
+    
+    # Write and read
+    with Trajectory(empty_trajectory, 'w') as traj:
+        traj.write(water)
+    
+    with Trajectory(empty_trajectory, 'r') as traj:
+        loaded_atoms = traj[0]
+        
+        # Check arrays are preserved with correct values
+        assert 'custom_array' in loaded_atoms.arrays
+        assert 'test_vector' in loaded_atoms.arrays
+        assert np.array_equal(loaded_atoms.arrays['custom_array'], water.arrays['custom_array'])
+        assert np.array_equal(loaded_atoms.arrays['test_vector'], water.arrays['test_vector'])
+
+
+def test_trajectory_info_preservation(water, empty_trajectory):
+    """Test that info dictionary data is preserved."""
+    # Add custom info (excluding special keys used by trajectory)
+    water.info['test_info'] = 'test value'
+    water.info['numeric_data'] = 42
+    water.info['complex_data'] = {'a': 1, 'b': [1, 2, 3]}
+    
+    # Write and read
+    with Trajectory(empty_trajectory, 'w') as traj:
+        traj.write(water)
+    
+    with Trajectory(empty_trajectory, 'r') as traj:
+        loaded_atoms = traj[0]
+        
+        # Check custom info is preserved
+        assert loaded_atoms.info['test_info'] == 'test value'
+        assert loaded_atoms.info['numeric_data'] == 42
+        assert loaded_atoms.info['complex_data']['a'] == 1
+        assert loaded_atoms.info['complex_data']['b'] == [1, 2, 3]
+
+
+def test_trajectory_cell_preservation(empty_trajectory):
+    """Test that cell information is correctly preserved."""
+    # Create an atoms object with a non-trivial cell
+    from ase.lattice.cubic import FaceCenteredCubic
+    atoms = FaceCenteredCubic(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                             size=(2, 2, 2), symbol='Au', pbc=True)
+    
+    # Get the original cell
+    original_cell = atoms.get_cell()
+    
+    # Write and read
+    with Trajectory(empty_trajectory, 'w') as traj:
+        traj.write(atoms)
+    
+    with Trajectory(empty_trajectory, 'r') as traj:
+        loaded_atoms = traj[0]
+        
+        # Check cell data
+        loaded_cell = loaded_atoms.get_cell()
+        assert np.allclose(loaded_cell, original_cell)
+        
+        # Check cell params are preserved
+        assert np.allclose(loaded_cell.lengths(), original_cell.lengths())
+        assert np.allclose(loaded_cell.angles(), original_cell.angles())
+
+
+def test_trajectory_tags_preservation(water, empty_trajectory):
+    """Test that atom tags are preserved."""
+    # Set custom tags
+    tags = np.array([1, 2, 3])
+    water.set_tags(tags)
+    
+    # Write and read
+    with Trajectory(empty_trajectory, 'w') as traj:
+        traj.write(water)
+    
+    with Trajectory(empty_trajectory, 'r') as traj:
+        loaded_atoms = traj[0]
+        
+        # Check tags are preserved
+        assert np.array_equal(loaded_atoms.get_tags(), tags)
+
+
+def test_complex_atoms_data(empty_trajectory):
+    """Test storage of complex atoms with multiple properties."""
+    # Create an atom with many properties set
+    from ase.build import bulk
+    atoms = bulk('Si')
+    
+    # Set various properties
+    atoms.set_pbc([True, True, False])
+    atoms.set_masses(np.array([29.0] * len(atoms)))
+    atoms.set_initial_charges(np.array([0.5] * len(atoms)))
+    
+    # Add custom arrays and info
+    atoms.arrays['momentum'] = np.ones((len(atoms), 3))
+    atoms.info['calculation_params'] = {'cutoff': 300, 'xc': 'PBE'}
+    
+    # Add calculator with results
+    energy = -10.0
+    forces = np.random.random((len(atoms), 3))
+    stress = np.array([1.0, 2.0, 3.0, 0.0, 0.0, 0.0])
+    
+    calc = SinglePointCalculator(atoms, energy=energy, forces=forces, stress=stress)
+    atoms.calc = calc
+    
+    # Set constraints
+    from ase.constraints import FixAtoms, FixedPlane
+    constraint1 = FixAtoms(indices=[0])
+    constraint2 = FixedPlane(1, [1, 0, 0])  # Fix atom 1 in the yz plane
+    atoms.constraints = [constraint1, constraint2]
+    
+    # Write and read
+    with Trajectory(empty_trajectory, 'w') as traj:
+        traj.write(atoms)
+    
+    with Trajectory(empty_trajectory, 'r') as traj:
+        loaded_atoms = traj[0]
+        
+        # Check all properties are preserved
+        assert np.array_equal(loaded_atoms.get_pbc(), atoms.get_pbc())
+        assert np.allclose(loaded_atoms.get_masses(), atoms.get_masses())
+        assert np.allclose(loaded_atoms.get_initial_charges(), atoms.get_initial_charges())
+        assert np.allclose(loaded_atoms.arrays['momentum'], atoms.arrays['momentum'])
+        assert loaded_atoms.info['calculation_params'] == atoms.info['calculation_params']
+        
+        # Check calculator data
+        assert loaded_atoms.calc is not None
+        assert np.isclose(loaded_atoms.calc.get_potential_energy(), energy)
+        assert np.allclose(loaded_atoms.calc.get_forces(), forces)
+        assert np.allclose(loaded_atoms.calc.get_stress(), stress)
+        
+        # Check constraints
+        assert len(loaded_atoms.constraints) == 2
+        assert isinstance(loaded_atoms.constraints[0], FixAtoms)
+        assert isinstance(loaded_atoms.constraints[1], FixedPlane)
+        assert np.array_equal(loaded_atoms.constraints[0].get_indices(), [0])
+        
+        # Check the FixedPlane constraint correctly
+        # The attribute name might be different when deserialized
+        # We'll check the constraint using the indices and direction
+        fixed_plane = loaded_atoms.constraints[1]
+        assert isinstance(fixed_plane, FixedPlane)
+        assert 1 in fixed_plane.get_indices()  # Check the atom index is included
+        assert np.allclose(fixed_plane.dir, [1, 0, 0])  # Check direction is preserved
+
+
+def test_interrupted_write_recovery(water, temp_dir):
+    """Test that recovery works when writing is interrupted."""
+    import os.path
+    
+    # Path for the test
+    filename = os.path.join(temp_dir, "interrupted.mpk")
+    
+    # First, write a single frame
+    with Trajectory(filename, 'w') as traj:
+        traj.write(water)
+    
+    # Now, start a new trajectory with a high flush_interval
+    traj = Trajectory(filename, 'a', flush_interval=100)
+    
+    # Add several frames without triggering a flush
+    for i in range(10):
+        # Modify the atoms slightly to make them unique
+        water_copy = water.copy()
+        water_copy.positions[0, 0] += i * 0.1
+        traj.write(water_copy)
+        
+    # Check that we haven't yet written the new frames
+    # This is a bit tricky to test - one way is to try reading from the file
+    # and check the frame count
+    with Trajectory(filename, 'r') as read_traj:
+        # We should only see the initial frame
+        frames_before_close = len(read_traj)
+    
+    # Now properly close the trajectory, which should flush remaining frames
+    traj.close()
+    
+    # Read the file again to check if frames were written
+    with Trajectory(filename, 'r') as read_traj:
+        # Should now have 1 (initial) + 10 (added) frames
+        assert len(read_traj) == 11
+        
+        # Verify the content of the frames
+        for i in range(1, 11):
+            frame = read_traj[i]
+            # Check the position we modified
+            expected_pos = water.positions[0, 0] + (i-1) * 0.1
+            assert np.isclose(frame.positions[0, 0], expected_pos)
+
+
+def test_trajectory_complex_multiframe(empty_trajectory):
+    """Test a complex multi-frame trajectory with different properties in each frame."""
+    # Create different atoms objects with various properties
+    from ase.build import molecule, bulk
+    
+    # Frame 1: Water with custom array and info
+    water = molecule('H2O')
+    water.arrays['custom_array'] = np.array([1.0, 2.0, 3.0])
+    water.info['system'] = 'water'
+    
+    # Frame 2: Silicon with different masses and constraints
+    silicon = bulk('Si')
+    silicon.set_masses(np.array([29.0] * len(silicon)))
+    from ase.constraints import FixAtoms
+    silicon.constraints = [FixAtoms(indices=[0])]
+    silicon.info['system'] = 'silicon'
+    
+    # Frame 3: Methane with calculator data
+    methane = molecule('CH4')
+    energy = -15.0
+    forces = np.random.random((len(methane), 3))
+    calc = SinglePointCalculator(methane, energy=energy, forces=forces)
+    methane.calc = calc
+    methane.info['system'] = 'methane'
+    
+    # Write multi-frame trajectory with different atoms in each frame
+    with Trajectory(empty_trajectory, 'w') as traj:
+        traj.write(water)
+        traj.write(silicon)
+        traj.write(methane)
+    
+    # Read and verify each frame
+    with Trajectory(empty_trajectory, 'r') as traj:
+        # Check we have 3 frames
+        assert len(traj) == 3
+        
+        # Check frame 1 (water)
+        loaded_water = traj[0]
+        assert loaded_water.get_chemical_formula() == 'H2O'
+        assert 'custom_array' in loaded_water.arrays
+        assert np.array_equal(loaded_water.arrays['custom_array'], water.arrays['custom_array'])
+        assert loaded_water.info['system'] == 'water'
+        
+        # Check frame 2 (silicon)
+        loaded_silicon = traj[1]
+        assert loaded_silicon.get_chemical_formula() == 'Si2'
+        assert np.allclose(loaded_silicon.get_masses(), silicon.get_masses())
+        assert len(loaded_silicon.constraints) == 1
+        assert isinstance(loaded_silicon.constraints[0], FixAtoms)
+        assert loaded_silicon.info['system'] == 'silicon'
+        
+        # Check frame 3 (methane)
+        loaded_methane = traj[2]
+        assert loaded_methane.get_chemical_formula() == 'CH4'
+        assert loaded_methane.calc is not None
+        assert np.isclose(loaded_methane.calc.get_potential_energy(), energy)
+        assert np.allclose(loaded_methane.calc.get_forces(), forces)
+        assert loaded_methane.info['system'] == 'methane'

@@ -181,63 +181,95 @@ def save_msgpack_trajectory(atoms: Union['ase.Atoms', List['ase.Atoms']], filena
         'n_atoms': [len(a) for a in atoms_list],
     }
     
-    # Collect data optimally
-    # Store symbols as integers for efficiency
+    # Process each frame individually to support variable numbers of atoms per frame
     all_symbols = []
-    for a in atoms_list:
-        all_symbols.extend(a.get_chemical_symbols())
-    unique_symbols, symbols_map = np.unique(all_symbols, return_inverse=True)
+    symbols_per_frame = []
+    positions_per_frame = []
+    cells_per_frame = []
+    pbc_per_frame = []
+    tags_per_frame = []
+    masses_per_frame = []
+    momenta_per_frame = []
+    charges_per_frame = []
+    magmoms_per_frame = []
     
-    # Store data efficiently
+    # Process each frame to collect data
+    for atoms in atoms_list:
+        # Collect symbols
+        symbols = atoms.get_chemical_symbols()
+        all_symbols.extend(symbols)
+        symbols_per_frame.append(symbols)
+        
+        # Collect other properties
+        positions_per_frame.append(atoms.get_positions())
+        cells_per_frame.append(np.array(atoms.get_cell().array, dtype=np.float32))
+        pbc_per_frame.append(atoms.get_pbc())
+        tags_per_frame.append(atoms.get_tags())
+        masses_per_frame.append(atoms.get_masses())
+        momenta_per_frame.append(atoms.get_momenta())
+        charges_per_frame.append(atoms.get_initial_charges())
+        magmoms_per_frame.append(atoms.get_initial_magnetic_moments())
+    
+    # Get unique symbols across all frames
+    unique_symbols, inverse_map = np.unique(all_symbols, return_inverse=True)
     atoms_data['unique_symbols'] = unique_symbols.tolist()
-    atoms_data['symbols'] = symbols_map.reshape([len(atoms_list), -1]).astype(np.uint16)
     
-    # Store positions as float32 for better space efficiency
-    atoms_data['positions'] = np.asarray([a.get_positions() for a in atoms_list], dtype=np.float32)
+    # Map the symbols for each frame separately
+    start_idx = 0
+    symbols_mapped = []
+    for i, symbols in enumerate(symbols_per_frame):
+        n_atoms = len(symbols)
+        frame_map = inverse_map[start_idx:start_idx + n_atoms]
+        symbols_mapped.append(frame_map.astype(np.uint16))
+        start_idx += n_atoms
     
-    # Fix for NumPy 2.0+ compatibility - explicitly convert Cell to array
-    cells = []
-    for a in atoms_list:
-        cell = a.get_cell()
-        cells.append(np.array(cell.array, dtype=np.float32))
-    atoms_data['cell'] = np.array(cells, dtype=np.float32)
+    atoms_data['symbols'] = symbols_mapped
+    atoms_data['positions'] = [pos.astype(np.float32) for pos in positions_per_frame]
+    atoms_data['cell'] = cells_per_frame
+    atoms_data['pbc'] = pbc_per_frame
     
-    atoms_data['pbc'] = np.asarray([a.get_pbc() for a in atoms_list], dtype=bool)
+    # Always save masses to ensure custom masses are preserved
+    atoms_data['masses'] = [masses.astype(np.float32) for masses in masses_per_frame]
     
-    # Only include non-default properties if they have values
-    # Check first atom to see if we need to include these properties
-    if any(atoms_list[0].get_tags() != 0):
-        atoms_data['tags'] = np.asarray([a.get_tags() for a in atoms_list], dtype=np.int32)
+    # Check if tags are non-default
+    if any(np.any(tags != 0) for tags in tags_per_frame):
+        atoms_data['tags'] = [tags.astype(np.int32) for tags in tags_per_frame]
     
-    # Check if masses are non-default
-    default_masses = atoms_list[0].get_masses() / atoms_list[0].get_atomic_numbers()
-    if not np.allclose(default_masses, default_masses[0], rtol=1e-5):
-        atoms_data['masses'] = np.asarray([a.get_masses() for a in atoms_list], dtype=np.float32)
+    # Check if momenta are non-zero
+    if any(np.any(mom) for mom in momenta_per_frame):
+        atoms_data['momenta'] = [mom.astype(np.float32) for mom in momenta_per_frame]
     
-    # Only include momenta if non-zero
-    if np.any([np.any(a.get_momenta()) for a in atoms_list]):
-        atoms_data['momenta'] = np.asarray([a.get_momenta() for a in atoms_list], dtype=np.float32)
+    # Check if initial charges are non-zero
+    if any(np.any(chg) for chg in charges_per_frame):
+        atoms_data['initial_charges'] = [chg.astype(np.float32) for chg in charges_per_frame]
     
-    # Only include charges if non-zero
-    if np.any([np.any(a.get_initial_charges()) for a in atoms_list]):
-        atoms_data['initial_charges'] = np.asarray([a.get_initial_charges() for a in atoms_list], dtype=np.float32)
+    # Check if magnetic moments are non-zero
+    if any(np.any(mag) for mag in magmoms_per_frame):
+        atoms_data['initial_magmoms'] = [mag.astype(np.float32) for mag in magmoms_per_frame]
     
-    # Only include magnetic moments if non-zero
-    if np.any([np.any(a.get_initial_magnetic_moments()) for a in atoms_list]):
-        atoms_data['initial_magmoms'] = np.asarray([a.get_initial_magnetic_moments() for a in atoms_list], dtype=np.float32)
-    
-    # Store atom-specific info dictionaries (for calculator data, constraints, etc.)
+    # Store ALL atom-specific info dictionaries
     atom_infos = []
     for atom in atoms_list:
-        info = {}
-        for key, value in atom.info.items():
-            # Special keys that need special handling for serialization
-            if key in ['_calc_data', '_constraints', '_traj_description', '_description', '_ase_version']:
-                info[key] = value
-        atom_infos.append(info)
+        # Store complete info dictionary
+        atom_infos.append(atom.info.copy())
     
     if any(atom_infos):
         atoms_data['atom_infos'] = atom_infos
+    
+    # Store custom arrays (any arrays not in the standard set)
+    standard_arrays = {'numbers', 'positions', 'momenta', 'masses', 'tags', 'charges'}
+    custom_arrays_by_frame = []
+    
+    for atom in atoms_list:
+        custom_arrays = {}
+        for key, value in atom.arrays.items():
+            if key not in standard_arrays:
+                custom_arrays[key] = value
+        custom_arrays_by_frame.append(custom_arrays)
+    
+    # Only store if there are custom arrays
+    if any(custom_arrays_by_frame):
+        atoms_data['custom_arrays'] = custom_arrays_by_frame
     
     # Add atoms data to the trajectory container
     traj_data['atoms_data'] = atoms_data
@@ -292,40 +324,67 @@ def load_msgpack_trajectory(filename: str) -> Tuple[List['ase.Atoms'], Dict]:
     
     # Get unique symbols
     unique_symbols = atoms_data['unique_symbols']
+    
+    # Handle both the old version (array for all frames) and new version (list of arrays per frame)
     symbols_map = atoms_data['symbols']
     
     # Loop through frames
     for i in range(n_frames):
-        # Get symbols for this frame
-        frame_symbols = [unique_symbols[idx] for idx in symbols_map[i]]
+        # Check if symbols_map is a list of arrays (new version) or a single array (old version)
+        if isinstance(symbols_map, list):
+            # New version - each frame has its own symbols map
+            frame_symbols = [unique_symbols[idx] for idx in symbols_map[i]]
+        else:
+            # Old version - reshape the global map
+            atoms_per_frame = atoms_data['n_atoms'][i]
+            start_idx = sum(atoms_data['n_atoms'][:i])
+            end_idx = start_idx + atoms_per_frame
+            frame_symbols = [unique_symbols[idx] for idx in symbols_map[start_idx:end_idx]]
+        
+        # Positions and cell may be a list of arrays (new version) or a single array (old version)
+        positions = atoms_data['positions'][i] if isinstance(atoms_data['positions'], list) else atoms_data['positions'][i]
+        cell = atoms_data['cell'][i] if isinstance(atoms_data['cell'], list) else atoms_data['cell'][i]
+        pbc = atoms_data['pbc'][i] if isinstance(atoms_data['pbc'], list) else atoms_data['pbc'][i]
         
         # Create atoms object
         atoms = Atoms(
             symbols=frame_symbols,
-            positions=atoms_data['positions'][i],
-            cell=atoms_data['cell'][i],
-            pbc=atoms_data['pbc'][i],
+            positions=positions,
+            cell=cell,
+            pbc=pbc,
         )
         
         # Set optional properties if they exist
+        # Handle both list-of-arrays and single-array versions
         if 'tags' in atoms_data:
-            atoms.set_tags(atoms_data['tags'][i])
+            tags = atoms_data['tags'][i] if isinstance(atoms_data['tags'], list) else atoms_data['tags'][i]
+            atoms.set_tags(tags)
         
         if 'masses' in atoms_data:
-            atoms.set_masses(atoms_data['masses'][i])
+            masses = atoms_data['masses'][i] if isinstance(atoms_data['masses'], list) else atoms_data['masses'][i]
+            atoms.set_masses(masses)
         
         if 'momenta' in atoms_data:
-            atoms.set_momenta(atoms_data['momenta'][i])
+            momenta = atoms_data['momenta'][i] if isinstance(atoms_data['momenta'], list) else atoms_data['momenta'][i]
+            atoms.set_momenta(momenta)
         
         if 'initial_charges' in atoms_data:
-            atoms.set_initial_charges(atoms_data['initial_charges'][i])
+            charges = atoms_data['initial_charges'][i] if isinstance(atoms_data['initial_charges'], list) else atoms_data['initial_charges'][i]
+            atoms.set_initial_charges(charges)
         
         if 'initial_magmoms' in atoms_data:
-            atoms.set_initial_magnetic_moments(atoms_data['initial_magmoms'][i])
+            magmoms = atoms_data['initial_magmoms'][i] if isinstance(atoms_data['initial_magmoms'], list) else atoms_data['initial_magmoms'][i]
+            atoms.set_initial_magnetic_moments(magmoms)
         
         # Restore atom-specific info
-        if 'atom_infos' in atoms_data:
+        if 'atom_infos' in atoms_data and i < len(atoms_data['atom_infos']):
             atoms.info.update(atoms_data['atom_infos'][i])
+        
+        # Restore custom arrays
+        if 'custom_arrays' in atoms_data and i < len(atoms_data['custom_arrays']):
+            custom_arrays = atoms_data['custom_arrays'][i]
+            for key, value in custom_arrays.items():
+                atoms.arrays[key] = value
         
         atoms_list.append(atoms)
     
