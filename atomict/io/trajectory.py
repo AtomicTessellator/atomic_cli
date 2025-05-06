@@ -1,24 +1,12 @@
 """Trajectory implementation using msgpack storage"""
-from typing import Union, List, Dict, Any, Optional, Tuple
 import os
 import contextlib
 import io
-import warnings
-import numpy as np
-
-from ase import __version__
-from ase.atoms import Atoms
-from ase.calculators.calculator import PropertyNotImplementedError
-from ase.calculators.singlepoint import SinglePointCalculator, all_properties
-from ase.io.formats import is_compressed
-from ase.constraints import dict2constraint
-from ase.io.jsonio import decode, encode
-from ase.parallel import world
 
 __all__ = ['Trajectory']
 
 
-def Trajectory(filename, mode='r', atoms=None, properties=None, master=None, comm=world, flush_interval=1):
+def Trajectory(filename, mode='r', atoms=None, properties=None, master=None, comm=None, flush_interval=1):
     """A Trajectory can be created in read, write or append mode.
 
     Parameters:
@@ -54,15 +42,32 @@ def Trajectory(filename, mode='r', atoms=None, properties=None, master=None, com
 
     The atoms, properties and master arguments are ignored in read mode.
     """
+    if comm is None:
+        try:
+            from ase.parallel import world
+            comm = world
+        except ImportError:
+            comm = _DummyComm()
+            
     if mode == 'r':
         return TrajectoryReader(filename)
     return TrajectoryWriter(filename, mode, atoms, properties, master=master, comm=comm, flush_interval=flush_interval)
 
 
+class _DummyComm:
+    """Dummy communicator for when ASE is not installed."""
+    @property
+    def rank(self):
+        return 0
+        
+    def sum_scalar(self, value):
+        return value
+
+
 class TrajectoryWriter:
     """Writes Atoms objects to a .mpk file using msgpack."""
 
-    def __init__(self, filename, mode='w', atoms=None, properties=None, master=None, comm=world, flush_interval=1):
+    def __init__(self, filename, mode='w', atoms=None, properties=None, master=None, comm=None, flush_interval=1):
         """A Trajectory writer, in write or append mode.
 
         Parameters:
@@ -103,6 +108,13 @@ class TrajectoryWriter:
         # Enable numpy array serialization
         m.patch()
         
+        if comm is None:
+            try:
+                from ase.parallel import world
+                comm = world
+            except ImportError:
+                comm = _DummyComm()
+        
         if master is None:
             master = comm.rank == 0
 
@@ -121,10 +133,16 @@ class TrajectoryWriter:
         self._frames_since_last_flush = 0
         self._total_frames_added = 0  # Track total frames added for flush interval
         
+        # Get ASE version if available
+        try:
+            from ase import __version__ as ase_version
+        except ImportError:
+            ase_version = "not_installed"
+            
         # Store metadata in separate dict to ensure it's preserved
         self._metadata = {
             "description": {},
-            "ase_version": __version__
+            "ase_version": ase_version
         }
         
         self._open(filename, mode)
@@ -213,15 +231,37 @@ class TrajectoryWriter:
         # Handle calculator data
         calc = atoms.calc
         
+        try:
+            from ase.calculators.singlepoint import SinglePointCalculator, all_properties
+            from ase.calculators.calculator import PropertyNotImplementedError
+        except ImportError:
+            # Define placeholder if ASE not available
+            all_properties = ['energy', 'forces', 'stress', 'dipole', 'charges', 'magmom', 'magmoms']
+            class PropertyNotImplementedError(Exception):
+                pass
+            
         if calc is None and len(kwargs) > 0:
-            calc = SinglePointCalculator(atoms)
+            try:
+                calc = SinglePointCalculator(atoms)
+            except NameError:
+                # If ASE not available, create a basic dict instead
+                calc = {'name': 'manual', 'results': kwargs}
             
         if calc is not None:
             # Store calculator results in atoms info
-            calc_data = {'name': calc.name}
+            calc_data = {}
             
+            if hasattr(calc, 'name'):
+                calc_data['name'] = calc.name
+            elif isinstance(calc, dict) and 'name' in calc:
+                calc_data['name'] = calc['name']
+            else:
+                calc_data['name'] = 'unknown'
+                
             if hasattr(calc, 'todict'):
                 calc_data['parameters'] = calc.todict()
+            elif isinstance(calc, dict) and 'parameters' in calc:
+                calc_data['parameters'] = calc['parameters']
                 
             for prop in all_properties:
                 if prop in kwargs:
@@ -229,14 +269,24 @@ class TrajectoryWriter:
                 elif self.properties is not None:
                     if prop in self.properties:
                         try:
-                            x = calc.get_property(prop, atoms)
+                            if hasattr(calc, 'get_property'):
+                                x = calc.get_property(prop, atoms)
+                            elif isinstance(calc, dict) and 'results' in calc and prop in calc['results']:
+                                x = calc['results'][prop]
+                            else:
+                                x = None
                         except (PropertyNotImplementedError, KeyError):
                             x = None
                     else:
                         x = None
                 else:
                     try:
-                        x = calc.get_property(prop, atoms, allow_calculation=False)
+                        if hasattr(calc, 'get_property'):
+                            x = calc.get_property(prop, atoms, allow_calculation=False)
+                        elif isinstance(calc, dict) and 'results' in calc and prop in calc['results']:
+                            x = calc['results'][prop]
+                        else:
+                            x = None
                     except (PropertyNotImplementedError, KeyError):
                         x = None
                         
@@ -249,11 +299,22 @@ class TrajectoryWriter:
             
         # Store constraints as encoded data
         if atoms_copy.constraints:
-            atoms_copy.info['_constraints'] = encode(atoms_copy.constraints)
+            try:
+                from ase.io.jsonio import encode
+                atoms_copy.info['_constraints'] = encode(atoms_copy.constraints)
+            except ImportError:
+                # If ASE not available, try a simpler approach
+                atoms_copy.info['_constraints_warning'] = "Constraints not saved - ASE not available"
             
         # Always store description and ASE version in atoms info as well
         atoms_copy.info['_traj_description'] = self.description
-        atoms_copy.info['_ase_version'] = __version__
+        
+        try:
+            from ase import __version__ as ase_version
+        except ImportError:
+            ase_version = "not_installed"
+            
+        atoms_copy.info['_ase_version'] = ase_version
         
         # Make sure PBC settings are preserved
         # (This should be handled by default, but making it explicit)
@@ -393,27 +454,40 @@ class TrajectoryReader:
         if '_calc_data' in atoms.info:
             calc_data = atoms.info.pop('_calc_data')
             
-            results = {}
-            implemented_properties = []
-            
-            for prop in all_properties:
-                if prop in calc_data:
-                    results[prop] = calc_data[prop]
-                    implemented_properties.append(prop)
-                    
-            calc = SinglePointCalculator(atoms, **results)
-            calc.name = calc_data.get('name', 'unknown')
-            calc.implemented_properties = implemented_properties
-            
-            if 'parameters' in calc_data:
-                calc.parameters.update(calc_data['parameters'])
+            try:
+                from ase.calculators.singlepoint import SinglePointCalculator, all_properties
                 
-            atoms.calc = calc
+                results = {}
+                implemented_properties = []
+                
+                for prop in all_properties:
+                    if prop in calc_data:
+                        results[prop] = calc_data[prop]
+                        implemented_properties.append(prop)
+                        
+                calc = SinglePointCalculator(atoms, **results)
+                calc.name = calc_data.get('name', 'unknown')
+                calc.implemented_properties = implemented_properties
+                
+                if 'parameters' in calc_data:
+                    calc.parameters.update(calc_data['parameters'])
+                    
+                atoms.calc = calc
+            except ImportError:
+                # If ASE not available, just store the data directly in atoms.info
+                atoms.info['_calc_results'] = calc_data
             
         # Process constraints if present
         if '_constraints' in atoms.info:
-            constraints_data = atoms.info.pop('_constraints')
-            atoms.constraints = [dict2constraint(d) for d in decode(constraints_data)]
+            try:
+                from ase.constraints import dict2constraint
+                from ase.io.jsonio import decode
+                
+                constraints_data = atoms.info.pop('_constraints')
+                atoms.constraints = [dict2constraint(d) for d in decode(constraints_data)]
+            except ImportError:
+                # If ASE not available, just keep a warning
+                atoms.info['_constraints_warning'] = "Constraints not restored - ASE not available"
         
         # Restore custom arrays
         array_keys = [k for k in atoms.info if k.startswith('_array_')]
@@ -470,6 +544,13 @@ class SlicedTrajectory:
 def read_traj(fd, index):
     """Read msgpack trajectory for ase.io.read()."""
     trj = TrajectoryReader(fd)
+    
+    try:
+        from ase.atoms import Atoms
+    except ImportError:
+        # Pass the index unchanged through yield
+        pass
+        
     for i in range(*index.indices(len(trj))):
         yield trj[i]
 
@@ -481,6 +562,16 @@ def defer_compression(fd):
     # internals do not play well together.
     # Be advised not to defer compression of very long trajectories
     # as they use a lot of memory.
+    try:
+        from ase.io.formats import is_compressed
+    except ImportError:
+        # Simple fallback check for compression
+        def is_compressed(filename):
+            if hasattr(filename, 'name'):
+                filename = filename.name
+            return (filename.endswith('.gz') or filename.endswith('.bz2') or 
+                    filename.endswith('.xz'))
+                
     if is_compressed(fd):
         with io.BytesIO() as bytes_io:
             try:
@@ -496,8 +587,17 @@ def defer_compression(fd):
 
 def write_traj(fd, images):
     """Write image(s) to msgpack trajectory."""
-    if isinstance(images, Atoms):
+    try:
+        from ase.atoms import Atoms
+    except ImportError:
+        # Just do a type check 
+        Atoms = None
+    
+    if Atoms is not None and isinstance(images, Atoms):
         images = [images]
+    elif not isinstance(images, list):
+        images = [images]
+        
     with defer_compression(fd) as fd_uncompressed:
         trj = TrajectoryWriter(fd_uncompressed)
         for atoms in images:

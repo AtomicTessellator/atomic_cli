@@ -104,7 +104,12 @@ def save_msgpack(atoms: Union['ase.Atoms', List['ase.Atoms']], filename: str):
     cells = []
     for a in atoms_list:
         cell = a.get_cell()
-        cells.append(np.array(cell.array, dtype=np.float32))
+        # Check if cell is already a numpy array or if it's a Cell object
+        if hasattr(cell, 'array'):
+            cells.append(np.array(cell.array, dtype=np.float32))
+        else:
+            # Already a numpy array
+            cells.append(np.array(cell, dtype=np.float32))
     data['cell'] = np.array(cells, dtype=np.float32)
     
     data['pbc'] = np.asarray([a.get_pbc() for a in atoms_list], dtype=bool)
@@ -202,7 +207,15 @@ def save_msgpack_trajectory(atoms: Union['ase.Atoms', List['ase.Atoms']], filena
         
         # Collect other properties
         positions_per_frame.append(atoms.get_positions())
-        cells_per_frame.append(np.array(atoms.get_cell().array, dtype=np.float32))
+        
+        # Handle the cell the same way as in save_msgpack
+        cell = atoms.get_cell()
+        if hasattr(cell, 'array'):
+            cells_per_frame.append(np.array(cell.array, dtype=np.float32))
+        else:
+            # Already a numpy array
+            cells_per_frame.append(np.array(cell, dtype=np.float32))
+            
         pbc_per_frame.append(atoms.get_pbc())
         tags_per_frame.append(atoms.get_tags())
         masses_per_frame.append(atoms.get_masses())
