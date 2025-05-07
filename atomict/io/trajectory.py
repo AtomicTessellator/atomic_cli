@@ -208,9 +208,38 @@ class TrajectoryWriter:
                 # If ASE not available, store properties directly in atoms.info
                 for key, value in kwargs.items():
                     atoms.info[f'_calc_{key}'] = value
+        
+        # IMPORTANT: Make a deep copy to preserve calculator data
+        atoms_copy = atoms.copy()
+        
+        # CRITICAL: If there's a calculator, make sure we preserve its data in atoms_copy.info
+        if hasattr(atoms, 'calc') and atoms.calc is not None:
+            # Store calculator name
+            atoms_copy.info['_calc_name'] = atoms.calc.__class__.__name__
+            
+            # Try to preserve all calculator results in atoms_copy.info
+            if hasattr(atoms.calc, 'results'):
+                for key, value in atoms.calc.results.items():
+                    atoms_copy.info[f'_calc_{key}'] = value
+
+                # Make sure energy, forces, and stress are included if available
+                try:
+                    if 'energy' not in atoms.calc.results and hasattr(atoms.calc, 'get_potential_energy'):
+                        energy = atoms.calc.get_potential_energy(atoms)
+                        atoms_copy.info['_calc_energy'] = energy
                     
-        # Save a copy of the atoms
-        self._frames.append(atoms.copy())
+                    if 'forces' not in atoms.calc.results and hasattr(atoms.calc, 'get_forces'):
+                        forces = atoms.calc.get_forces(atoms)
+                        atoms_copy.info['_calc_forces'] = forces
+                    
+                    if 'stress' not in atoms.calc.results and hasattr(atoms.calc, 'get_stress'):
+                        stress = atoms.calc.get_stress(atoms)
+                        atoms_copy.info['_calc_stress'] = stress
+                except:
+                    pass
+        
+        # Save the copy
+        self._frames.append(atoms_copy)
         self._frames_since_last_flush += 1
         self._total_frames_added += 1
         
@@ -297,8 +326,28 @@ class TrajectoryReader:
         if isinstance(i, slice):
             return SlicedTrajectory(self, i)
         
-        # Simply return a copy of the frame - the msgpack loader already handled all property restoration
-        return self._frames[i].copy()
+        # Get a copy of the frame 
+        atoms = self._frames[i].copy()
+        
+        # Explicitly restore calculator if calc data exists in atoms.info
+        if any(key.startswith('_calc_') for key in atoms.info):
+            try:
+                from ase.calculators.singlepoint import SinglePointCalculator
+                calc = SinglePointCalculator(atoms)
+                
+                # Collect all calc data from info
+                for key, value in atoms.info.items():
+                    if key.startswith('_calc_') and key != '_calc_name':
+                        prop_name = key[6:]  # Remove '_calc_' prefix
+                        calc.results[prop_name] = value
+                
+                # Only set calculator if we have results
+                if calc.results:
+                    atoms.calc = calc
+            except ImportError:
+                pass
+        
+        return atoms
 
     def __len__(self):
         return len(self._frames)
@@ -323,6 +372,8 @@ class SlicedTrajectory:
             traj = SlicedTrajectory(self.trajectory, slice(0, None))
             traj.map = self.map[i]
             return traj
+        
+        # Use the trajectory's __getitem__ method to get calculator-restored atoms
         return self.trajectory[self.map[i]]
 
     def __len__(self):
