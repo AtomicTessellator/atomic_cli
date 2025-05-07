@@ -19,14 +19,17 @@ This function is deprecated. Use atomict.io.msgpack.atoms_to_dict instead.
 
 def atoms_to_json(atoms: Atoms) -> str:
     warnings.warn(DEP_WARNING, DeprecationWarning, stacklevel=2)
-    return json.dumps(msgpack_atoms_to_dict(atoms))
+    encoded = msgpack_atoms_to_dict([atoms])
+    return json.dumps(encoded[0])
 
 
 def atoms_to_dict(atoms: Atoms) -> dict:
     warnings.warn(DEP_WARNING, DeprecationWarning, stacklevel=2)
-    return msgpack_atoms_to_dict(atoms)
+    encoded = msgpack_atoms_to_dict([atoms])
+    return encoded[0]
 
 
 def json_to_atoms(json_str: str) -> Atoms:
     warnings.warn(DEP_WARNING, DeprecationWarning, stacklevel=2)
-    return msgpack_dict_to_atoms(json.loads(json_str))
+    encoded = json.loads(json_str)
+    return msgpack_dict_to_atoms([encoded])[0]
