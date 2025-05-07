@@ -1,5 +1,7 @@
-import io
 import json
+import warnings
+
+from .msgpack import atoms_to_dict as msgpack_atoms_to_dict, dict_to_atoms as msgpack_dict_to_atoms
 
 try:
     from ase import Atoms
@@ -11,18 +13,20 @@ except ImportError:
     )
 
 
+DEP_WARNING = """
+This function is deprecated. Use atomict.io.msgpack.atoms_to_dict instead.
+"""
+
 def atoms_to_json(atoms: Atoms) -> str:
-    with io.StringIO() as buf:
-        write(buf, atoms, format="json")
-        return buf.getvalue()
+    warnings.warn(DEP_WARNING, DeprecationWarning, stacklevel=2)
+    return json.dumps(msgpack_atoms_to_dict(atoms))
 
 
 def atoms_to_dict(atoms: Atoms) -> dict:
-    with io.StringIO() as buf:
-        write(buf, atoms, format="json")
-        return json.loads(buf.getvalue())
+    warnings.warn(DEP_WARNING, DeprecationWarning, stacklevel=2)
+    return msgpack_atoms_to_dict(atoms)
 
 
 def json_to_atoms(json_str: str) -> Atoms:
-    with io.StringIO(json_str) as buf:
-        return read(buf, format="json")
+    warnings.warn(DEP_WARNING, DeprecationWarning, stacklevel=2)
+    return msgpack_dict_to_atoms(json.loads(json_str))

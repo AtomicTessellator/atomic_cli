@@ -197,130 +197,20 @@ class TrajectoryWriter:
         if not self.master:
             return
             
-        # Make a copy of the atoms to save
-        atoms_copy = atoms.copy()
-        
-        # Explicitly preserve masses and initial_charges which might not copy correctly
-        if 'masses' in atoms.arrays:
-            # Store original masses in a special info field to ensure they're preserved
-            atoms_copy.info['_original_masses'] = atoms.arrays['masses'].copy()
-            
-        if 'initial_charges' in atoms.arrays or hasattr(atoms, 'initial_charges'):
-            # Get charges from either the arrays or the property
-            if 'initial_charges' in atoms.arrays:
-                initial_charges = atoms.arrays['initial_charges'].copy()
-            else:
-                initial_charges = atoms.get_initial_charges()
-            atoms_copy.info['_original_initial_charges'] = initial_charges
-        
-        # Store all custom arrays with a special prefix to ensure they're preserved
-        # First, identify which arrays are custom (not standard ASE arrays)
-        standard_arrays = {'numbers', 'positions', 'momenta', 'masses', 'tags', 'charges'}
-        custom_arrays = {key: atoms.arrays[key] for key in atoms.arrays if key not in standard_arrays}
-        
-        # Store the custom arrays in info with a special prefix
-        for key, value in custom_arrays.items():
-            atoms_copy.info[f'_array_{key}'] = value
-        
-        # Store all user info with a special prefix to avoid conflicts with internal keys
-        for key, value in atoms.info.items():
-            # Skip internal keys that might already be in the info dictionary
-            if not key.startswith('_'):
-                atoms_copy.info[f'_user_info_{key}'] = value
-        
-        # Handle calculator data
-        calc = atoms.calc
-        
-        try:
-            from ase.calculators.singlepoint import SinglePointCalculator, all_properties
-            from ase.calculators.calculator import PropertyNotImplementedError
-        except ImportError:
-            # Define placeholder if ASE not available
-            all_properties = ['energy', 'forces', 'stress', 'dipole', 'charges', 'magmom', 'magmoms']
-            class PropertyNotImplementedError(Exception):
-                pass
-            
-        if calc is None and len(kwargs) > 0:
+        # Apply calculator properties if provided
+        if kwargs and hasattr(atoms, 'calc'):
             try:
-                calc = SinglePointCalculator(atoms)
-            except NameError:
-                # If ASE not available, create a basic dict instead
-                calc = {'name': 'manual', 'results': kwargs}
-            
-        if calc is not None:
-            # Store calculator results in atoms info
-            calc_data = {}
-            
-            if hasattr(calc, 'name'):
-                calc_data['name'] = calc.name
-            elif isinstance(calc, dict) and 'name' in calc:
-                calc_data['name'] = calc['name']
-            else:
-                calc_data['name'] = 'unknown'
-                
-            if hasattr(calc, 'todict'):
-                calc_data['parameters'] = calc.todict()
-            elif isinstance(calc, dict) and 'parameters' in calc:
-                calc_data['parameters'] = calc['parameters']
-                
-            for prop in all_properties:
-                if prop in kwargs:
-                    x = kwargs[prop]
-                elif self.properties is not None:
-                    if prop in self.properties:
-                        try:
-                            if hasattr(calc, 'get_property'):
-                                x = calc.get_property(prop, atoms)
-                            elif isinstance(calc, dict) and 'results' in calc and prop in calc['results']:
-                                x = calc['results'][prop]
-                            else:
-                                x = None
-                        except (PropertyNotImplementedError, KeyError):
-                            x = None
-                    else:
-                        x = None
-                else:
-                    try:
-                        if hasattr(calc, 'get_property'):
-                            x = calc.get_property(prop, atoms, allow_calculation=False)
-                        elif isinstance(calc, dict) and 'results' in calc and prop in calc['results']:
-                            x = calc['results'][prop]
-                        else:
-                            x = None
-                    except (PropertyNotImplementedError, KeyError):
-                        x = None
-                        
-                if x is not None:
-                    if prop in ['stress', 'dipole']:
-                        x = x.tolist()
-                    calc_data[prop] = x
-                    
-            atoms_copy.info['_calc_data'] = calc_data
-            
-        # Store constraints as encoded data
-        if atoms_copy.constraints:
-            try:
-                from ase.io.jsonio import encode
-                atoms_copy.info['_constraints'] = encode(atoms_copy.constraints)
+                from ase.calculators.singlepoint import SinglePointCalculator
+                # Create a SinglePointCalculator with the provided properties
+                calc = SinglePointCalculator(atoms, **kwargs)
+                atoms.calc = calc
             except ImportError:
-                # If ASE not available, try a simpler approach
-                atoms_copy.info['_constraints_warning'] = "Constraints not saved - ASE not available"
-            
-        # Always store description and ASE version in atoms info as well
-        atoms_copy.info['_traj_description'] = self.description
-        
-        try:
-            from ase import __version__ as ase_version
-        except ImportError:
-            ase_version = "not_installed"
-            
-        atoms_copy.info['_ase_version'] = ase_version
-        
-        # Make sure PBC settings are preserved
-        # (This should be handled by default, but making it explicit)
-        atoms_copy._pbc = atoms.pbc.copy()
-            
-        self._frames.append(atoms_copy)
+                # If ASE not available, store properties directly in atoms.info
+                for key, value in kwargs.items():
+                    atoms.info[f'_calc_{key}'] = value
+                    
+        # Save a copy of the atoms
+        self._frames.append(atoms.copy())
         self._frames_since_last_flush += 1
         self._total_frames_added += 1
         
@@ -339,7 +229,7 @@ class TrajectoryWriter:
             
         from .msgpack import save_msgpack_trajectory
         
-        # Save with metadata
+        # Save with metadata - directly use msgpack functions
         save_msgpack_trajectory(self._frames, self.filename, metadata=self._metadata)
 
     def flush(self):
@@ -366,15 +256,6 @@ class TrajectoryReader:
 
         The filename traditionally ends in .traj, but .mpk is recommended for msgpack.
         """
-        try:
-            import msgpack
-            import msgpack_numpy as m
-        except ImportError:
-            raise ImportError("You need to install with `pip install atomict[tools]` to use msgpack I/O")
-            
-        # Enable numpy array deserialization
-        m.patch()
-        
         self.filename = filename
         self._frames = None
         self.description = None
@@ -391,41 +272,19 @@ class TrajectoryReader:
     def _open(self, filename):
         from .msgpack import load_msgpack_trajectory
         
-        # Load trajectory with metadata
-        result = load_msgpack_trajectory(filename)
+        # Load trajectory with metadata - directly use msgpack functions
+        atoms_list, metadata = load_msgpack_trajectory(filename)
         
-        # Handle various ways the msgpack loader might return data
-        if isinstance(result, tuple) and len(result) == 2:
-            atoms_list, metadata = result
-        elif isinstance(result, dict) and 'frames' in result and 'metadata' in result:
-            atoms_list = result['frames']
-            metadata = result['metadata']
-        else:
-            # Fall back for backward compatibility
-            atoms_list = result
-            metadata = {}
-        
-        # Make sure we have a list
-        if not isinstance(atoms_list, list):
-            atoms_list = [atoms_list]
-            
         self._frames = atoms_list
         
-        # Extract description from metadata first, then fallback to atoms info
-        if metadata and 'description' in metadata and metadata['description']:
+        # Extract description and version from metadata
+        if metadata and 'description' in metadata:
             self.description = metadata['description']
-        elif len(self._frames) > 0:
-            # Try various description keys in atoms info
-            for key in ['_traj_description', '_description']:
-                if key in self._frames[0].info:
-                    self.description = self._frames[0].info[key]
-                    break
+        else:
+            self.description = {}
             
-        # Extract version
         if metadata and 'ase_version' in metadata:
             self.ase_version = metadata['ase_version']
-        elif len(self._frames) > 0 and '_ase_version' in self._frames[0].info:
-            self.ase_version = self._frames[0].info['_ase_version']
         else:
             self.ase_version = 'unknown'
 
@@ -437,80 +296,9 @@ class TrajectoryReader:
     def __getitem__(self, i=-1):
         if isinstance(i, slice):
             return SlicedTrajectory(self, i)
-            
-        atoms = self._frames[i].copy()
         
-        # Restore masses if they were explicitly saved
-        if '_original_masses' in atoms.info:
-            masses = atoms.info.pop('_original_masses')
-            atoms.set_masses(masses)
-            
-        # Restore initial charges if they were explicitly saved
-        if '_original_initial_charges' in atoms.info:
-            initial_charges = atoms.info.pop('_original_initial_charges')
-            atoms.set_initial_charges(initial_charges)
-        
-        # Process calculator data if present
-        if '_calc_data' in atoms.info:
-            calc_data = atoms.info.pop('_calc_data')
-            
-            try:
-                from ase.calculators.singlepoint import SinglePointCalculator, all_properties
-                
-                results = {}
-                implemented_properties = []
-                
-                for prop in all_properties:
-                    if prop in calc_data:
-                        results[prop] = calc_data[prop]
-                        implemented_properties.append(prop)
-                        
-                calc = SinglePointCalculator(atoms, **results)
-                calc.name = calc_data.get('name', 'unknown')
-                calc.implemented_properties = implemented_properties
-                
-                if 'parameters' in calc_data:
-                    calc.parameters.update(calc_data['parameters'])
-                    
-                atoms.calc = calc
-            except ImportError:
-                # If ASE not available, just store the data directly in atoms.info
-                atoms.info['_calc_results'] = calc_data
-            
-        # Process constraints if present
-        if '_constraints' in atoms.info:
-            try:
-                from ase.constraints import dict2constraint
-                from ase.io.jsonio import decode
-                
-                constraints_data = atoms.info.pop('_constraints')
-                atoms.constraints = [dict2constraint(d) for d in decode(constraints_data)]
-            except ImportError:
-                # If ASE not available, just keep a warning
-                atoms.info['_constraints_warning'] = "Constraints not restored - ASE not available"
-        
-        # Restore custom arrays
-        array_keys = [k for k in atoms.info if k.startswith('_array_')]
-        for key in array_keys:
-            # Extract the original array name by removing the '_array_' prefix
-            array_name = key[7:]  # len('_array_') = 7
-            # Store in atoms.arrays and remove from info
-            atoms.arrays[array_name] = atoms.info.pop(key)
-            
-        # Restore user info
-        info_keys = [k for k in atoms.info if k.startswith('_user_info_')]
-        for key in info_keys:
-            # Extract the original info name by removing the '_user_info_' prefix
-            info_name = key[11:]  # len('_user_info_') = 11
-            # Store in atoms.info and remove the prefixed version
-            atoms.info[info_name] = atoms.info.pop(key)
-            
-        # Clean up any remaining metadata keys
-        for key in ['_traj_description', '_description', '_ase_version']:
-            if key in atoms.info:
-                atoms.info.pop(key)
-            
-        return atoms
+        # Simply return a copy of the frame - the msgpack loader already handled all property restoration
+        return self._frames[i].copy()
 
     def __len__(self):
         return len(self._frames)
@@ -545,12 +333,6 @@ def read_traj(fd, index):
     """Read msgpack trajectory for ase.io.read()."""
     trj = TrajectoryReader(fd)
     
-    try:
-        from ase.atoms import Atoms
-    except ImportError:
-        # Pass the index unchanged through yield
-        pass
-        
     for i in range(*index.indices(len(trj))):
         yield trj[i]
 
