@@ -5,9 +5,11 @@ def load_msgpack(filename: str) -> Union['ase.Atoms', List['ase.Atoms']]:
     """Load atoms from a msgpack file with high efficiency and speed."""
 
     try:
+        import numpy as np
         import msgpack
         import msgpack_numpy as m
         from ase import Atoms
+        from ase.constraints import dict2constraint
     except ImportError:
         raise ImportError("You need to install with `pip install atomict[tools]` to use msgpack I/O")
 
@@ -54,6 +56,29 @@ def load_msgpack(filename: str) -> Union['ase.Atoms', List['ase.Atoms']]:
         if 'initial_magmoms' in data:
             atoms.set_initial_magnetic_moments(data['initial_magmoms'][i])
         
+        if 'top_mask' in data and data['top_mask'][i] is not None:
+            atoms.top_mask = np.array(data['top_mask'][i], dtype=bool)
+
+        if 'numbers' in data:
+            atoms.set_atomic_numbers(data['numbers'][i])
+
+        if 'constraints' in data:
+            for c in data['constraints'][i]:
+                atoms.constraints.append(dict2constraint(c))
+
+        if 'ase_objtype' in data and data['ase_objtype'][i] is not None:
+            atoms.ase_objtype = data['ase_objtype'][i]
+
+        if 'forces' in data:
+            atoms.arrays['forces'] = data['forces'][i]
+
+        # Always set the stress attribute, even if it's zeros
+        if 'stress' in data:
+            atoms.stress = np.array(data['stress'][i], dtype=np.float64).copy()
+        else:
+            # Set default stress if not in data
+            atoms.stress = np.zeros(6, dtype=np.float64)
+
         atoms_list.append(atoms)
     
     # Return single atom or list based on input
@@ -135,6 +160,40 @@ def save_msgpack(atoms: Union['ase.Atoms', List['ase.Atoms']], filename: str):
     # Only include magnetic moments if non-zero
     if np.any([np.any(a.get_initial_magnetic_moments()) for a in atoms_list]):
         data['initial_magmoms'] = np.asarray([a.get_initial_magnetic_moments() for a in atoms_list], dtype=np.float32)
+    
+    # Include ase_objtype if it exists
+    if any(hasattr(a, 'ase_objtype') for a in atoms_list):
+        data['ase_objtype'] = [a.ase_objtype if hasattr(a, 'ase_objtype') else None for a in atoms_list]
+    
+    # Only include top_mask if it exists
+    if any(hasattr(a, 'top_mask') for a in atoms_list):
+        top_masks = []
+        for a in atoms_list:
+            if hasattr(a, 'top_mask'):
+                top_masks.append(a.top_mask.tolist())
+            else:
+                top_masks.append(None)
+        data['top_mask'] = top_masks
+    
+    # Include atomic numbers
+    data['numbers'] = np.asarray([a.get_atomic_numbers() for a in atoms_list], dtype=np.int32)
+    
+    # Include constraints if they exist
+    if any(a.constraints for a in atoms_list):
+        data['constraints'] = [[c.todict() for c in a.constraints] for a in atoms_list]
+    
+    # Include forces if they exist
+    if any('forces' in a.arrays for a in atoms_list):
+        data['forces'] = np.asarray([a.arrays.get('forces', None) for a in atoms_list], dtype=np.float32)
+    
+    # Always include stress (zeros if not present)
+    stresses = []
+    for a in atoms_list:
+        if hasattr(a, 'stress') and a.stress is not None:
+            stresses.append(a.stress)
+        else:
+            stresses.append(np.zeros(6, dtype=np.float32))
+    data['stress'] = np.asarray(stresses, dtype=np.float32)
     
     # Pack and save
     with open(filename, 'wb') as f:
