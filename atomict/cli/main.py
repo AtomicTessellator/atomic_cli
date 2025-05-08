@@ -67,7 +67,7 @@ def convert_command(input_file, output_file):
         'castep-md', 'cfg', 'cif', 'crystal', 'cube', 'db', 'dftb', 'dlp4', 
         'dmol-arc', 'dmol-car', 'dmol-incoor', 'eon', 'espresso-in', 'extxyz', 
         'gaussian-in', 'gen', 'gpumd', 'gromacs', 'gromos', 'json', 'jsv', 
-        'lammps-data', 'magres', 'mysql', 'netcdftrajectory', 'nwchem-in', 
+        'lammps-data', 'magres', 'mustem', 'mysql', 'netcdftrajectory', 'nwchem-in', 
         'onetep-in', 'postgresql', 'prismatic', 'proteindatabank', 'res', 
         'rmc6f', 'struct', 'sys', 'traj', 'turbomole', 'v-sim', 'vasp', 
         'vasp-xdatcar', 'xsd', 'xsf', 'xtd', 'xyz'
