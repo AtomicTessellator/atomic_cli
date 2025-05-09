@@ -8,6 +8,7 @@ from rich.console import Console
 
 from atomict.__version__ import __version__
 from atomict.cli.commands import login, user
+from atomict.io.msgpack import load_msgpack
 
 # Import command groups
 from .commands import adsorbate, catalysis, k8s, project, task, traj, upload
@@ -41,15 +42,121 @@ def setup_logging(verbose: bool):
             level=level, format="%(asctime)s - %(levelname)s - %(message)s"
         )
 
+@click.command(name="convert")
+@click.argument("input_file")
+@click.argument("output_file")
+def convert_command(input_file, output_file):
+    """Convert between atomic structure file formats using ASE
 
-@click.group()
+    Supports all formats that ASE can read/write, with special handling for .atm files.
+    Usage examples:
+      tess input.cif output.xyz
+      tess input.xyz output.atm
+    """
+    try:
+        import os.path
+        from ase.io import read, write
+        from ase.io.formats import UnknownFileTypeError
+        from atomict.io.msgpack import save_msgpack
+    except ImportError:
+        console.print("[red]Error: ASE (Atomic Simulation Environment) is required for file conversion.[/red]")
+        console.print("[yellow]Install it with: pip install ase[/yellow]")
+        return
+
+    RW_FORMATS = [
+        'abinit-in', 'aims', 'bundletrajectory', 'castep-cell', 'castep-geom', 
+        'castep-md', 'cfg', 'cif', 'crystal', 'cube', 'db', 'dftb', 'dlp4', 
+        'dmol-arc', 'dmol-car', 'dmol-incoor', 'eon', 'espresso-in', 'extxyz', 
+        'gaussian-in', 'gen', 'gpumd', 'gromacs', 'gromos', 'json', 'jsv', 
+        'lammps-data', 'magres', 'mustem', 'mysql', 'netcdftrajectory', 'nwchem-in', 
+        'onetep-in', 'postgresql', 'prismatic', 'proteindatabank', 'res', 
+        'rmc6f', 'struct', 'sys', 'traj', 'turbomole', 'v-sim', 'vasp', 
+        'vasp-xdatcar', 'xsd', 'xsf', 'xtd', 'xyz'
+    ]
+
+    try:
+        input_ext = os.path.splitext(input_file)[1].lower()[1:]
+        output_ext = os.path.splitext(output_file)[1].lower()[1:]
+
+        if not os.path.exists(input_file):
+            console.print(f"[red]Error: Input file '{input_file}' not found.[/red]")
+            return
+
+        if input_ext not in RW_FORMATS and input_ext != "atm":
+            console.print(f"[red]Error: Format '{input_ext}' is not supported for reading.[/red]")
+            console.print("[yellow]Supported read/write formats include:[/yellow]")
+            # Display formats in multiple columns for better readability
+            for i in range(0, len(RW_FORMATS), 5):
+                console.print("[yellow]  " + ", ".join(RW_FORMATS[i:i+5]) + "[/yellow]")
+            return
+            
+
+        if output_ext not in RW_FORMATS and output_ext != "atm":
+            console.print(f"[red]Error: Format '{output_ext}' is not supported for writing.[/red]")
+            console.print("[yellow]Supported read/write formats include:[/yellow]")
+            # Display formats in multiple columns for better readability
+            for i in range(0, len(RW_FORMATS), 5):
+                console.print("[yellow]  " + ", ".join(RW_FORMATS[i:i+5]) + "[/yellow]")
+            return
+
+        try:
+            if input_ext != 'atm':
+                atoms = read(input_file)
+            else:
+                atoms = load_msgpack(input_file)
+        except UnknownFileTypeError:
+            console.print(f"[red]Error: Unknown file type for input file '{input_file}'[/red]")
+            console.print(f"[yellow]The file extension '{input_ext}' is not recognized.[/yellow]")
+            console.print("[yellow]Make sure the file has the correct extension for its format.[/yellow]")
+            return
+        except Exception as e:
+            console.print(f"[red]Error reading input file '{input_file}': {str(e)}[/red]")
+            console.print(f"[yellow]Make sure '{input_ext}' is a valid format and the file is not corrupted.[/yellow]")
+            return
+        
+        try:
+            if output_ext == 'atm':
+                # write(output_file, atoms, format='json', parallel=False)
+                save_msgpack(atoms, output_file)
+                console.print(f"[green]Successfully converted {input_file} to {output_file} (MSGPACK format)[/green]")
+            else:
+                write(output_file, atoms)
+                console.print(f"[green]Successfully converted {input_file} to {output_file}[/green]")
+
+        except UnknownFileTypeError:
+            console.print(f"[red]Error: Unknown file type for output file '{output_file}'[/red]")
+            console.print(f"[yellow]The file extension '{output_ext}' is not recognized.[/yellow]")
+            console.print("[yellow]Make sure the file has the correct extension for its format.[/yellow]")
+            return
+        except Exception as e:
+            console.print(f"[red]Error writing output file '{output_file}': {str(e)}[/red]")
+            console.print(f"[yellow]Make sure '{output_ext}' is a valid format and you have write permissions.[/yellow]")
+            return
+            
+    except Exception as e:
+        logging.debug(f"Conversion failed with error: {str(e)}", exc_info=True)
+        console.print(f"[red]Error during conversion: {str(e)}[/red]")
+        console.print("[yellow]Try running with --verbose for more detailed error information.[/yellow]")
+
+
+# Create main CLI group
+@click.group(invoke_without_command=True)
 @click.option(
     "-v", "--verbose", is_flag=True, default=False, help="Enable verbose output"
 )
 @click.version_option(prog_name="tess", version=__version__)
-def cli(verbose: bool):
-    """Atomic Tessellator CLI - Manage simulations and computational resources"""
+@click.pass_context
+def cli(ctx, verbose: bool):
+    """Atomic Tessellator CLI - Manage simulations and computational resources
+    
+    Dynamic commands (takes positional arguments only):\n
+      tess [file_a] [file_b]  Filetype conversion from a -> b
+    """
     setup_logging(verbose)
+    
+    # Show help if no subcommand was provided
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
 
 
 # Add a completion command
@@ -126,6 +233,13 @@ cli.add_command(vibes.vibes_group)
 
 def main():
     try:
+        if len(sys.argv) == 3:
+            arg1 = sys.argv[1]
+            arg2 = sys.argv[2]
+            if '.' in arg1 and '.' in arg2:
+                convert_command.callback(arg1, arg2)
+                return
+
         cli()
     except Exception as exc:
         Console().print(f"[red]Error: {str(exc)}. Exiting...[/red]")
