@@ -7,12 +7,14 @@ import requests
 import os
 import sys
 import functools
+import hashlib
 from typing import Optional, Dict, Any, List, Union, Tuple
 from ase.atoms import Atoms
 from ase.optimize import BFGS
 from ase.calculators.emt import EMT
 
 from deepdiff import DeepDiff
+from atomict.api import post
 # t1 = {1:1, 2:2, 3:3}
 
 # t2 = {1:1, 2:4, 3:3}
@@ -32,7 +34,10 @@ def track_state_changes():
             
             # Track state changes after the method call
             if hasattr(self, '_capture_state_diff'):
-                self._capture_state_diff()
+                diff = self._capture_state_diff()
+                # Send diff right after capturing it
+                if hasattr(self, '_send_diff') and diff:
+                    self._send_diff(diff)
             
             return result
         return wrapper
@@ -52,29 +57,92 @@ class ATAtoms:
         Parameters:
         -----------
         atoms: ASE Atoms object to wrap
-        server_url: URL of the server to send deltas to (if None, will use ATOMICT_SERVER_URL env var)
+        server_url: URL of the server to send deltas to (if None, will use AT_SERVER env var)
         batch_size: Number of deltas to accumulate before sending to server
         sync_interval: Maximum time in seconds between syncs to server
         """
+        # Validate that atoms is an ASE Atoms object
+        if not isinstance(atoms, Atoms):
+            raise TypeError(f"Expected ASE Atoms object, got {type(atoms).__name__}: {atoms}")
+            
         # Initialize core properties
         self._atoms = atoms
+        self._server_url = server_url or os.environ.get('AT_SERVER')
         self._object_id = str(uuid.uuid4())
-        self._server_url = server_url or os.environ.get('ATOMICT_SERVER_URL')
         self._batch_size = batch_size
         self._sync_interval = sync_interval
         self._deltas = []
         self._diffs = []  # Track the state diffs
         self._last_sync_time = time.time()
         self._execution_id = str(uuid.uuid4())
-        self._token = os.environ.get('ATOMICT_TOKEN', "")
         self._seq_num = 0  # Initialize sequence number counter
+        self._state_id = None  # Will be set after server initialization
         
         # Initialize state tracking
         self._initial_state = self._get_current_state()  # Save the initial state
         self._previous_state = self._serialize_state(self._initial_state)  # Serialize for comparison
         
+        # Generate structure_id hash
+        self._structure_id = self._hash_state(self._previous_state)
+        
         # Record the initial state
         self._capture_state_diff()
+    
+    def _hash_state(self, state_data):
+        """Generate a SHA-256 hash of the state data"""
+        # Sort the keys to ensure consistent hash for same data
+        state_json = json.dumps(state_data, sort_keys=True)
+        return hashlib.sha256(state_json.encode('utf-8')).hexdigest()
+    
+    def _initialize_on_server(self):
+        """Send the initial state to create an object on the server"""
+        # Try to use self._server_url or fall back to environment variable
+        if not self._server_url:
+            self._server_url = os.environ.get('AT_SERVER')
+            if not self._server_url:
+                print("Warning: No server URL provided and AT_SERVER environment variable not set")
+                return
+        
+        try:
+            # Extract and format the initial state according to server model
+            state_data = {
+                'id': self._object_id,
+                'structure_id': self._structure_id,
+                'numbers': self._previous_state.get('numbers'),
+                'positions': self._previous_state.get('positions'),
+                'cell': self._previous_state.get('cell'),
+                'pbc': self._previous_state.get('pbc'),
+                'energy': self._previous_state.get('energy'),
+                'symbols': self._previous_state.get('symbols'),
+                'forces': self._previous_state.get('forces'),
+                'stress': self._previous_state.get('stress'),
+                'info': self._previous_state.get('info', {}),
+                'scaled_positions': self._previous_state.get('scaled_positions'),
+                'tags': self._previous_state.get('tags'),
+                'momenta': self._previous_state.get('momenta'),
+                'velocities': self._previous_state.get('velocities'),
+                'masses': self._previous_state.get('masses'),
+                'magmoms': self._previous_state.get('magmoms'),
+                'charges': self._previous_state.get('charges'),
+                'celldisp': self._previous_state.get('celldisp'),
+                'constraints': self._previous_state.get('constraints')
+            }
+            # Use the API module to make the request
+            response = post(
+                'api/atatoms-states', 
+                state_data,
+                extra_headers={'Content-Type': 'application/json'}
+            )
+            
+            # Store the state ID for future reference
+            if response and 'id' in response:
+                self._state_id = response['id']
+                print(f"Successfully initialized state on server with ID: {self._state_id}")
+            else:
+                print(f"Warning: Server response did not contain expected 'id' field: {response}")
+            
+        except Exception as e:
+            print(f"Warning: Failed to initialize object on server: {e}")
     
     def _capture_state_diff(self):
         """
@@ -91,14 +159,8 @@ class ATAtoms:
                 'state': serialized_current
             })
             
-            # Also record as a delta for server sync
-            self._deltas.append({
-                'object_id': self._object_id,
-                'execution_id': self._execution_id,
-                'timestamp': datetime.datetime.now().isoformat(),
-                'sequence': self._seq_num,
-                'state': serialized_current
-            })
+            # Initialize on server first to get state_id
+            self._initialize_on_server()
             
             self._previous_state = serialized_current
             self._seq_num += 1  # Increment sequence number
@@ -118,23 +180,21 @@ class ATAtoms:
                 'diff': diff
             })
             
-            # Also record as a delta for server sync
-            self._deltas.append({
-                'object_id': self._object_id,
-                'execution_id': self._execution_id,
-                'timestamp': timestamp,
-                'sequence': self._seq_num,
-                'diff': diff
-            })
-            
             # Update previous state for next comparison
             self._previous_state = serialized_current
             self._seq_num += 1  # Increment sequence number
             
-            # Check if we should sync now
-            if len(self._deltas) >= self._batch_size or \
-               (time.time() - self._last_sync_time) >= self._sync_interval:
-                self._sync_deltas()
+            # Send diff only if we have a state_id from initialization
+            if self._state_id:
+                return diff
+            else:
+                print("Warning: Cannot send diff before initializing state on server")
+                # Try to initialize again
+                self._initialize_on_server()
+                # If initialization succeeds, return diff to be sent
+                if self._state_id:
+                    return diff
+        return None
     
     # Add special property for calculator
     @property
@@ -150,6 +210,10 @@ class ATAtoms:
         """Get the complete state of the atoms object"""
         atoms = self._atoms
         
+        # Check if atoms is actually an ASE Atoms object, not a string or other type
+        if isinstance(atoms, str):
+            raise TypeError(f"Expected ASE Atoms object, got string: {atoms}")
+        
         # Use atoms.todict() if available
         if hasattr(atoms, 'todict'):
             state = atoms.todict()
@@ -161,21 +225,26 @@ class ATAtoms:
             state = {}
             
             # Handle positions
-            if atoms.positions is not None:
+            if hasattr(atoms, 'positions') and atoms.positions is not None:
                 state['positions'] = atoms.positions.copy()
                 
             # Handle cell
-            if hasattr(atoms.cell, 'array'):
-                state['cell'] = atoms.cell.array.copy()
-            else:
-                state['cell'] = atoms.cell.copy() if hasattr(atoms.cell, 'copy') else atoms.cell
+            if hasattr(atoms, 'cell'):
+                if hasattr(atoms.cell, 'array'):
+                    state['cell'] = atoms.cell.array.copy()
+                else:
+                    state['cell'] = atoms.cell.copy() if hasattr(atoms.cell, 'copy') else atoms.cell
                 
             # Handle pbc
-            state['pbc'] = atoms.pbc.copy() if hasattr(atoms.pbc, 'copy') else atoms.pbc
+            if hasattr(atoms, 'pbc'):
+                state['pbc'] = atoms.pbc.copy() if hasattr(atoms.pbc, 'copy') else atoms.pbc
             
             # Handle atomic numbers and symbols
-            state['numbers'] = atoms.numbers.copy()
-            state['symbols'] = atoms.get_chemical_symbols()
+            if hasattr(atoms, 'numbers'):
+                state['numbers'] = atoms.numbers.copy()
+                
+            if hasattr(atoms, 'get_chemical_symbols'):
+                state['symbols'] = atoms.get_chemical_symbols()
         
         # Add calculated properties if available
         if hasattr(atoms, 'get_potential_energy'):
@@ -196,7 +265,11 @@ class ATAtoms:
             except:
                 pass
         
-        # Add any arrays that might have been set
+        # Add info dictionary to align with backend model
+        if hasattr(atoms, 'info') and atoms.info:
+            state['info'] = atoms.info.copy()
+        
+        # Add any custom arrays that might have been set
         for name in atoms.arrays:
             if name not in ['positions', 'numbers']:
                 state[name] = atoms.arrays[name].copy()
@@ -215,37 +288,6 @@ class ATAtoms:
                 serialized[key] = value
         
         return serialized
-    
-    def _sync_deltas(self):
-        """Send accumulated deltas to the server"""
-        if not self._server_url or not self._deltas:
-            return
-        
-        try:
-            headers = {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'User-Agent': 'ATAtoms/1.0'
-            }
-            
-            if self._token:
-                headers['Authorization'] = f"Token {self._token}"
-            
-            for delta in self._deltas:
-                response = requests.post(
-                    f"{self._server_url}/api/atatoms-delta/",
-                    data=json.dumps(delta, ensure_ascii=False),
-                    headers=headers
-                )
-                
-                if response.status_code >= 400:
-                    print(f"Warning: Server returned error {response.status_code}: {response.text}")
-            
-            self._deltas = []
-            self._last_sync_time = time.time()
-            
-        except Exception as e:
-            print(f"Warning: Failed to sync deltas with server: {e}")
     
     # Special ASE methods that need explicit tracking
     @track_state_changes()
@@ -331,6 +373,50 @@ class ATAtoms:
                 self._sync_deltas()
             except:
                 pass
+
+    def _send_diff(self, diff):
+        """
+        Send a diff to the server at /api/atatoms-diffs
+        """
+        # Don't attempt to send if we don't have a state_id yet
+        if not self._state_id:
+            print("Warning: Cannot send diff without state_id. Attempting to initialize on server first.")
+            self._initialize_on_server()
+            if not self._state_id:
+                return None
+        
+        try:
+            # Get current state to include in the request
+            current_state = self._get_current_state()
+            serialized_current = self._serialize_state(current_state)
+            
+            # Prepare the data to send
+            diff_data = {
+                'atoms_id': self._object_id,
+                'structure_id': self._structure_id,
+                'state_id': self._state_id,
+                'execution_id': self._execution_id,
+                'sequence': self._seq_num - 1,  # Use the sequence number assigned to this diff
+                'timestamp': datetime.datetime.now().isoformat(),
+                'diff': diff,
+                'state': serialized_current,  # Full current state
+                'data': diff  # Include diff as data field as well
+            }
+            
+            # Send the diff to the server
+            response = post(
+                'api/atatoms-diffs',
+                diff_data,
+                extra_headers={'Content-Type': 'application/json'}
+            )
+            
+            if not response:
+                print("Warning: Empty response when sending diff to server")
+            
+            return response
+        except Exception as e:
+            print(f"Warning: Failed to send diff to server: {e}")
+            return None
 
 
 class _AtomProxy:
