@@ -8,6 +8,7 @@ from rich.console import Console
 
 from atomict.__version__ import __version__
 from atomict.cli.commands import login, user
+from atomict.io.msgpack import load_msgpack
 
 # Import command groups
 from .commands import adsorbate, catalysis, k8s, project, task, traj, upload
@@ -99,7 +100,10 @@ def convert_command(input_file, output_file):
             return
 
         try:
-            atoms = read(input_file)
+            if input_ext != 'atm':
+                atoms = read(input_file)
+            else:
+                atoms = load_msgpack(input_file)
         except UnknownFileTypeError:
             console.print(f"[red]Error: Unknown file type for input file '{input_file}'[/red]")
             console.print(f"[yellow]The file extension '{input_ext}' is not recognized.[/yellow]")
