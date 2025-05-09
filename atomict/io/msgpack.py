@@ -99,7 +99,7 @@ def save_msgpack(atoms: Union['ase.Atoms', List['ase.Atoms']], filename: str):
     
     # Store positions as float32 for better space efficiency
     data['positions'] = np.asarray([a.get_positions() for a in atoms_list], dtype=np.float32)
-    data['cell'] = np.asarray([a.get_cell() for a in atoms_list], dtype=np.float32)
+    data['cell'] = np.asarray([np.array(a.get_cell()) for a in atoms_list], dtype=np.float32)
     data['pbc'] = np.asarray([a.get_pbc() for a in atoms_list], dtype=bool)
     
     # Only include non-default properties if they have values
