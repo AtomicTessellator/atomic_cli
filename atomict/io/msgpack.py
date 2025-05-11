@@ -161,8 +161,20 @@ def atoms_to_dict(atoms_list, selective=False):
     
     # Store atom info dictionaries
     if any(a.info for a in atoms_list):
-        data['atom_infos'] = [a.info.copy() for a in atoms_list]
-    
+        infos = []
+        for a in atoms_list:
+            info = a.info.copy()
+            # Call to_dict on each info dictionary
+            for key, value in info.items():
+                if hasattr(value, 'to_dict') and callable(value.to_dict):
+                    info[key] = value.to_dict()
+                elif hasattr(value, 'todict') and callable(value.todict):
+                    info[key] = value.todict()
+                else:
+                    info[key] = value
+            infos.append(info)
+        data['atom_infos'] = infos
+
     # Extract custom arrays
     standard_arrays = {'numbers', 'positions', 'momenta', 'masses', 'tags', 'charges'}
     custom_arrays = {}
