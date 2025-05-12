@@ -289,6 +289,28 @@ class ATAtoms:
         
         return serialized
     
+    def _serialize_diff(self, diff):
+        """Convert DeepDiff output to JSON serializable format"""
+        if not diff:
+            return diff
+            
+        # Create a new dict for the serialized diff
+        serialized_diff = {}
+        
+        # Process each diff type
+        for diff_type, values in diff.items():
+            # Handle SetOrdered and other special types
+            if hasattr(values, 'items'):  # For dictionary-like diff types
+                serialized_diff[diff_type] = dict(values)
+            elif isinstance(values, (list, tuple)):  # For lists
+                serialized_diff[diff_type] = list(values)
+            elif hasattr(values, '__iter__') and not isinstance(values, str):  # For other iterables
+                serialized_diff[diff_type] = list(values)
+            else:
+                serialized_diff[diff_type] = values
+                
+        return serialized_diff
+    
     # Special ASE methods that need explicit tracking
     @track_state_changes()
     def rotate(self, *args, **kwargs):
@@ -390,6 +412,9 @@ class ATAtoms:
             current_state = self._get_current_state()
             serialized_current = self._serialize_state(current_state)
             
+            # Serialize the diff to make it JSON compatible
+            serialized_diff = self._serialize_diff(diff)
+            
             # Prepare the data to send
             diff_data = {
                 'atoms_id': self._object_id,
@@ -397,12 +422,11 @@ class ATAtoms:
                 'state_id': self._state_id,
                 'sequence': self._seq_num - 1,  # Use the sequence number assigned to this diff
                 'timestamp': datetime.datetime.now().isoformat(),
-                'data': diff,
+                'data': serialized_diff,
                 'state': self._state_id  # Use state_id as the reference to the state
             }
             
             # Send the diff to the server
-            logger.info(f"POSTing {diff_data}")
             response = post(
                 'api/atatoms-diffs',
                 diff_data,
@@ -476,9 +500,27 @@ class ATAtoms:
             return {"error": str(e)}
 
     @classmethod
-    def from_known_state(cls, uuid: str) -> 'ATAtoms':
+    def from_known_state(cls, state_id: str) -> 'ATAtoms':
         """Retrieves a state from the server and initializes an ATAtoms object with it."""
         raise NotImplementedError
+
+    def track_changes(self):
+        """
+        Simple callback for ASE optimizers to track changes.
+        Calculates diff between previous and current state and sends if changes exist.
+        
+        Usage:
+            opt = BFGS(atoms)
+            opt.attach(atoms.track_changes, interval=1)
+            opt.run(fmax=0.02)
+        """
+        diff = self._capture_state_diff()
+        
+        if diff and hasattr(self, '_send_diff'):
+            logger.info(f"posting diff from optimization step")
+            self._send_diff(diff)
+            
+        return True
 
 
 class _AtomProxy:
