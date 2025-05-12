@@ -417,6 +417,69 @@ class ATAtoms:
             print(f"Warning: Failed to send diff to server: {e}")
             return None
 
+    def save_current_state(self) -> Dict[str, Any]:
+        """
+        Get current state, serialize it, hash it, and send it to server.
+        
+        Returns:
+        --------
+        Dict with server response data
+        """
+        # Get and serialize current state
+        current_state = self._get_current_state()
+        serialized_state = self._serialize_state(current_state)
+        
+        # Hash the state
+        structure_id = self._hash_state(serialized_state)
+        
+        # Prepare the data to send to server
+        state_data = {
+            'structure_id': structure_id,
+            'numbers': serialized_state.get('numbers'),
+            'positions': serialized_state.get('positions'),
+            'cell': serialized_state.get('cell'),
+            'pbc': serialized_state.get('pbc'),
+            'energy': serialized_state.get('energy'),
+            'symbols': serialized_state.get('symbols'),
+            'forces': serialized_state.get('forces'),
+            'stress': serialized_state.get('stress'),
+            'info': serialized_state.get('info', {}),
+            'scaled_positions': serialized_state.get('scaled_positions'),
+            'tags': serialized_state.get('tags'),
+            'momenta': serialized_state.get('momenta'),
+            'velocities': serialized_state.get('velocities'),
+            'masses': serialized_state.get('masses'),
+            'magmoms': serialized_state.get('magmoms'),
+            'charges': serialized_state.get('charges'),
+            'celldisp': serialized_state.get('celldisp'),
+            'constraints': serialized_state.get('constraints')
+        }
+        
+        try:
+            # Send the state to server
+            logger.info(f"Saving current state with structure_id: {structure_id}")
+            response = post(
+                'api/atatoms-states', 
+                state_data,
+                extra_headers={'Content-Type': 'application/json'}
+            )
+            
+            if response and 'id' in response:
+                logger.info(f"Successfully saved state on server with ID: {response['id']}")
+                return response
+            else:
+                logger.warning(f"Server response did not contain expected 'id' field: {response}")
+                return response
+                
+        except Exception as e:
+            logger.error(f"Failed to save state on server: {e}")
+            return {"error": str(e)}
+
+    @classmethod
+    def from_known_state(cls, uuid: str) -> 'ATAtoms':
+        """Retrieves a state from the server and initializes an ATAtoms object with it."""
+        raise NotImplementedError
+
 
 class _AtomProxy:
     """Proxy for individual atom access that tracks position changes"""
