@@ -9,18 +9,23 @@ import sys
 import functools
 import hashlib
 from typing import Optional, Dict, Any, List, Union, Tuple
+import logging
+
 from ase.atoms import Atoms
 from ase.optimize import BFGS
 from ase.calculators.emt import EMT
 
 from deepdiff import DeepDiff
 from atomict.api import post
-# t1 = {1:1, 2:2, 3:3}
 
-# t2 = {1:1, 2:4, 3:3}
 
-# pprint(DeepDiff(t1, t2, verbose_level=0), indent=2)
-# {'values_changed': {'root[2]': {'new_value': 4, 'old_value': 2}}}
+logger = logging.getLogger(__name__)
+# Configure logger to print to stdout
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
 def track_state_changes():
     """
@@ -31,12 +36,13 @@ def track_state_changes():
         def wrapper(self, *args, **kwargs):
             # Call the original method
             result = func(self, *args, **kwargs)
-            
+            logger.info(f"got {func.__name__} result: {result}")
             # Track state changes after the method call
             if hasattr(self, '_capture_state_diff'):
                 diff = self._capture_state_diff()
                 # Send diff right after capturing it
                 if hasattr(self, '_send_diff') and diff:
+                    logger.info(f"posting diff: {diff}")
                     self._send_diff(diff)
             
             return result
@@ -46,7 +52,7 @@ def track_state_changes():
 class ATAtoms:
     """
     A lightweight wrapper around ASE Atoms that transparently tracks modifications
-    and generates deltas for server synchronization.
+    and generates diffs for server synchronization.
     """
     
     def __init__(self, atoms: Atoms, server_url: Optional[str] = None, 
@@ -57,8 +63,8 @@ class ATAtoms:
         Parameters:
         -----------
         atoms: ASE Atoms object to wrap
-        server_url: URL of the server to send deltas to (if None, will use AT_SERVER env var)
-        batch_size: Number of deltas to accumulate before sending to server
+        server_url: URL of the server to send diffs to (if None, will use AT_SERVER env var)
+        batch_size: Number of diffs to accumulate before sending to server
         sync_interval: Maximum time in seconds between syncs to server
         """
         # Validate that atoms is an ASE Atoms object
@@ -71,12 +77,11 @@ class ATAtoms:
         self._object_id = str(uuid.uuid4())
         self._batch_size = batch_size
         self._sync_interval = sync_interval
-        self._deltas = []
         self._diffs = []  # Track the state diffs
         self._last_sync_time = time.time()
-        self._execution_id = str(uuid.uuid4())
         self._seq_num = 0  # Initialize sequence number counter
         self._state_id = None  # Will be set after server initialization
+        self._initialized = False  # Flag to track initialization status
         
         # Initialize state tracking
         self._initial_state = self._get_current_state()  # Save the initial state
@@ -92,7 +97,9 @@ class ATAtoms:
         """Generate a SHA-256 hash of the state data"""
         # Sort the keys to ensure consistent hash for same data
         state_json = json.dumps(state_data, sort_keys=True)
-        return hashlib.sha256(state_json.encode('utf-8')).hexdigest()
+        _hash = hashlib.sha256(state_json.encode('utf-8')).hexdigest()
+        logger.info(f"created structure id: {_hash}")
+        return _hash
     
     def _initialize_on_server(self):
         """Send the initial state to create an object on the server"""
@@ -151,20 +158,13 @@ class ATAtoms:
         current_state = self._get_current_state()
         serialized_current = self._serialize_state(current_state)
         
-        # For initial state, just store the full state
-        if not self._diffs:
-            self._diffs.append({
-                'timestamp': datetime.datetime.now().isoformat(),
-                'sequence': self._seq_num,
-                'state': serialized_current
-            })
-            
+        # For initial state, just initialize on server without creating a diff
+        if not self._initialized:
             # Initialize on server first to get state_id
             self._initialize_on_server()
-            
-            self._previous_state = serialized_current
-            self._seq_num += 1  # Increment sequence number
-            return
+            # Mark as initialized
+            self._initialized = True
+            return None  # No diff for initial state
         
         # Generate diff using DeepDiff
         diff = DeepDiff(self._previous_state, serialized_current, verbose_level=1)
@@ -367,10 +367,10 @@ class ATAtoms:
         return list(set(dir(self.__class__)) | set(dir(self._atoms)))
     
     def __del__(self):
-        """Ensure any remaining deltas are synced before garbage collection"""
-        if hasattr(self, '_deltas') and self._deltas:
+        """Ensure any remaining diffs are synced before garbage collection"""
+        if hasattr(self, '_diffs') and self._diffs:
             try:
-                self._sync_deltas()
+                self._sync_diffs()
             except:
                 pass
 
@@ -395,15 +395,14 @@ class ATAtoms:
                 'atoms_id': self._object_id,
                 'structure_id': self._structure_id,
                 'state_id': self._state_id,
-                'execution_id': self._execution_id,
                 'sequence': self._seq_num - 1,  # Use the sequence number assigned to this diff
                 'timestamp': datetime.datetime.now().isoformat(),
-                'diff': diff,
-                'state': serialized_current,  # Full current state
-                'data': diff  # Include diff as data field as well
+                'data': diff,
+                'state': self._state_id  # Use state_id as the reference to the state
             }
             
             # Send the diff to the server
+            logger.info(f"POSTing {diff_data}")
             response = post(
                 'api/atatoms-diffs',
                 diff_data,
@@ -434,7 +433,11 @@ class _AtomProxy:
     @position.setter
     def position(self, value):
         self._parent._atoms.positions[self._index] = value
-        self._parent._capture_state_diff()
+        diff = self._parent._capture_state_diff()
+        # Send diff if it exists
+        if diff and hasattr(self._parent, '_send_diff'):
+            logger.info(f"posting diff from atom proxy: {diff}")
+            self._parent._send_diff(diff)
     
     def __getattr__(self, name):
         # Forward all other attributes to the actual atom
@@ -445,9 +448,13 @@ class _AtomProxy:
             # Set private attributes directly on this proxy
             object.__setattr__(self, name, value)
         else:
-            # Apply changes to the atom and record delta
+            # Apply changes to the atom and record diff
             setattr(self._parent._atoms[self._index], name, value)
-            self._parent._capture_state_diff()
+            diff = self._parent._capture_state_diff()
+            # Send diff if it exists
+            if diff and hasattr(self._parent, '_send_diff'):
+                logger.info(f"posting diff from atom proxy: {diff}")
+                self._parent._send_diff(diff)
 
 
 class _PositionProxy:
@@ -458,6 +465,14 @@ class _PositionProxy:
         self._index = index
         self._array = parent._atoms.positions[index].copy()
     
+    def _capture_and_send_diff(self):
+        """Helper method to capture and send diffs"""
+        diff = self._parent._capture_state_diff()
+        # Send diff if it exists
+        if diff and hasattr(self._parent, '_send_diff'):
+            logger.info(f"posting diff from position proxy: {diff}")
+            self._parent._send_diff(diff)
+
     def __array__(self, dtype=None):
         """Make this behave like a numpy array"""
         if dtype is not None:
@@ -471,14 +486,14 @@ class _PositionProxy:
         # Update both the local array and the actual atom position
         self._array[i] = value
         self._parent._atoms.positions[self._index][i] = value
-        self._parent._capture_state_diff()
+        self._capture_and_send_diff()
     
     def __iadd__(self, other):
         # Handle += operation
         new_pos = self._parent._atoms.positions[self._index] + other
         self._parent._atoms.positions[self._index] = new_pos
         self._array = new_pos.copy()
-        self._parent._capture_state_diff()
+        self._capture_and_send_diff()
         return self
     
     def __isub__(self, other):
@@ -486,7 +501,7 @@ class _PositionProxy:
         new_pos = self._parent._atoms.positions[self._index] - other
         self._parent._atoms.positions[self._index] = new_pos
         self._array = new_pos.copy()
-        self._parent._capture_state_diff()
+        self._capture_and_send_diff()
         return self
     
     def __imul__(self, other):
@@ -494,7 +509,7 @@ class _PositionProxy:
         new_pos = self._parent._atoms.positions[self._index] * other
         self._parent._atoms.positions[self._index] = new_pos
         self._array = new_pos.copy()
-        self._parent._capture_state_diff()
+        self._capture_and_send_diff()
         return self
     
     def __itruediv__(self, other):
@@ -502,7 +517,7 @@ class _PositionProxy:
         new_pos = self._parent._atoms.positions[self._index] / other
         self._parent._atoms.positions[self._index] = new_pos
         self._array = new_pos.copy()
-        self._parent._capture_state_diff()
+        self._capture_and_send_diff()
         return self
     
     def __len__(self):

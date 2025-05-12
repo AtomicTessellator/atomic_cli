@@ -12,7 +12,6 @@ def test_basic_initialization():
     atoms_orig = molecule('H2O')
     atoms = ATAtoms(atoms_orig)
     assert len(atoms) == 3
-    assert len(atoms._deltas) >= 1
 
 
 def test_atomic_position_manipulation():
@@ -122,14 +121,14 @@ def test_positions_assignment():
 def test_delta_recording():
     """Test recording of deltas during operations."""
     atoms = ATAtoms(molecule('H2'), batch_size=100)  # Avoid actual syncing
-    initial_delta_count = len(atoms._deltas)
+    initial_diff_ct = len(atoms._diffs)
     
     # Perform several operations
     atoms.translate([1.0, 0.0, 0.0])
     atoms.rotate(45, 'z')
     atoms[0].position += [0.5, 0.0, 0.0]
     
-    assert len(atoms._deltas) > initial_delta_count
+    assert len(atoms._diffs) > initial_diff_ct
 
 
 def test_optimization_workflow():
@@ -139,7 +138,7 @@ def test_optimization_workflow():
     
     # Save initial positions and delta count
     initial_positions = atoms.positions.copy()
-    initial_delta_count = len(atoms._deltas)
+    initial_delta_count = len(atoms._diffs)
     
     # Setup calculator and optimizer
     atoms.calc = EMT()
@@ -152,7 +151,7 @@ def test_optimization_workflow():
     assert not np.allclose(atoms.positions, initial_positions)
     
     # Check that we recorded deltas during optimization
-    assert len(atoms._deltas) > initial_delta_count
+    assert len(atoms._diffs) > initial_delta_count
     
     # Check that forces were lowered
     forces = atoms.get_forces()
