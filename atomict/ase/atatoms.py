@@ -16,7 +16,7 @@ from ase.optimize import BFGS
 from ase.calculators.emt import EMT
 
 from deepdiff import DeepDiff
-from atomict.api import post
+from atomict.api import patch, post
 
 
 logger = logging.getLogger(__name__)
@@ -40,14 +40,15 @@ def track_state_changes():
             # Track state changes after the method call
             if hasattr(self, '_capture_state_diff'):
                 diff = self._capture_state_diff()
-                # Send diff right after capturing it
-                if hasattr(self, '_send_diff') and diff:
+                # Send diff right after capturing it only if not batching
+                if hasattr(self, '_send_diff') and diff and not self._batch_diffs:
                     logger.info(f"posting diff: {diff}")
                     self._send_diff(diff)
             
             return result
         return wrapper
     return decorator
+
 
 class ATAtoms:
     """
@@ -56,7 +57,8 @@ class ATAtoms:
     """
     
     def __init__(self, atoms: Atoms, server_url: Optional[str] = None, 
-                 batch_size: int = 10, sync_interval: float = 60.0):
+                 batch_size: int = 10, sync_interval: float = 60.0, project_id: Optional[str] = '',
+                 batch_diffs: bool = False):
         """
         Initialize the ATAtoms wrapper.
         
@@ -64,8 +66,10 @@ class ATAtoms:
         -----------
         atoms: ASE Atoms object to wrap
         server_url: URL of the server to send diffs to (if None, will use AT_SERVER env var)
-        batch_size: Number of diffs to accumulate before sending to server
+        batch_size: Number of diffs to accumulate before sending to server in a single request
         sync_interval: Maximum time in seconds between syncs to server
+        project_id: ID of the project to associate with the atoms
+        batch_diffs: Whether to batch diffs (False sends immediately, True uses batching)
         """
         # Validate that atoms is an ASE Atoms object
         if not isinstance(atoms, Atoms):
@@ -74,6 +78,7 @@ class ATAtoms:
         # Initialize core properties
         self._atoms = atoms
         self._server_url = server_url or os.environ.get('AT_SERVER')
+        self._project_id = project_id
         self._object_id = str(uuid.uuid4())
         self._batch_size = batch_size
         self._sync_interval = sync_interval
@@ -81,7 +86,9 @@ class ATAtoms:
         self._last_sync_time = time.time()
         self._seq_num = 0  # Initialize sequence number counter
         self._state_id = None  # Will be set after server initialization
+        self._run_id = None   # Will be set after run initialization
         self._initialized = False  # Flag to track initialization status
+        self._batch_diffs = batch_diffs
         
         # Initialize state tracking
         self._initial_state = self._get_current_state()  # Save the initial state
@@ -145,56 +152,91 @@ class ATAtoms:
             if response and 'id' in response:
                 self._state_id = response['id']
                 print(f"Successfully initialized state on server with ID: {self._state_id}")
+                
+                # Initialize a run with this state
+                if self._state_id:
+                    self._initialize_run_on_server()
             else:
                 print(f"Warning: Server response did not contain expected 'id' field: {response}")
             
         except Exception as e:
             print(f"Warning: Failed to initialize object on server: {e}")
     
+    def _initialize_run_on_server(self):
+        """Create an AtomicRun object on the server using the initial state"""
+        if not self._state_id:
+            print("Warning: Cannot initialize run without a valid state ID")
+            return
+            
+        try:
+            # Prepare run data
+            run_data = {
+                'id': str(uuid.uuid4()),
+                'name': f"ATAtomsRun-{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                'starting_state': self._state_id,
+                'end_state': self._state_id,  # Initially same as starting state
+                'project': self._project_id,
+                'metadata': json.dumps({
+                    'created_by': 'ATAtoms',
+                    'initial_structure_id': self._structure_id,
+                    'timestamp': datetime.datetime.now().isoformat()
+                })
+            }
+            # Use the API module to create the run
+            response = post(
+                'api/atatoms-runs',
+                run_data,
+            )
+            
+            # Store the run ID for future reference
+            if response and 'id' in response:
+                self._run_id = response['id']
+                print(f"Successfully initialized run on server with ID: {self._run_id}")
+            else:
+                print(f"Warning: Server response did not contain expected 'id' field: {response}")
+                
+        except Exception as e:
+            print(f"Warning: Failed to initialize run on server: {e}")
+    
     def _capture_state_diff(self):
         """
-        Capture differences between current and previous state and append to diffs array
+        Capture differences between current and previous state
         """
         current_state = self._get_current_state()
         serialized_current = self._serialize_state(current_state)
         
         # For initial state, just initialize on server without creating a diff
         if not self._initialized:
-            # Initialize on server first to get state_id
             self._initialize_on_server()
-            # Mark as initialized
             self._initialized = True
-            return None  # No diff for initial state
+            return None
         
-        # Generate diff using DeepDiff
         diff = DeepDiff(self._previous_state, serialized_current, verbose_level=1)
         
-        # Only record if there are actual changes
         if diff:
             timestamp = datetime.datetime.now().isoformat()
-            
-            # Record the diff for state tracking
-            self._diffs.append({
+            diff_item = {
                 'timestamp': timestamp,
                 'sequence': self._seq_num,
                 'diff': diff
-            })
+            }
             
-            # Update previous state for next comparison
             self._previous_state = serialized_current
-            self._seq_num += 1  # Increment sequence number
+            self._seq_num += 1
             
-            # Send diff only if we have a state_id from initialization
-            if self._state_id:
-                return diff
+            if self._batch_diffs:
+                # Add to batch if batching is enabled
+                self._diffs.append(diff_item)
+                
+                # Check if we should sync based on batch size or time interval
+                if (len(self._diffs) >= self._batch_size or 
+                    time.time() - self._last_sync_time >= self._sync_interval):
+                    self._sync_diffs()
             else:
-                print("Warning: Cannot send diff before initializing state on server")
-                # Try to initialize again
-                self._initialize_on_server()
-                # If initialization succeeds, return diff to be sent
-                if self._state_id:
-                    return diff
-        return None
+                # Send immediately if not batching
+                self._send_diff(diff)
+            
+        return diff
     
     # Add special property for calculator
     @property
@@ -390,7 +432,7 @@ class ATAtoms:
     
     def __del__(self):
         """Ensure any remaining diffs are synced before garbage collection"""
-        if hasattr(self, '_diffs') and self._diffs:
+        if hasattr(self, '_diffs') and self._diffs and self._batch_diffs:
             try:
                 self._sync_diffs()
             except:
@@ -423,7 +465,8 @@ class ATAtoms:
                 'sequence': self._seq_num - 1,  # Use the sequence number assigned to this diff
                 'timestamp': datetime.datetime.now().isoformat(),
                 'data': serialized_diff,
-                'state': self._state_id  # Use state_id as the reference to the state
+                'state': self._state_id,  # Use state_id as the reference to the state
+                'run': self._run_id  # Include the run ID if available
             }
             
             # Send the diff to the server
@@ -490,6 +533,11 @@ class ATAtoms:
             
             if response and 'id' in response:
                 logger.info(f"Successfully saved state on server with ID: {response['id']}")
+                
+                # Update the end state of the run if available
+                if self._run_id:
+                    self.update_run_end_state(response['id'])
+                    
                 return response
             else:
                 logger.warning(f"Server response did not contain expected 'id' field: {response}")
@@ -498,6 +546,33 @@ class ATAtoms:
         except Exception as e:
             logger.error(f"Failed to save state on server: {e}")
             return {"error": str(e)}
+
+    def update_run_end_state(self, state_id):
+        """Update the end state of the current run"""
+        if not self._run_id:
+            logger.warning("Cannot update run end state: no run ID available")
+            return
+            
+        try:
+            # Prepare update data
+            update_data = {
+                'end_state': state_id,
+                'updated_at': datetime.datetime.now().isoformat()
+            }
+            
+            # Use the API module to update the run
+            response = patch(
+                f'api/atatoms-runs/{self._run_id}',
+                update_data,
+            )
+            
+            if response and 'id' in response:
+                logger.info(f"Successfully updated run end state to {state_id}")
+            else:
+                logger.warning(f"Failed to update run end state: {response}")
+                
+        except Exception as e:
+            logger.error(f"Failed to update run end state: {e}")
 
     @classmethod
     def from_known_state(cls, state_id: str) -> 'ATAtoms':
@@ -516,11 +591,56 @@ class ATAtoms:
         """
         diff = self._capture_state_diff()
         
-        if diff and hasattr(self, '_send_diff'):
+        if diff and hasattr(self, '_send_diff') and not self._batch_diffs:
             logger.info(f"posting diff from optimization step")
             self._send_diff(diff)
             
         return True
+
+    def _sync_diffs(self):
+        """Send accumulated diffs to the server in a single request and clear the queue"""
+        if not self._diffs:
+            return
+        
+        if not self._state_id:
+            self._initialize_on_server()
+            if not self._state_id:
+                return
+            
+        try:
+            # Prepare batch of diffs
+            batch_data = {
+                'atomic_state_id': self._state_id,
+                'structure_id': self._structure_id,
+                'run': self._run_id,
+                'diffs': []
+            }
+            
+            # Add each diff to the batch
+            for diff_item in self._diffs:
+                serialized_diff = self._serialize_diff(diff_item['diff'])
+                
+                batch_data['diffs'].append({
+                    'sequence': diff_item['sequence'],
+                    'timestamp': diff_item['timestamp'],
+                    'data': serialized_diff
+                })
+            
+            # Send the batch in a single request
+            response = post(
+                'api/atatoms-diffs/batch',  # Use the new batch endpoint
+                batch_data,
+                extra_headers={'Content-Type': 'application/json'}
+            )
+            
+            logger.info(f"Sent batch of {len(self._diffs)} diffs to server")
+            
+            # Reset tracking variables
+            self._diffs = []
+            self._last_sync_time = time.time()
+            
+        except Exception as e:
+            logger.error(f"Failed to sync diff batch: {e}")
 
 
 class _AtomProxy:

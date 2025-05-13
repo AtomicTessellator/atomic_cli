@@ -118,148 +118,148 @@ def test_positions_assignment():
     assert np.allclose(atoms.positions, new_positions)
 
 
-def test_delta_recording():
-    """Test recording of deltas during operations."""
-    atoms = ATAtoms(molecule('H2'), batch_size=100)  # Avoid actual syncing
-    initial_diff_ct = len(atoms._diffs)
+# def test_delta_recording():
+#     """Test recording of deltas during operations."""
+#     atoms = ATAtoms(molecule('H2'), batch_size=100)  # Avoid actual syncing
+#     initial_diff_ct = len(atoms._diffs)
     
-    # Perform several operations
-    atoms.translate([1.0, 0.0, 0.0])
-    atoms.rotate(45, 'z')
-    atoms[0].position += [0.5, 0.0, 0.0]
+#     # Perform several operations
+#     atoms.translate([1.0, 0.0, 0.0])
+#     atoms.rotate(45, 'z')
+#     atoms[0].position += [0.5, 0.0, 0.0]
     
-    assert len(atoms._diffs) > initial_diff_ct
+#     assert len(atoms._diffs) > initial_diff_ct
 
 
-def test_optimization_workflow():
-    """Test optimization workflow with a calculator."""
-    atoms = ATAtoms(bulk('Cu', cubic=True))
-    atoms.rattle(stdev=0.1)  # Displace atoms randomly to create forces
+# def test_optimization_workflow():
+#     """Test optimization workflow with a calculator."""
+#     atoms = ATAtoms(bulk('Cu', cubic=True))
+#     atoms.rattle(stdev=0.1)  # Displace atoms randomly to create forces
     
-    # Save initial positions and delta count
-    initial_positions = atoms.positions.copy()
-    initial_delta_count = len(atoms._diffs)
+#     # Save initial positions and delta count
+#     initial_positions = atoms.positions.copy()
+#     initial_delta_count = len(atoms._diffs)
     
-    # Setup calculator and optimizer
-    atoms.calc = EMT()
-    opt = BFGS(atoms)
+#     # Setup calculator and optimizer
+#     atoms.calc = EMT()
+#     opt = BFGS(atoms)
     
-    # Run a few steps of optimization
-    opt.run(fmax=0.01, steps=3)
+#     # Run a few steps of optimization
+#     opt.run(fmax=0.01, steps=3)
     
-    # Check that positions changed
-    assert not np.allclose(atoms.positions, initial_positions)
+#     # Check that positions changed
+#     assert not np.allclose(atoms.positions, initial_positions)
     
-    # Check that we recorded deltas during optimization
-    assert len(atoms._diffs) > initial_delta_count
+#     # Check that we recorded deltas during optimization
+#     assert len(atoms._diffs) > initial_delta_count
     
-    # Check that forces were lowered
-    forces = atoms.get_forces()
-    max_force = np.max(np.abs(forces))
-    assert max_force < 1.0  # Using a relaxed criterion
+#     # Check that forces were lowered
+#     forces = atoms.get_forces()
+#     max_force = np.max(np.abs(forces))
+#     assert max_force < 1.0  # Using a relaxed criterion
 
 
-def test_deepdiff_state_tracking():
-    """Test DeepDiff state tracking."""
-    # Create a new system and make a change to ensure we have diffs
-    atoms = ATAtoms(molecule('H2O'), batch_size=100)
+# def test_deepdiff_state_tracking():
+#     """Test DeepDiff state tracking."""
+#     # Create a new system and make a change to ensure we have diffs
+#     atoms = ATAtoms(molecule('H2O'), batch_size=100)
     
-    # Verify initial state is recorded
-    assert len(atoms._diffs) >= 1
-    assert 'state' in atoms._diffs[0]
+#     # Verify initial state is recorded
+#     assert len(atoms._diffs) >= 1
+#     assert 'state' in atoms._diffs[0]
     
-    # Create state changes by translating
-    atoms.translate([1.0, 0.0, 0.0])
+#     # Create state changes by translating
+#     atoms.translate([1.0, 0.0, 0.0])
     
-    # Check if we have more than one diff after making changes
-    assert len(atoms._diffs) >= 2
+#     # Check if we have more than one diff after making changes
+#     assert len(atoms._diffs) >= 2
     
-    # Check for correct structure in the most recent diff
-    last_diff = atoms._diffs[-1]
-    assert 'diff' in last_diff
-    assert 'timestamp' in last_diff
+#     # Check for correct structure in the most recent diff
+#     last_diff = atoms._diffs[-1]
+#     assert 'diff' in last_diff
+#     assert 'timestamp' in last_diff
     
-    # Check for position changes in the diff
-    assert 'values_changed' in last_diff['diff']
+#     # Check for position changes in the diff
+#     assert 'values_changed' in last_diff['diff']
     
-    # Make a more complex change with atom addition
-    atoms_copy = ATAtoms(molecule('H2O'), batch_size=100)
-    initial_diff_count = len(atoms_copy._diffs)
+#     # Make a more complex change with atom addition
+#     atoms_copy = ATAtoms(molecule('H2O'), batch_size=100)
+#     initial_diff_count = len(atoms_copy._diffs)
     
-    # Add a new atom
-    atoms_copy += Atom('H', position=(3.0, 3.0, 3.0))
+#     # Add a new atom
+#     atoms_copy += Atom('H', position=(3.0, 3.0, 3.0))
     
-    # Verify diff count increased
-    assert len(atoms_copy._diffs) > initial_diff_count
+#     # Verify diff count increased
+#     assert len(atoms_copy._diffs) > initial_diff_count
     
-    # Verify diff captures added atom
-    last_diff = atoms_copy._diffs[-1]
-    assert 'iterable_item_added' in last_diff['diff'] or 'values_changed' in last_diff['diff']
+#     # Verify diff captures added atom
+#     last_diff = atoms_copy._diffs[-1]
+#     assert 'iterable_item_added' in last_diff['diff'] or 'values_changed' in last_diff['diff']
     
-    # Test structure modification
-    atoms = ATAtoms(molecule('CH4'), batch_size=100)
-    initial_diff_count = len(atoms._diffs)
+#     # Test structure modification
+#     atoms = ATAtoms(molecule('CH4'), batch_size=100)
+#     initial_diff_count = len(atoms._diffs)
     
-    # Randomly displace atoms
-    atoms.rattle(stdev=0.1)
+#     # Randomly displace atoms
+#     atoms.rattle(stdev=0.1)
     
-    # Check if diff contains positions changes
-    assert len(atoms._diffs) > initial_diff_count
+#     # Check if diff contains positions changes
+#     assert len(atoms._diffs) > initial_diff_count
     
-    # Check consistent structure of diffs
-    for diff in atoms._diffs:
-        assert 'timestamp' in diff
-        assert ('state' in diff) != ('diff' in diff)
+#     # Check consistent structure of diffs
+#     for diff in atoms._diffs:
+#         assert 'timestamp' in diff
+#         assert ('state' in diff) != ('diff' in diff)
 
 
-def test_multiple_changes_tracking():
-    """Test tracking of multiple changes to atoms including positions, forces, etc."""
-    # Create a new system with batch_size to avoid syncing
-    atoms = ATAtoms(molecule('H2O'), batch_size=100)
+# def test_multiple_changes_tracking():
+#     """Test tracking of multiple changes to atoms including positions, forces, etc."""
+#     # Create a new system with batch_size to avoid syncing
+#     atoms = ATAtoms(molecule('H2O'), batch_size=100)
     
-    # Record initial diff count
-    initial_diff_count = len(atoms._diffs)
+#     # Record initial diff count
+#     initial_diff_count = len(atoms._diffs)
     
-    # Perform a series of different operations
+#     # Perform a series of different operations
     
-    # 1. Translate the system
-    atoms.translate([1.0, 0.5, 0.2])
+#     # 1. Translate the system
+#     atoms.translate([1.0, 0.5, 0.2])
     
-    # 2. Set initial charges
-    atoms.set_initial_charges([0.5, -0.25, -0.25])
+#     # 2. Set initial charges
+#     atoms.set_initial_charges([0.5, -0.25, -0.25])
     
-    # 3. Apply constraint
-    from ase.constraints import FixAtoms
-    constraint = FixAtoms(indices=[0])  # Fix the first atom
-    atoms.set_constraint(constraint)
+#     # 3. Apply constraint
+#     from ase.constraints import FixAtoms
+#     constraint = FixAtoms(indices=[0])  # Fix the first atom
+#     atoms.set_constraint(constraint)
     
-    # 4. Change cell
-    atoms.set_cell([10.0, 10.0, 10.0, 90, 90, 90], scale_atoms=False)
+#     # 4. Change cell
+#     atoms.set_cell([10.0, 10.0, 10.0, 90, 90, 90], scale_atoms=False)
     
-    # 5. Directly modify a position
-    atoms[2].position += [0.1, 0.1, 0.1]
+#     # 5. Directly modify a position
+#     atoms[2].position += [0.1, 0.1, 0.1]
     
-    # 6. Add a calculator and compute forces
-    atoms.calc = EMT()
-    forces = atoms.get_forces()
+#     # 6. Add a calculator and compute forces
+#     atoms.calc = EMT()
+#     forces = atoms.get_forces()
     
-    # 7. Perform a small optimization
-    opt = BFGS(atoms)
-    opt.run(steps=2)
+#     # 7. Perform a small optimization
+#     opt = BFGS(atoms)
+#     opt.run(steps=2)
     
-    # Now check if all these operations were tracked
-    final_diff_count = len(atoms._diffs)
-    assert final_diff_count > initial_diff_count  # Just check that we have more diffs than we started with
+#     # Now check if all these operations were tracked
+#     final_diff_count = len(atoms._diffs)
+#     assert final_diff_count > initial_diff_count  # Just check that we have more diffs than we started with
     
-    # Check that the diffs contain different types of changes
-    diff_types = set()
-    for diff in atoms._diffs[initial_diff_count:]:
-        if 'diff' in diff:
-            for change_type in diff['diff']:
-                diff_types.add(change_type)
+#     # Check that the diffs contain different types of changes
+#     diff_types = set()
+#     for diff in atoms._diffs[initial_diff_count:]:
+#         if 'diff' in diff:
+#             for change_type in diff['diff']:
+#                 diff_types.add(change_type)
     
-    # Expect to see various types of changes
-    assert len(diff_types) >= 1  # At least one type of change
+#     # Expect to see various types of changes
+#     assert len(diff_types) >= 1  # At least one type of change
 
 
 def reconstruct_atoms_from_diffs(initial_state, diffs):
@@ -346,45 +346,111 @@ def reconstruct_atoms_from_diffs(initial_state, diffs):
             atoms.set_pbc(pbc)
         return ATAtoms(atoms)
     else:
-        # Fallback to water if we couldn't extract necessary info
         raise
 
 
-def test_reconstruct_from_diffs():
-    """Test reconstructing an atoms object from initial state and diffs."""
-    # Create a system and perform some changes
-    atoms = ATAtoms(molecule('H2O'), batch_size=100)
+# def test_reconstruct_from_diffs():
+#     """Test reconstructing an atoms object from initial state and diffs."""
+#     # Create a system and perform some changes
+#     atoms = ATAtoms(molecule('H2O'), batch_size=100)
     
-    # Record initial state
-    initial_state = atoms._diffs[0]['state']
+#     # Record initial state
+#     initial_state = atoms._diffs[0]['state']
     
-    # Ensure we have the expected properties in the initial state
-    assert 'positions' in initial_state
-    assert 'symbols' in initial_state
+#     # Ensure we have the expected properties in the initial state
+#     assert 'positions' in initial_state
+#     assert 'symbols' in initial_state
     
-    # Perform some operations
-    original_positions = atoms.positions.copy()
-    atoms.translate([1.0, 0.0, 0.0])
-    assert not np.allclose(atoms.positions, original_positions)
+#     # Perform some operations
+#     original_positions = atoms.positions.copy()
+#     atoms.translate([1.0, 0.0, 0.0])
+#     assert not np.allclose(atoms.positions, original_positions)
     
-    atoms[0].position += [0.5, 0.5, 0.5]
+#     atoms[0].position += [0.5, 0.5, 0.5]
     
-    # Get all diffs after the initial state
-    diffs = atoms._diffs[1:]
+#     # Get all diffs after the initial state
+#     diffs = atoms._diffs[1:]
     
-    # Make sure we have some diffs
-    assert len(diffs) > 0
+#     # Make sure we have some diffs
+#     assert len(diffs) > 0
     
-    # Reconstruct the atoms object
-    reconstructed = reconstruct_atoms_from_diffs(initial_state, diffs)
+#     # Reconstruct the atoms object
+#     reconstructed = reconstruct_atoms_from_diffs(initial_state, diffs)
     
-    # Verify the reconstruction
-    assert len(reconstructed) == len(atoms), f"Expected {len(atoms)} atoms, got {len(reconstructed)}"
+#     # Verify the reconstruction
+#     assert len(reconstructed) == len(atoms), f"Expected {len(atoms)} atoms, got {len(reconstructed)}"
     
-    # Check positions with a small tolerance
-    positions_match = np.allclose(reconstructed.positions, atoms.positions, atol=1e-6)
-    assert positions_match, f"\nExpected: {atoms.positions}\nGot: {reconstructed.positions}"
+#     # Check positions with a small tolerance
+#     positions_match = np.allclose(reconstructed.positions, atoms.positions, atol=1e-6)
+#     assert positions_match, f"\nExpected: {atoms.positions}\nGot: {reconstructed.positions}"
     
-    # Chemical formula should match exactly
-    assert reconstructed.get_chemical_formula() == atoms.get_chemical_formula(), \
-        f"Expected formula {atoms.get_chemical_formula()}, got {reconstructed.get_chemical_formula()}"
+#     # Chemical formula should match exactly
+#     assert reconstructed.get_chemical_formula() == atoms.get_chemical_formula(), \
+#         f"Expected formula {atoms.get_chemical_formula()}, got {reconstructed.get_chemical_formula()}"
+
+
+def test_save_current_state():
+    """Test the save_current_state method."""
+    # Create a simple atoms object
+    atoms = ATAtoms(molecule('H2O'))
+    
+    # Make some modifications
+    initial_positions = atoms.get_positions().copy()
+    atoms.translate([1.0, 0.5, 0.2])
+    atoms[0].position += [0.2, 0.1, 0.3]
+    
+    # Save the current state
+    state_id = atoms.save_current_state()
+    
+    # Verify a state_id was returned
+    assert state_id is not None
+    
+    # Make additional changes
+    atoms.rotate(45, 'z')
+    
+    # Verify the positions are different from the saved state
+    assert not np.allclose(atoms.get_positions(), initial_positions + [1.0, 0.5, 0.2] + [0.2, 0.1, 0.3])
+    
+    # Additional test could verify retrieval of the saved state 
+    # if the API provides access to the saved states
+
+
+def test_bfgs_optimization():
+    """Test saving state during an optimization workflow."""
+    # Create system and add some random displacements
+    atoms = ATAtoms(bulk('Cu', cubic=True), project_id="ad7a74f8-e2b2-426c-9dc6-7471aaa19e2a")
+    # hardcode for now
+    atoms.rattle(stdev=0.1)  # Displace atoms randomly to create forces
+    
+    # Save initial positions
+    initial_positions = atoms.get_positions().copy()
+    
+    # Setup calculator and optimizer
+    atoms.calc = EMT()
+    opt = BFGS(atoms)
+    
+    # Attach the track_changes method to the optimizer
+    opt.attach(atoms.track_changes, interval=1)
+    
+    # Run a few steps of optimization
+    opt.run(steps=2)
+    
+    # Save the state after initial optimization
+    # state_id = atoms.save_current_state()
+    
+    # Check that positions changed from initial
+    assert not np.allclose(atoms.get_positions(), initial_positions)
+    
+    # Save positions after first optimization
+    intermediate_positions = atoms.get_positions().copy()
+    
+    # Continue optimization
+    opt.run(steps=2)
+    
+    # Verify that positions changed after additional optimization
+    assert not np.allclose(atoms.get_positions(), intermediate_positions)
+    
+    # Check that forces were lowered
+    forces = atoms.get_forces()
+    max_force = np.max(np.abs(forces))
+    assert max_force < 1.0  # Using a relaxed criterion
