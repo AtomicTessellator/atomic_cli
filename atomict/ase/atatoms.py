@@ -232,9 +232,6 @@ class ATAtoms:
                 if (len(self._diffs) >= self._batch_size or 
                     time.time() - self._last_sync_time >= self._sync_interval):
                     self._sync_diffs()
-            else:
-                # Send immediately if not batching
-                self._send_diff(diff)
             
         return diff
     
