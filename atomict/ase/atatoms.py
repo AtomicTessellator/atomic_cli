@@ -143,7 +143,7 @@ class ATAtoms:
             }
             # Use the API module to make the request
             response = post(
-                'api/atatoms-states', 
+                'api/atatoms-states/', 
                 state_data,
                 extra_headers={'Content-Type': 'application/json'}
             )
@@ -184,7 +184,7 @@ class ATAtoms:
             }
             # Use the API module to create the run
             response = post(
-                'api/atatoms-runs',
+                'api/atatoms-runs/',
                 run_data,
             )
             
@@ -471,7 +471,7 @@ class ATAtoms:
             
             # Send the diff to the server
             response = post(
-                'api/atatoms-diffs',
+                'api/atatoms-diffs/',
                 diff_data,
                 extra_headers={'Content-Type': 'application/json'}
             )
@@ -526,7 +526,7 @@ class ATAtoms:
             # Send the state to server
             logger.info(f"Saving current state with structure_id: {structure_id}")
             response = post(
-                'api/atatoms-states', 
+                'api/atatoms-states/', 
                 state_data,
                 extra_headers={'Content-Type': 'application/json'}
             )
@@ -562,7 +562,7 @@ class ATAtoms:
             
             # Use the API module to update the run
             response = patch(
-                f'api/atatoms-runs/{self._run_id}',
+                f'api/atatoms-runs/{self._run_id}/',
                 update_data,
             )
             
@@ -628,7 +628,7 @@ class ATAtoms:
             
             # Send the batch in a single request
             response = post(
-                'api/atatoms-diffs/batch',  # Use the new batch endpoint
+                'api/atatoms-diffs/batch/',  # Use the new batch endpoint
                 batch_data,
                 extra_headers={'Content-Type': 'application/json'}
             )
