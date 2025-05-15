@@ -45,8 +45,8 @@ def setup_logging(verbose: bool):
 @click.command(name="convert")
 @click.argument("input_file")
 @click.argument("output_file")
-@click.option("--allow-int-keys", is_flag=True, default=False, help="Allow integer keys in msgpack files (sets strict_map_key=False)")
-def convert_command(input_file, output_file, allow_int_keys):
+@click.option("--strict-map-keys", is_flag=True, default=False, help="Enable strict map keys in msgpack files (sets strict_map_key=True)")
+def convert_command(input_file, output_file, strict_map_key):
     """Convert between atomic structure file formats using ASE
 
     Supports all formats that ASE can read/write, with special handling for .atm and .atraj files.
@@ -56,7 +56,7 @@ def convert_command(input_file, output_file, allow_int_keys):
       tess input.traj output.atraj
       
     Options:
-      --allow-int-keys  Allow integer keys in msgpack files (default: False)
+      --strict-map-key  Enable strict map keys in msgpack files (default: False)
     """
     try:
         import os.path
@@ -94,7 +94,6 @@ def convert_command(input_file, output_file, allow_int_keys):
         if input_ext not in RW_FORMATS and input_ext not in msgpack_formats and input_ext not in traj_msgpack_formats:
             console.print(f"[red]Error: Format '{input_ext}' is not supported for reading.[/red]")
             console.print("[yellow]Supported read/write formats include:[/yellow]")
-            # Display formats in multiple columns for better readability
             for i in range(0, len(RW_FORMATS), 5):
                 console.print("[yellow]  " + ", ".join(RW_FORMATS[i:i+5]) + "[/yellow]")
             console.print("[yellow]Special formats: atm (msgpack), atraj (msgpack trajectory)[/yellow]")
@@ -103,15 +102,11 @@ def convert_command(input_file, output_file, allow_int_keys):
         if output_ext not in RW_FORMATS and output_ext not in msgpack_formats and output_ext not in traj_msgpack_formats:
             console.print(f"[red]Error: Format '{output_ext}' is not supported for writing.[/red]")
             console.print("[yellow]Supported read/write formats include:[/yellow]")
-            # Display formats in multiple columns for better readability
             for i in range(0, len(RW_FORMATS), 5):
                 console.print("[yellow]  " + ", ".join(RW_FORMATS[i:i+5]) + "[/yellow]")
             console.print("[yellow]Special formats: atm (msgpack), atraj (msgpack trajectory)[/yellow]")
             return
 
-        # The strict_map_key parameter is the opposite of allow_int_keys
-        strict_map_key = not allow_int_keys
-        
         try:
             if input_ext in msgpack_formats:
                 atoms = load_msgpack(input_file, strict_map_key=strict_map_key)
@@ -125,10 +120,8 @@ def convert_command(input_file, output_file, allow_int_keys):
             console.print("[yellow]Make sure the file has the correct extension for its format.[/yellow]")
             return
         except Exception as e:
-            console.print(f"[red]Error reading input file '{input_file}': {str(e)}. If loading .atraj, try adding the --allow-int-keys flag.[/red]")
+            console.print(f"[red]Error reading input file '{input_file}': {str(e)}.[/red]")
             console.print(f"[yellow]Make sure '{input_ext}' is a valid format and the file is not corrupted.[/yellow]")
-            if "using a non-string key" in str(e) and strict_map_key:
-                console.print("[yellow]Try using --allow-int-keys to allow integer keys in the msgpack file.[/yellow]")
             return
         
         try:
@@ -169,7 +162,7 @@ def cli(ctx, verbose: bool):
     """Atomic Tessellator CLI - Manage simulations and computational resources
     
     Dynamic commands (takes positional arguments only):\n
-      tess [file_a] [file_b] Optional[--allow-int-keys] Filetype conversion from a -> b
+      tess [file_a] [file_b] Optional[--strict-map-key] Filetype conversion from a -> b
     """
     setup_logging(verbose)
     
@@ -219,15 +212,11 @@ end
 
 
 cli.add_command(completion)
-
-# TODO: rename these to group
-cli.add_command(task.task)
-cli.add_command(upload.upload)
-cli.add_command(project.project)
-cli.add_command(k8s.k8s)
-cli.add_command(adsorbate.adsorbate)
-
-# raise commands to top-level
+cli.add_command(task.task_group)
+cli.add_command(upload.upload_group)
+cli.add_command(project.project_group)
+cli.add_command(k8s.k8s_group)
+cli.add_command(adsorbate.adsorbate_group)
 cli.add_command(fhiaims.fhiaims_group)
 cli.add_command(kpoint.kpoint_group)
 cli.add_command(catalysis.catalysis_group)  # WIP
@@ -237,34 +226,20 @@ cli.add_command(traj.traj)
 cli.add_command(user.user_group)
 cli.add_command(login._login)
 cli.add_command(vibes.vibes_group)
-# from .commands.exploration import exploration_group
-# cli.add_command(exploration.exploration)  # move this
-# TBD: decide on how to group or put all commands at top level
-# standardize this later
-# cli.add_command(exploration_group)
-
-# we could do `at [exploration/simulation/project/user/etc] [get/create/delete] [id]`
-# OR
-# `at [get/create/delete] [exploration/simulation/project/user/etc] [id]`
-# OR
-# some other grouping that reflects a user's workflow
 
 
 def main():
     try:
-        # Check if we have a simple file conversion case
         if len(sys.argv) >= 3:
+            # special case of "nameless" command
             arg1 = sys.argv[1]
             arg2 = sys.argv[2]
             if '.' in arg1 and '.' in arg2:
-                # Default is False (don't allow int keys)
-                allow_int_keys = False
-                
-                # Check if --allow-int-keys flag is present in the arguments
-                if "--allow-int-keys" in sys.argv:
-                    allow_int_keys = True
+                strict_map_keys = False
+                if "--strict-map-keys" in sys.argv:
+                    strict_map_keys = True
                     
-                convert_command.callback(arg1, arg2, allow_int_keys)
+                convert_command.callback(arg1, arg2, strict_map_keys)
                 return
 
         cli()

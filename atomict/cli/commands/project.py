@@ -15,12 +15,12 @@ console = Console()
 
 
 @click.group(name="project")
-def project():
+def project_group():
     """Manage projects and their related resources"""
     pass
 
 
-@project.command()
+@project_group.command()
 @click.argument("id", required=False)
 @click.option("--search", help="Search term")
 @click.option("--ordering", help="Field to order results by")
@@ -143,7 +143,7 @@ def get(
         console.print(table)
 
 
-@project.command()
+@project_group.command()
 @click.option("--name", required=True, help="Project name")
 @click.option("--description", help="Project description")
 @click.option("--json-output", is_flag=True, help="Output in JSON format")
@@ -166,7 +166,7 @@ def create(name: str, description: Optional[str] = None, json_output: bool = Fal
         console.print(f"Created project with ID: {result['id']}")
 
 
-@project.command()
+@project_group.command()
 @click.argument("id")
 def delete(id: str):
     """Delete a project"""
@@ -176,7 +176,7 @@ def delete(id: str):
     console.print(f"[green]Deleted project {id}[/green]")
 
 
-@project.command()
+@project_group.command()
 @click.argument("id", required=False)
 @click.option("--search", help="Search term")
 @click.option("--ordering", help="Field to order results by")
@@ -259,7 +259,7 @@ def get_note(
         console.print(table)
 
 
-@project.command()
+@project_group.command()
 @click.option("--project", required=True, help="Project ID")
 @click.option("--title", required=True, help="Note title")
 @click.option("--content", help="Note content")
@@ -286,7 +286,7 @@ def create_note(
         console.print(f"[green]Created note with ID: {result['id']}[/green]")
 
 
-@project.command()
+@project_group.command()
 @click.argument("id")
 def delete_note(id: str):
     """Delete a project note"""
@@ -296,7 +296,7 @@ def delete_note(id: str):
     console.print(f"[green]Deleted note {id}[/green]")
 
 
-@project.command()
+@project_group.command()
 @click.argument("id", required=False)
 @click.option("--search", help="Search term")
 @click.option("--ordering", help="Field to order results by")
@@ -378,7 +378,7 @@ def get_star(
         console.print(table)
 
 
-@project.command()
+@project_group.command()
 @click.option("--project", required=True, help="Project ID to star")
 @click.option("--json-output", is_flag=True, help="Output in JSON format")
 def create_star(project: str, json_output: bool = False):
@@ -397,7 +397,7 @@ def create_star(project: str, json_output: bool = False):
         console.print(f"[green]Starred project {project}[/green]")
 
 
-@project.command()
+@project_group.command()
 @click.argument("id")
 def delete_star(id: str):
     """Unstar a project"""
@@ -407,7 +407,7 @@ def delete_star(id: str):
     console.print(f"[green]Unstarred project {id}[/green]")
 
 
-@project.command()
+@project_group.command()
 @click.argument("id", required=False)
 @click.option("--search", help="Search term")
 @click.option("--ordering", help="Field to order results by")
@@ -487,7 +487,7 @@ def get_tag(
         console.print(table)
 
 
-@project.command()
+@project_group.command()
 @click.option("--tag", required=True, help="Tag name")
 @click.option("--color", default="white", help="Tag color")
 @click.option("--json-output", is_flag=True, help="Output in JSON format")
@@ -511,7 +511,7 @@ def create_tag(tag: str, color: str = "white", json_output: bool = False):
         )
 
 
-@project.command()
+@project_group.command()
 @click.argument("id")
 def delete_tag(id: str):
     """Delete a project tag"""
@@ -521,7 +521,7 @@ def delete_tag(id: str):
     console.print(f"[green]Deleted tag {id}[/green]")
 
 
-@project.command()
+@project_group.command()
 @click.argument("id", required=False)
 @click.option("--search", help="Search term")
 @click.option("--ordering", help="Field to order results by")
@@ -610,7 +610,7 @@ def get_tag_project(
         console.print(table)
 
 
-@project.command()
+@project_group.command()
 @click.option("--project", required=True, help="Project ID")
 @click.option("--tag", required=True, help="Tag ID")
 @click.option("--json-output", is_flag=True, help="Output in JSON format")
@@ -632,7 +632,7 @@ def create_tag_project(project: str, tag: str, json_output: bool = False):
         console.print(f"[green]Assigned tag {tag} to project {project}[/green]")
 
 
-@project.command()
+@project_group.command()
 @click.argument("id")
 def delete_tag_project(id: str):
     """Remove a tag assignment from a project"""
@@ -761,7 +761,7 @@ def delete_tag_project(id: str):
 #     console.print(f"[green]Deleted workbench layout {id}[/green]")
 
 
-@project.command()
+@project_group.command()
 @click.argument("id", required=False)
 @click.option("--search", help="Search term")
 @click.option("--ordering", help="Field to order results by")
@@ -846,7 +846,7 @@ def get_molecule(
         console.print(table)
 
 
-@project.command()
+@project_group.command()
 @click.option("--project", required=True, help="Project ID")
 @click.option("--json-output", is_flag=True, help="Output in JSON format")
 def create_molecule(project: str, json_output: bool = False):
@@ -866,7 +866,7 @@ def create_molecule(project: str, json_output: bool = False):
         console.print(f"[green]Added project-molecule {project}[/green]")
 
 
-@project.command()
+@project_group.command()
 @click.argument("id")
 def delete_molecule(id: str):
     """Remove a molecule from a project"""
