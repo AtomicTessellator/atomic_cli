@@ -8,9 +8,7 @@ from rich.console import Console
 
 from atomict.__version__ import __version__
 from atomict.cli.commands import login, user
-from atomict.io.msgpack import load_msgpack
-
-# Import command groups
+from atomict.cli.ext.custom_classes import DefaultCommandGroup
 from .commands import adsorbate, catalysis, k8s, project, task, traj, upload
 from .commands.exploration import soec, sqs
 from .commands.simulation import fhiaims, kpoint, vibes
@@ -21,32 +19,45 @@ console = Console()
 def setup_logging(verbose: bool):
     """Configure logging based on verbose flag and AT_DEBUG env var"""
     if os.getenv("AT_DEBUG") == "enabled":
-        # Most verbose logging when AT_DEBUG is set
         logging.basicConfig(
             level=logging.DEBUG,
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             handlers=[logging.StreamHandler(), logging.FileHandler("atomict.log")],
         )
-        # Also enable HTTP library debugging
         logging.getLogger("httpx").setLevel(logging.DEBUG)
         logging.getLogger("httpcore").setLevel(logging.DEBUG)
-
-        # Log some debug info
         logging.debug("Debug mode enabled via AT_DEBUG")
         logging.debug(f'Python path: {os.getenv("PYTHONPATH")}')
         logging.debug(f"Working directory: {os.getcwd()}")
     else:
-        # Normal logging based on verbose flag
         level = logging.DEBUG if verbose else logging.ERROR
         logging.basicConfig(
             level=level, format="%(asctime)s - %(levelname)s - %(message)s"
         )
 
-@click.command(name="convert")
-@click.argument("input_file")
-@click.argument("output_file")
+
+@click.group(cls=DefaultCommandGroup, invoke_without_command=True)
+@click.option(
+    "-v", "--verbose", is_flag=True, default=False, help="Enable verbose output"
+)
+@click.version_option(prog_name="tess", version=__version__)
+@click.pass_context
+def cli(ctx, verbose: bool):
+    """Atomic Tessellator CLI - Manage simulations and computational resources
+    
+    Default behavior: when called with two file arguments, converts between file formats.
+    """
+    setup_logging(verbose)
+
+    if ctx.invoked_subcommand is None and len(sys.argv) <= 1:
+        click.echo(ctx.get_help())
+
+
+@cli.command(default_command=True)
+@click.argument("input_file", required=True)
+@click.argument("output_file", required=True)
 @click.option("--strict-map-keys", is_flag=True, default=False, help="Enable strict map keys in msgpack files (sets strict_map_key=True)")
-def convert_command(input_file, output_file, strict_map_key):
+def convert(input_file, output_file, strict_map_keys):
     """Convert between atomic structure file formats using ASE
 
     Supports all formats that ASE can read/write, with special handling for .atm and .atraj files.
@@ -56,8 +67,8 @@ def convert_command(input_file, output_file, strict_map_key):
       tess input.traj output.atraj
       
     Options:
-      --strict-map-key  Enable strict map keys in msgpack files (default: False)
-    """
+      --strict-map-keys  Enable strict map keys in msgpack files (default: False)
+    """ 
     try:
         import os.path
         from ase.io import read, write
@@ -87,9 +98,8 @@ def convert_command(input_file, output_file, strict_map_key):
             console.print(f"[red]Error: Input file '{input_file}' not found.[/red]")
             return
 
-        # Consider .atm and .atraj as special msgpack formats
         msgpack_formats = ["atm"]
-        traj_msgpack_formats = ["atraj"]  # Separate trajectory msgpack format
+        traj_msgpack_formats = ["atraj"]
         
         if input_ext not in RW_FORMATS and input_ext not in msgpack_formats and input_ext not in traj_msgpack_formats:
             console.print(f"[red]Error: Format '{input_ext}' is not supported for reading.[/red]")
@@ -109,9 +119,9 @@ def convert_command(input_file, output_file, strict_map_key):
 
         try:
             if input_ext in msgpack_formats:
-                atoms = load_msgpack(input_file, strict_map_key=strict_map_key)
+                atoms = load_msgpack(input_file, strict_map_key=strict_map_keys)
             elif input_ext in traj_msgpack_formats:
-                atoms, _ = load_msgpack_trajectory(input_file, strict_map_key=strict_map_key)
+                atoms, _ = load_msgpack_trajectory(input_file, strict_map_key=strict_map_keys)
             else:
                 atoms = read(input_file)
         except UnknownFileTypeError:
@@ -151,27 +161,6 @@ def convert_command(input_file, output_file, strict_map_key):
         console.print("[yellow]Try running with --verbose for more detailed error information.[/yellow]")
 
 
-# Create main CLI group
-@click.group(invoke_without_command=True)
-@click.option(
-    "-v", "--verbose", is_flag=True, default=False, help="Enable verbose output"
-)
-@click.version_option(prog_name="tess", version=__version__)
-@click.pass_context
-def cli(ctx, verbose: bool):
-    """Atomic Tessellator CLI - Manage simulations and computational resources
-    
-    Dynamic commands (takes positional arguments only):\n
-      tess [file_a] [file_b] Optional[--strict-map-key] Filetype conversion from a -> b
-    """
-    setup_logging(verbose)
-    
-    # Show help if no subcommand was provided
-    if ctx.invoked_subcommand is None:
-        click.echo(ctx.get_help())
-
-
-# Add a completion command
 @cli.command(hidden=True)
 @click.argument("shell", type=click.Choice(["bash", "zsh", "fish"]), required=False)
 def completion(shell):
@@ -180,7 +169,7 @@ def completion(shell):
         shell = os.environ.get("SHELL", "")
         shell = shell.split("/")[-1]
         if shell not in ["bash", "zsh", "fish"]:
-            shell = "bash"  # default to bash if shell not detected
+            shell = "bash"
 
     completion_script = None
     if shell == "bash":
@@ -219,7 +208,7 @@ cli.add_command(k8s.k8s_group)
 cli.add_command(adsorbate.adsorbate_group)
 cli.add_command(fhiaims.fhiaims_group)
 cli.add_command(kpoint.kpoint_group)
-cli.add_command(catalysis.catalysis_group)  # WIP
+cli.add_command(catalysis.catalysis_group)
 cli.add_command(sqs.sqs_group)
 cli.add_command(soec.soecexploration_group)
 cli.add_command(traj.traj)
@@ -230,18 +219,6 @@ cli.add_command(vibes.vibes_group)
 
 def main():
     try:
-        if len(sys.argv) >= 3:
-            # special case of "nameless" command
-            arg1 = sys.argv[1]
-            arg2 = sys.argv[2]
-            if '.' in arg1 and '.' in arg2:
-                strict_map_keys = False
-                if "--strict-map-keys" in sys.argv:
-                    strict_map_keys = True
-                    
-                convert_command.callback(arg1, arg2, strict_map_keys)
-                return
-
         cli()
     except Exception as exc:
         Console().print(f"[red]Error: {str(exc)}. Exiting...[/red]")
