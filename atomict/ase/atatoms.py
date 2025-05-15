@@ -469,8 +469,8 @@ class ATAtoms:
         
         try:
             # Get current state to include in the request
-            current_state = self._get_current_state()
-            serialized_current = self._serialize_state(current_state)
+            # current_state = self._get_current_state()
+            # serialized_current = self._serialize_state(current_state)
             
             # Serialize the diff to make it JSON compatible
             serialized_diff = self._serialize_diff(diff)
