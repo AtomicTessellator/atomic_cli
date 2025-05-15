@@ -39,11 +39,8 @@ def track_state_changes():
             logger.info(f"got {func.__name__} result: {result}")
             # Track state changes after the method call
             if hasattr(self, '_capture_state_diff'):
-                diff = self._capture_state_diff()
-                # Send diff right after capturing it only if not batching
-                if hasattr(self, '_send_diff') and diff and not self._batch_diffs:
-                    logger.info(f"posting diff: {diff}")
-                    self._send_diff(diff)
+                logger.info(f"Capturing diff after {func.__name__}")
+                self._capture_state_diff()
             
             return result
         return wrapper
@@ -207,14 +204,16 @@ class ATAtoms:
         
         # For initial state, just initialize on server without creating a diff
         if not self._initialized:
+            logger.info("Initializing on server (first state)")
             self._initialize_on_server()
             self._initialized = True
             return None
         
-        diff = DeepDiff(self._previous_state, serialized_current, verbose_level=1, view='tree')
+        diff = DeepDiff(self._previous_state, serialized_current, verbose_level=1, )
         
         if diff:
             timestamp = datetime.datetime.now().isoformat()
+            logger.info(f"State change detected, creating diff with seq_num={self._seq_num}")
             diff_item = {
                 'timestamp': timestamp,
                 'sequence': self._seq_num,
@@ -223,17 +222,22 @@ class ATAtoms:
             
             self._previous_state = serialized_current
             self._seq_num += 1
+            logger.info(f"Incremented internal seq_num to {self._seq_num}")
             
             if self._batch_diffs:
                 # Add to batch if batching is enabled
+                logger.info(f"Adding diff to batch queue (queue size now: {len(self._diffs)+1})")
                 self._diffs.append(diff_item)
                 
                 # Check if we should sync based on batch size or time interval
                 if (len(self._diffs) >= self._batch_size or 
                     time.time() - self._last_sync_time >= self._sync_interval):
+                    logger.info(f"Batch threshold reached, syncing {len(self._diffs)} diffs")
                     self._sync_diffs()
-            
-        return diff
+            else:
+                self._send_diff(diff)
+        else:
+            logger.info("No state change detected")
     
     # Add special property for calculator
     @property
@@ -458,7 +462,7 @@ class ATAtoms:
         """
         # Don't attempt to send if we don't have a state_id yet
         if not self._state_id:
-            print("Warning: Cannot send diff without state_id. Attempting to initialize on server first.")
+            logger.warning("Cannot send diff without state_id. Attempting to initialize on server first.")
             self._initialize_on_server()
             if not self._state_id:
                 return None
@@ -483,19 +487,21 @@ class ATAtoms:
                 'run': self._run_id  # Include the run ID if available
             }
             
+            logger.info(f"Sending diff to server with sequence={self._seq_num - 1}")
+            
             # Send the diff to the server
             response = post(
-                'api/atatoms-diffs/',
+                'api/atatoms-diffs/', 
                 diff_data,
                 extra_headers={'Content-Type': 'application/json'}
             )
             
             if not response:
-                print("Warning: Empty response when sending diff to server")
+                logger.warning("Empty response when sending diff to server")
             
             return response
         except Exception as e:
-            print(f"Warning: Failed to send diff to server: {e}")
+            logger.error(f"Failed to send diff to server: {e}")
             return None
 
     def save_current_state(self) -> Dict[str, Any]:
@@ -595,6 +601,8 @@ class ATAtoms:
 
     def track_changes(self):
         """
+        DEPRECATED
+
         Simple callback for ASE optimizers to track changes.
         Calculates diff between previous and current state and sends if changes exist.
         
@@ -603,12 +611,9 @@ class ATAtoms:
             opt.attach(atoms.track_changes, interval=1)
             opt.run(fmax=0.02)
         """
-        diff = self._capture_state_diff()
-        
-        if diff and hasattr(self, '_send_diff') and not self._batch_diffs:
-            logger.info(f"posting diff from optimization step")
-            self._send_diff(diff)
-            
+        logger.info("track_changes callback invoked")
+        self._capture_state_diff()
+        # this may work without attaching now
         return True
 
     def _sync_diffs(self):
@@ -671,12 +676,9 @@ class _AtomProxy:
     
     @position.setter
     def position(self, value):
+        logger.info(f"Setting position for atom {self._index}")
         self._parent._atoms.positions[self._index] = value
-        diff = self._parent._capture_state_diff()
-        # Send diff if it exists
-        if diff and hasattr(self._parent, '_send_diff'):
-            logger.info(f"posting diff from atom proxy: {diff}")
-            self._parent._send_diff(diff)
+        self._parent._capture_state_diff()
     
     def __getattr__(self, name):
         # Forward all other attributes to the actual atom
@@ -688,12 +690,9 @@ class _AtomProxy:
             object.__setattr__(self, name, value)
         else:
             # Apply changes to the atom and record diff
+            logger.info(f"Setting attribute {name} for atom {self._index}")
             setattr(self._parent._atoms[self._index], name, value)
-            diff = self._parent._capture_state_diff()
-            # Send diff if it exists
-            if diff and hasattr(self._parent, '_send_diff'):
-                logger.info(f"posting diff from atom proxy: {diff}")
-                self._parent._send_diff(diff)
+            self._parent._capture_state_diff()
 
 
 class _PositionProxy:
@@ -706,11 +705,8 @@ class _PositionProxy:
     
     def _capture_and_send_diff(self):
         """Helper method to capture and send diffs"""
-        diff = self._parent._capture_state_diff()
-        # Send diff if it exists
-        if diff and hasattr(self._parent, '_send_diff'):
-            logger.info(f"posting diff from position proxy: {diff}")
-            self._parent._send_diff(diff)
+        logger.info(f"Capturing diff from position proxy for atom {self._index}")
+        self._parent._capture_state_diff()
 
     def __array__(self, dtype=None):
         """Make this behave like a numpy array"""
