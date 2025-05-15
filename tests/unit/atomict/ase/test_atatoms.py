@@ -5,6 +5,8 @@ from ase import Atom
 from ase.calculators.emt import EMT
 from ase.optimize import BFGS
 from atomict.ase.atatoms import ATAtoms
+from ase.atoms import Atoms
+from ase.constraints import UnitCellFilter
 
 
 def test_basic_initialization():
@@ -414,7 +416,9 @@ def test_save_current_state():
     # Additional test could verify retrieval of the saved state 
     # if the API provides access to the saved states
 
-
+##########################################
+### below tests are for manual testing ###
+##########################################
 def test_bfgs_optimization():
     """Test saving state during an optimization workflow."""
     # Create system and add some random displacements
@@ -454,3 +458,153 @@ def test_bfgs_optimization():
     forces = atoms.get_forces()
     max_force = np.max(np.abs(forces))
     assert max_force < 1.0  # Using a relaxed criterion
+
+
+def create_malachite():
+    # Malachite crystallizes in the monoclinic system
+    # Space group: P21/a (No. 14)
+    
+    # Lattice parameters (in Angstroms and degrees)
+    a = 9.502
+    b = 11.974
+    c = 3.240
+    alpha = 90.0
+    beta = 98.75
+    gamma = 90.0
+    
+    # Fractional coordinates of atoms in the unit cell
+    # These are approximate positions based on crystallographic data
+    # Cu positions
+    cu1_pos = (0.0, 0.0, 0.0)
+    cu2_pos = (0.5, 0.5, 0.0)
+    
+    # C position
+    c_pos = (0.25, 0.25, 0.5)
+    
+    # O positions (including both carbonate oxygens and hydroxyl oxygens)
+    o1_pos = (0.3, 0.3, 0.5)   # carbonate oxygen
+    o2_pos = (0.2, 0.15, 0.5)  # carbonate oxygen
+    o3_pos = (0.25, 0.35, 0.5) # carbonate oxygen
+    o4_pos = (0.1, 0.05, 0.0)  # hydroxyl oxygen
+    o5_pos = (0.4, 0.45, 0.0)  # hydroxyl oxygen
+    
+    # H positions (for hydroxyl groups)
+    h1_pos = (0.15, 0.08, 0.0)
+    h2_pos = (0.35, 0.42, 0.0)
+    
+    # Create the atoms object with the unit cell
+    malachite = Atoms('Cu2CO5H2',
+                     positions=[cu1_pos, cu2_pos, c_pos, 
+                               o1_pos, o2_pos, o3_pos, o4_pos, o5_pos, 
+                               h1_pos, h2_pos],
+                     cell=[a, b, c, alpha, beta, gamma],
+                     pbc=True)
+    
+    # Convert fractional to cartesian coordinates
+    cell = malachite.get_cell()
+    positions = malachite.get_positions()
+    positions = np.dot(positions, cell)
+    malachite.set_positions(positions)
+    
+    return malachite
+
+
+def test_all_the_things():
+    """Test all ASE atoms operations on ATAtoms objects."""
+    # Initialize ATAtoms with project_id
+    malachite = create_malachite()
+    atoms = ATAtoms(malachite, project_id="ad7a74f8-e2b2-426c-9dc6-7471aaa19e2a")
+    
+    # Geometry optimization
+    atoms.set_calculator(EMT())
+    opt = BFGS(atoms)
+    opt.run(fmax=0.01)
+    
+    # Cell relaxation (shape/volume change)
+    # atoms = ATAtoms(bulk('Al').repeat((2, 2, 2)), project_id="ad7a74f8-e2b2-426c-9dc6-7471aaa19e2a")
+    atoms.set_calculator(EMT())
+    ucf = UnitCellFilter(atoms)
+    opt = BFGS(ucf)
+    opt.run(fmax=0.02)
+    
+    # Isotropic rescaling
+    original_cell = atoms.get_cell().array.copy()
+    atoms.set_cell(atoms.get_cell() * 1.05, scale_atoms=True)
+    assert np.allclose(atoms.get_cell().array, original_cell * 1.05)
+    
+    # Affine strain application
+    current_cell = atoms.get_cell().array.copy()
+    strain = np.array([[1.02, 0, 0], [0, 1.01, 0], [0, 0, 0.99]])
+    atoms.set_cell(np.dot(atoms.get_cell(), strain), scale_atoms=True)
+    assert not np.allclose(atoms.get_cell().array, current_cell)
+    
+    # Adding vacuum
+    pre_vacuum_volume = atoms.get_cell().volume
+    atoms.center(vacuum=10.0)
+    assert atoms.get_cell().volume > pre_vacuum_volume
+    
+    # Manual atomic displacement
+    original_pos = atoms[0].position.copy()
+    atoms[0].position += [0.1, 0.0, 0.0]
+    assert np.allclose(atoms[0].position, original_pos + [0.1, 0.0, 0.0])
+    
+    # Deleting/adding atoms
+    n_atoms = len(atoms)
+    del atoms[0]
+    assert len(atoms) == n_atoms - 1
+    
+    atoms += Atoms('H', positions=[[0.0, 0.0, 0.0]])
+    assert len(atoms) == n_atoms
+    assert atoms.get_chemical_symbols()[-1] == 'H'
+    
+    # Reordering atoms
+    orig_symbols = atoms.get_chemical_symbols()
+    atoms = atoms[::-1]
+    assert atoms.get_chemical_symbols() == orig_symbols[::-1]
+    assert isinstance(atoms, ATAtoms)
+    
+    # Changing atomic charges
+    charges = [0.1] * len(atoms)
+    atoms.set_initial_charges(charges)
+    assert np.allclose(atoms.get_initial_charges(), charges)
+    
+    # Assigning magnetic moments
+    mag_moments = [2.0] * len(atoms)
+    atoms.set_initial_magnetic_moments(mag_moments)
+    assert np.allclose(atoms.get_initial_magnetic_moments(), mag_moments)
+    
+    # Changing atomic masses
+    masses = [10.0] * len(atoms)
+    atoms.set_masses(masses)
+    assert np.allclose(atoms.get_masses(), masses)
+    
+    # Assigning forces manually (e.g., post-processing)
+    random_forces = np.random.randn(len(atoms), 3)
+    atoms.set_array('forces', random_forces)
+    assert np.allclose(atoms.get_array('forces'), random_forces)
+    
+    # Supercell creation
+    n_atoms = len(atoms)
+    atoms = atoms.repeat((2, 2, 2))
+    assert len(atoms) == n_atoms * 8
+    assert isinstance(atoms, ATAtoms)
+    
+    # Rotation
+    pre_rotation_pos = atoms.get_positions().copy()
+    atoms.rotate('z', 90, center='COM')
+    assert not np.allclose(atoms.get_positions(), pre_rotation_pos)
+    
+    # Translation
+    pre_translation_pos = atoms.get_positions().copy()
+    atoms.translate([1.0, 0.0, 0.0])
+    assert np.allclose(atoms.get_positions(), pre_translation_pos + [1.0, 0.0, 0.0])
+    
+    # Random thermal displacement
+    pre_displacement_pos = atoms.get_positions().copy()
+    displacements = np.random.normal(0, 0.05, size=(len(atoms), 3))
+    atoms.set_positions(atoms.get_positions() + displacements)
+    assert not np.allclose(atoms.get_positions(), pre_displacement_pos)
+    
+    # Save final state
+    state_id = atoms.save_current_state()
+    assert state_id is not None

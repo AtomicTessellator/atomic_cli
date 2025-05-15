@@ -211,7 +211,7 @@ class ATAtoms:
             self._initialized = True
             return None
         
-        diff = DeepDiff(self._previous_state, serialized_current, verbose_level=1)
+        diff = DeepDiff(self._previous_state, serialized_current, verbose_level=1, view='tree')
         
         if diff:
             timestamp = datetime.datetime.now().isoformat()
@@ -367,8 +367,11 @@ class ATAtoms:
         if result is self._atoms:
             return self
         else:
-            wrapped = ATAtoms(result)
-            return wrapped
+            # Update our internal atoms reference while preserving tracking state
+            self._atoms = result
+            # Capture the state change
+            self._capture_state_diff()
+            return self
             
     # Explicitly track rattle which modifies positions directly
     @track_state_changes()
@@ -379,10 +382,19 @@ class ATAtoms:
     # Handle individual atom access with change tracking
     def __getitem__(self, index):
         if isinstance(index, slice):
-            # Handle slices by returning a new wrapped atoms
+            # Get the sliced atoms
             new_atoms = self._atoms[index]
-            wrapped = ATAtoms(new_atoms)
-            return wrapped
+            
+            # Instead of creating a new ATAtoms instance, create a copy of self
+            # and update its _atoms attribute to the sliced atoms
+            if new_atoms is self._atoms:  # If the slice didn't change anything
+                return self
+            else:
+                # Update internal atoms but preserve all tracking state
+                self._atoms = new_atoms
+                # Record the state change
+                self._capture_state_diff()
+                return self
         else:
             # Return a proxy for individual atom access
             return _AtomProxy(self, index)
@@ -403,16 +415,21 @@ class ATAtoms:
     def __len__(self):
         return len(self._atoms)
     
-    # Transparent method forwarding
+    # Modify __getattr__ to handle methods that return None but modify state
     def __getattr__(self, name):
         attr = getattr(self._atoms, name)
         
         if callable(attr):
             def wrapped_method(*args, **kwargs):
                 result = attr(*args, **kwargs)
+                
+                # Always capture state for known modifying methods
+                if name.startswith("set_"):
+                    self._capture_state_diff()
+                    return self if result is None else result
+                
                 # Handle methods that return the atoms object
                 if result is self._atoms:
-                    # Capture state changes after method execution
                     self._capture_state_diff()
                     return self
                 elif isinstance(result, Atoms):
