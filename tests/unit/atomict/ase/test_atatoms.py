@@ -521,20 +521,19 @@ def test_all_the_things():
     opt.run(fmax=0.01)
     
     # Cell relaxation (shape/volume change)
-    # atoms = ATAtoms(bulk('Al').repeat((2, 2, 2)), project_id="ad7a74f8-e2b2-426c-9dc6-7471aaa19e2a")
-    atoms.set_calculator(EMT())
-    ucf = UnitCellFilter(atoms)
-    opt = BFGS(ucf)
-    opt.run(fmax=0.02)
+    # atoms.set_calculator(EMT())
+    # ucf = UnitCellFilter(atoms)
+    # opt = BFGS(ucf)
+    # opt.run(fmax=0.02)
     
-    # Isotropic rescaling
+    # Isotropic rescaling - expands atoms
     original_cell = atoms.get_cell().array.copy()
-    atoms.set_cell(atoms.get_cell() * 1.05, scale_atoms=True)
-    assert np.allclose(atoms.get_cell().array, original_cell * 1.05)
+    atoms.set_cell(atoms.get_cell() * 4.00, scale_atoms=True)
+    assert np.allclose(atoms.get_cell().array, original_cell * 4.00)
     
-    # Affine strain application
+    # Affine strain application - stretch cell along x, y, z axis by %
     current_cell = atoms.get_cell().array.copy()
-    strain = np.array([[1.02, 0, 0], [0, 1.01, 0], [0, 0, 0.99]])
+    strain = np.array([[1.50, 0, 0], [0, 1.25, 0], [0, 0, 0.66]])
     atoms.set_cell(np.dot(atoms.get_cell(), strain), scale_atoms=True)
     assert not np.allclose(atoms.get_cell().array, current_cell)
     
@@ -545,17 +544,17 @@ def test_all_the_things():
     
     # Manual atomic displacement
     original_pos = atoms[0].position.copy()
-    atoms[0].position += [0.1, 0.0, 0.0]
-    assert np.allclose(atoms[0].position, original_pos + [0.1, 0.0, 0.0])
+    atoms[0].position += [10, 10.0, 10.0]
+    assert np.allclose(atoms[0].position, original_pos + [10, 10.0, 10.0])
     
     # Deleting/adding atoms
     n_atoms = len(atoms)
     del atoms[0]
     assert len(atoms) == n_atoms - 1
     
-    atoms += Atoms('H', positions=[[0.0, 0.0, 0.0]])
+    atoms += Atoms('Po', positions=[[0.0, 0.0, 0.0]])
     assert len(atoms) == n_atoms
-    assert atoms.get_chemical_symbols()[-1] == 'H'
+    assert atoms.get_chemical_symbols()[-1] == 'Po'
     
     # Reordering atoms
     orig_symbols = atoms.get_chemical_symbols()

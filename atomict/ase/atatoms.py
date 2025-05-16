@@ -432,21 +432,18 @@ class ATAtoms:
         if callable(attr):
             def wrapped_method(*args, **kwargs):
                 result = attr(*args, **kwargs)
-                
-                # Always capture state for known modifying methods
-                if name.startswith("set_"):
-                    self._capture_state_diff()
-                    return self if result is None else result
-                
+                if result is not None:
+                    logger.info(f"Result: {result}")
                 # Handle methods that return the atoms object
                 if result is self._atoms:
                     self._capture_state_diff()
                     return self
                 elif isinstance(result, Atoms):
                     return ATAtoms(result)
-                else:
-                    return result
-                    
+                
+                self._capture_state_diff()
+                return self if result is None else result
+
             return wrapped_method
         else:
             return attr
