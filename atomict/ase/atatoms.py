@@ -107,12 +107,10 @@ class ATAtoms:
     
     def _initialize_on_server(self):
         """Send the initial state to create an object on the server"""
-        # Try to use self._server_url or fall back to environment variable
+        # If no server URL is set, skip the server initialization
         if not self._server_url:
-            self._server_url = os.environ.get('AT_SERVER')
-            if not self._server_url:
-                print("Warning: No server URL provided and AT_SERVER environment variable not set")
-                return
+            logger.info("No server URL provided. Skipping server initialization.")
+            return
         
         try:
             # Extract and format the initial state according to server model
@@ -161,6 +159,11 @@ class ATAtoms:
     
     def _initialize_run_on_server(self):
         """Create an AtomicRun object on the server using the initial state"""
+        # If no server URL is set, skip the run initialization
+        if not self._server_url:
+            logger.info("No server URL provided. Skipping run initialization.")
+            return
+            
         if not self._state_id:
             print("Warning: Cannot initialize run without a valid state ID")
             return
@@ -199,6 +202,9 @@ class ATAtoms:
         """
         Capture differences between current and previous state
         """
+        if not self._server_url:
+            logger.info("No server configured, skipping creating diffs.")
+
         current_state = self._get_current_state()
         serialized_current = self._serialize_state(current_state)
         
@@ -460,6 +466,11 @@ class ATAtoms:
         """
         Send a diff to the server at /api/atatoms-diffs
         """
+        # Skip if no server URL is set
+        if not self._server_url:
+            logger.info("No server URL provided. Skipping diff send.")
+            return None
+            
         # Don't attempt to send if we don't have a state_id yet
         if not self._state_id:
             logger.warning("Cannot send diff without state_id. Attempting to initialize on server first.")
@@ -512,6 +523,11 @@ class ATAtoms:
         --------
         Dict with server response data
         """
+        # Skip if no server URL is set
+        if not self._server_url:
+            logger.info("No server URL provided. Skipping state save.")
+            return {"info": "No server URL provided. State was not saved."}
+            
         # Get and serialize current state
         current_state = self._get_current_state()
         serialized_state = self._serialize_state(current_state)
@@ -569,6 +585,10 @@ class ATAtoms:
 
     def update_run_end_state(self, state_id):
         """Update the end state of the current run"""
+        if not self._server_url:
+            logger.info("No server URL provided. Skipping run end state update.")
+            return
+            
         if not self._run_id:
             logger.warning("Cannot update run end state: no run ID available")
             return
@@ -618,6 +638,12 @@ class ATAtoms:
 
     def _sync_diffs(self):
         """Send accumulated diffs to the server in a single request and clear the queue"""
+        # Skip if no server URL is set
+        if not self._server_url:
+            logger.info("No server URL provided. Skipping diffs sync and pruning.")
+            self._diffs = []
+            return
+            
         if not self._diffs:
             return
         
