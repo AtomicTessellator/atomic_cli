@@ -223,7 +223,12 @@ def test_all_the_things():
     atoms.set_calculator(EMT())
     opt = BFGS(atoms)
     opt.run(fmax=0.01)
-    
+
+    # forces
+    original_positions = atoms.get_positions().copy()
+    atoms.set_positions(original_positions)
+    atoms.set_positions(original_positions * 0.8)  # 20% compression
+
     # Cell relaxation (shape/volume change)
     # atoms.set_calculator(EMT())
     # ucf = UnitCellFilter(atoms)
@@ -256,9 +261,9 @@ def test_all_the_things():
     del atoms[0]
     assert len(atoms) == n_atoms - 1
     
-    atoms += Atoms('Po', positions=[[0.0, 0.0, 0.0]])
+    atoms += Atoms('Og', positions=[[5.0, 5.0, 5.0]])
     assert len(atoms) == n_atoms
-    assert atoms.get_chemical_symbols()[-1] == 'Po'
+    assert atoms.get_chemical_symbols()[-1] == 'Og'
     
     # Reordering atoms
     orig_symbols = atoms.get_chemical_symbols()
