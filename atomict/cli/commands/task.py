@@ -24,12 +24,12 @@ STATUS_MAP = {
 
 
 @click.group(name="task")
-def task():
+def task_group():
     """Manage tasks and their status"""
     pass
 
 
-@task.command()
+@task_group.command()
 @click.argument("id")
 def cancel(id: str):
     """Cancel a running task"""
@@ -41,7 +41,7 @@ def cancel(id: str):
     console.print(f"[green]Task {id} has been cancelled[/green]")
 
 
-@task.command()
+@task_group.command()
 @click.argument("id", required=False)
 @click.option("--search", help="Search tasks by ID, type, status, or error message")
 @click.option(
@@ -133,7 +133,7 @@ def get(
         console.print(table)
 
 
-@task.command()
+@task_group.command()
 @click.argument("task_id")
 @click.option("--json-output", is_flag=True, help="Output in JSON format")
 def get_status_history(task_id: str, json_output: bool = False):
@@ -166,7 +166,7 @@ def get_status_history(task_id: str, json_output: bool = False):
     console.print(table)
 
 
-@task.command(hidden=True)
+@task_group.command(hidden=True)
 @click.argument("id")
 @click.argument(
     "status",

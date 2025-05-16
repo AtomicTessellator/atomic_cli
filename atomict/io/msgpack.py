@@ -325,8 +325,17 @@ def dict_to_atoms(data):
     return atoms_list
 
 
-def load_msgpack(filename: str) -> Union['ase.Atoms', List['ase.Atoms']]:
-    """Load atoms from a msgpack file with high efficiency and speed."""
+def load_msgpack(filename: str, strict_map_key: bool = True) -> Union['ase.Atoms', List['ase.Atoms']]:
+    """Load atoms from a msgpack file with high efficiency and speed.
+    
+    Parameters:
+    -----------
+    filename : str
+        The input filename
+    strict_map_key : bool, default=False
+        If True, only allow string keys in msgpack dictionaries
+        If False, allow integer and other keys in msgpack dictionaries
+    """
 
     try:
         import msgpack
@@ -339,7 +348,7 @@ def load_msgpack(filename: str) -> Union['ase.Atoms', List['ase.Atoms']]:
     
     # Load data
     with open(filename, 'rb') as f:
-        data = msgpack.unpack(f, raw=False)
+        data = msgpack.unpack(f, raw=False, strict_map_key=strict_map_key)
     
     # Convert to atoms objects
     atoms_list = dict_to_atoms(data)
@@ -422,13 +431,16 @@ def save_msgpack_trajectory(atoms: Union['ase.Atoms', List['ase.Atoms']], filena
         msgpack.pack(traj_data, f, use_bin_type=True)
 
 
-def load_msgpack_trajectory(filename: str) -> Tuple[List['ase.Atoms'], Dict]:
+def load_msgpack_trajectory(filename: str, strict_map_key: bool = True) -> Tuple[List['ase.Atoms'], Dict]:
     """Load atoms from a msgpack trajectory file with metadata.
     
     Parameters:
     -----------
     filename : str
         The input filename
+    strict_map_key : bool, default=False
+        If True, only allow string keys in msgpack dictionaries
+        If False, allow integer and other keys in msgpack dictionaries
         
     Returns:
     --------
@@ -448,7 +460,7 @@ def load_msgpack_trajectory(filename: str) -> Tuple[List['ase.Atoms'], Dict]:
     
     # Load data
     with open(filename, 'rb') as f:
-        traj_data = msgpack.unpack(f, raw=False)
+        traj_data = msgpack.unpack(f, raw=False, strict_map_key=strict_map_key)
     
     # Check if this is a new-style trajectory with format_version
     if isinstance(traj_data, dict) and 'format_version' in traj_data:

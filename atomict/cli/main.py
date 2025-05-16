@@ -8,9 +8,7 @@ from rich.console import Console
 
 from atomict.__version__ import __version__
 from atomict.cli.commands import login, user
-from atomict.io.msgpack import load_msgpack
-
-# Import command groups
+from atomict.cli.ext.custom_classes import DefaultCommandGroup
 from .commands import adsorbate, catalysis, k8s, project, task, traj, upload
 from .commands.exploration import soec, sqs
 from .commands.simulation import fhiaims, kpoint, vibes
@@ -21,43 +19,61 @@ console = Console()
 def setup_logging(verbose: bool):
     """Configure logging based on verbose flag and AT_DEBUG env var"""
     if os.getenv("AT_DEBUG") == "enabled":
-        # Most verbose logging when AT_DEBUG is set
         logging.basicConfig(
             level=logging.DEBUG,
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             handlers=[logging.StreamHandler(), logging.FileHandler("atomict.log")],
         )
-        # Also enable HTTP library debugging
         logging.getLogger("httpx").setLevel(logging.DEBUG)
         logging.getLogger("httpcore").setLevel(logging.DEBUG)
-
-        # Log some debug info
         logging.debug("Debug mode enabled via AT_DEBUG")
         logging.debug(f'Python path: {os.getenv("PYTHONPATH")}')
         logging.debug(f"Working directory: {os.getcwd()}")
     else:
-        # Normal logging based on verbose flag
         level = logging.DEBUG if verbose else logging.ERROR
         logging.basicConfig(
             level=level, format="%(asctime)s - %(levelname)s - %(message)s"
         )
 
-@click.command(name="convert")
-@click.argument("input_file")
-@click.argument("output_file")
-def convert_command(input_file, output_file):
+
+@click.group(cls=DefaultCommandGroup, invoke_without_command=True)
+@click.option(
+    "-v", "--verbose", is_flag=True, default=False, help="Enable verbose output"
+)
+@click.version_option(prog_name="tess", version=__version__)
+@click.pass_context
+def cli(ctx, verbose: bool):
+    """Atomic Tessellator CLI - Manage simulations and computational resources
+    
+    Default behavior: when called with two file arguments, converts between file formats.
+    """
+    setup_logging(verbose)
+
+    if ctx.invoked_subcommand is None and len(sys.argv) <= 1:
+        click.echo(ctx.get_help())
+
+
+@cli.command(default_command=True)
+@click.argument("input_file", required=True)
+@click.argument("output_file", required=True)
+@click.option("--strict-map-keys", is_flag=True, default=False, help="Enable strict map keys in msgpack files (sets strict_map_key=True)")
+def convert(input_file, output_file, strict_map_keys):
     """Convert between atomic structure file formats using ASE
 
-    Supports all formats that ASE can read/write, with special handling for .atm files.
+    Supports all formats that ASE can read/write, with special handling for .atm and .atraj files.
     Usage examples:
       tess input.cif output.xyz
       tess input.xyz output.atm
-    """
+      tess input.traj output.atraj
+      
+    Options:
+      --strict-map-keys  Enable strict map keys in msgpack files (default: False)
+    """ 
     try:
         import os.path
         from ase.io import read, write
         from ase.io.formats import UnknownFileTypeError
-        from atomict.io.msgpack import save_msgpack
+        from atomict.io.msgpack import save_msgpack, save_msgpack_trajectory, load_msgpack, load_msgpack_trajectory
     except ImportError:
         console.print("[red]Error: ASE (Atomic Simulation Environment) is required for file conversion.[/red]")
         console.print("[yellow]Install it with: pip install ase[/yellow]")
@@ -82,43 +98,49 @@ def convert_command(input_file, output_file):
             console.print(f"[red]Error: Input file '{input_file}' not found.[/red]")
             return
 
-        if input_ext not in RW_FORMATS and input_ext != "atm":
+        msgpack_formats = ["atm"]
+        traj_msgpack_formats = ["atraj"]
+        
+        if input_ext not in RW_FORMATS and input_ext not in msgpack_formats and input_ext not in traj_msgpack_formats:
             console.print(f"[red]Error: Format '{input_ext}' is not supported for reading.[/red]")
             console.print("[yellow]Supported read/write formats include:[/yellow]")
-            # Display formats in multiple columns for better readability
             for i in range(0, len(RW_FORMATS), 5):
                 console.print("[yellow]  " + ", ".join(RW_FORMATS[i:i+5]) + "[/yellow]")
+            console.print("[yellow]Special formats: atm (msgpack), atraj (msgpack trajectory)[/yellow]")
             return
             
-
-        if output_ext not in RW_FORMATS and output_ext != "atm":
+        if output_ext not in RW_FORMATS and output_ext not in msgpack_formats and output_ext not in traj_msgpack_formats:
             console.print(f"[red]Error: Format '{output_ext}' is not supported for writing.[/red]")
             console.print("[yellow]Supported read/write formats include:[/yellow]")
-            # Display formats in multiple columns for better readability
             for i in range(0, len(RW_FORMATS), 5):
                 console.print("[yellow]  " + ", ".join(RW_FORMATS[i:i+5]) + "[/yellow]")
+            console.print("[yellow]Special formats: atm (msgpack), atraj (msgpack trajectory)[/yellow]")
             return
 
         try:
-            if input_ext != 'atm':
-                atoms = read(input_file)
+            if input_ext in msgpack_formats:
+                atoms = load_msgpack(input_file, strict_map_key=strict_map_keys)
+            elif input_ext in traj_msgpack_formats:
+                atoms, _ = load_msgpack_trajectory(input_file, strict_map_key=strict_map_keys)
             else:
-                atoms = load_msgpack(input_file)
+                atoms = read(input_file)
         except UnknownFileTypeError:
             console.print(f"[red]Error: Unknown file type for input file '{input_file}'[/red]")
             console.print(f"[yellow]The file extension '{input_ext}' is not recognized.[/yellow]")
             console.print("[yellow]Make sure the file has the correct extension for its format.[/yellow]")
             return
         except Exception as e:
-            console.print(f"[red]Error reading input file '{input_file}': {str(e)}[/red]")
+            console.print(f"[red]Error reading input file '{input_file}': {str(e)}.[/red]")
             console.print(f"[yellow]Make sure '{input_ext}' is a valid format and the file is not corrupted.[/yellow]")
             return
         
         try:
-            if output_ext == 'atm':
-                # write(output_file, atoms, format='json', parallel=False)
+            if output_ext in msgpack_formats:
                 save_msgpack(atoms, output_file)
                 console.print(f"[green]Successfully converted {input_file} to {output_file} (MSGPACK format)[/green]")
+            elif output_ext in traj_msgpack_formats:
+                save_msgpack_trajectory(atoms, output_file)
+                console.print(f"[green]Successfully converted {input_file} to {output_file} (MSGPACK trajectory format)[/green]")
             else:
                 write(output_file, atoms)
                 console.print(f"[green]Successfully converted {input_file} to {output_file}[/green]")
@@ -139,27 +161,6 @@ def convert_command(input_file, output_file):
         console.print("[yellow]Try running with --verbose for more detailed error information.[/yellow]")
 
 
-# Create main CLI group
-@click.group(invoke_without_command=True)
-@click.option(
-    "-v", "--verbose", is_flag=True, default=False, help="Enable verbose output"
-)
-@click.version_option(prog_name="tess", version=__version__)
-@click.pass_context
-def cli(ctx, verbose: bool):
-    """Atomic Tessellator CLI - Manage simulations and computational resources
-    
-    Dynamic commands (takes positional arguments only):\n
-      tess [file_a] [file_b]  Filetype conversion from a -> b
-    """
-    setup_logging(verbose)
-    
-    # Show help if no subcommand was provided
-    if ctx.invoked_subcommand is None:
-        click.echo(ctx.get_help())
-
-
-# Add a completion command
 @cli.command(hidden=True)
 @click.argument("shell", type=click.Choice(["bash", "zsh", "fish"]), required=False)
 def completion(shell):
@@ -168,7 +169,7 @@ def completion(shell):
         shell = os.environ.get("SHELL", "")
         shell = shell.split("/")[-1]
         if shell not in ["bash", "zsh", "fish"]:
-            shell = "bash"  # default to bash if shell not detected
+            shell = "bash"
 
     completion_script = None
     if shell == "bash":
@@ -200,46 +201,24 @@ end
 
 
 cli.add_command(completion)
-
-# TODO: rename these to group
-cli.add_command(task.task)
-cli.add_command(upload.upload)
-cli.add_command(project.project)
-cli.add_command(k8s.k8s)
-cli.add_command(adsorbate.adsorbate)
-
-# raise commands to top-level
+cli.add_command(task.task_group)
+cli.add_command(upload.upload_group)
+cli.add_command(project.project_group)
+cli.add_command(k8s.k8s_group)
+cli.add_command(adsorbate.adsorbate_group)
 cli.add_command(fhiaims.fhiaims_group)
 cli.add_command(kpoint.kpoint_group)
-cli.add_command(catalysis.catalysis_group)  # WIP
+cli.add_command(catalysis.catalysis_group)
 cli.add_command(sqs.sqs_group)
 cli.add_command(soec.soecexploration_group)
 cli.add_command(traj.traj)
 cli.add_command(user.user_group)
 cli.add_command(login._login)
 cli.add_command(vibes.vibes_group)
-# from .commands.exploration import exploration_group
-# cli.add_command(exploration.exploration)  # move this
-# TBD: decide on how to group or put all commands at top level
-# standardize this later
-# cli.add_command(exploration_group)
-
-# we could do `at [exploration/simulation/project/user/etc] [get/create/delete] [id]`
-# OR
-# `at [get/create/delete] [exploration/simulation/project/user/etc] [id]`
-# OR
-# some other grouping that reflects a user's workflow
 
 
 def main():
     try:
-        if len(sys.argv) == 3:
-            arg1 = sys.argv[1]
-            arg2 = sys.argv[2]
-            if '.' in arg1 and '.' in arg2:
-                convert_command.callback(arg1, arg2)
-                return
-
         cli()
     except Exception as exc:
         Console().print(f"[red]Error: {str(exc)}. Exiting...[/red]")
