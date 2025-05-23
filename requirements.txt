@@ -6,3 +6,6 @@ tenacity~=9.0
 httpx
 click~=8.0
 rich~=13.0
+
+#science
+deepdiff
