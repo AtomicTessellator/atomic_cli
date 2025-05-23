@@ -7,7 +7,8 @@ from unittest import mock
 from ase import Atoms
 from ase.build import molecule
 from atomict.io.msgpack import load_msgpack, save_msgpack
-
+from ase.io import Trajectory
+from ase.constraints import FixAtoms
 
 @pytest.fixture
 def temp_dir():
@@ -54,6 +55,39 @@ def atoms_list():
     h2o_2 = molecule('H2O')
     h2o_3 = molecule('H2O')
     return [h2o_1, h2o_2, h2o_3]
+
+
+@pytest.fixture
+def atoms_with_all_props():
+    """Create an Atoms object with all the properties we want to test."""
+    atoms = molecule('H2O')
+    
+    # Set standard properties
+    atoms.set_tags([1, 2, 3])
+    atoms.set_masses([2.0, 18.0, 2.0])
+    atoms.set_momenta(np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]))
+    atoms.set_initial_charges([0.5, -1.0, 0.5])
+    atoms.set_initial_magnetic_moments([0.1, 0.0, 0.1])
+    
+    # Set custom attributes
+    atoms.ase_objtype = 'atoms'
+    atoms.top_mask = np.array([False, True, False], dtype=bool)
+    
+    # Don't set number_of_lattice_vectors directly since it's a property without a setter
+    # Instead, adjust the cell which affects this property
+    atoms.set_cell([[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]])
+    atoms.set_pbc(True)
+    
+    # Add constraint
+    constraint = FixAtoms(indices=[0])
+    atoms.constraints = [constraint]
+    
+    # Set forces and stress
+    forces = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
+    atoms.arrays['forces'] = forces
+    atoms.stress = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    
+    return atoms
 
 
 def mock_get_cell(atoms_list):
@@ -316,3 +350,141 @@ def test_masses_are_saved(test_file):
     # Verify that the loaded object has the correct masses
     loaded_atoms = load_msgpack(test_file)
     assert np.allclose(loaded_atoms.get_masses(), atoms.get_masses())
+
+
+def test_property_ase_objtype(atoms_with_all_props, test_file):
+    """Test that ase_objtype is correctly saved and loaded."""
+    # Patch the get_cell method
+    mock_get_cell([atoms_with_all_props])
+    
+    save_msgpack(atoms_with_all_props, test_file)
+    loaded_atoms = load_msgpack(test_file)
+    assert hasattr(loaded_atoms, 'ase_objtype')
+    assert loaded_atoms.ase_objtype == atoms_with_all_props.ase_objtype
+
+
+def test_property_top_mask(atoms_with_all_props, test_file):
+    """Test that top_mask is correctly saved and loaded."""
+    # Patch the get_cell method
+    mock_get_cell([atoms_with_all_props])
+    
+    save_msgpack(atoms_with_all_props, test_file)
+    loaded_atoms = load_msgpack(test_file)
+    assert hasattr(loaded_atoms, 'top_mask')
+    assert np.array_equal(loaded_atoms.top_mask, atoms_with_all_props.top_mask)
+
+
+def test_property_number_of_lattice_vectors(atoms_with_all_props, test_file):
+    """Test that number_of_lattice_vectors is correctly saved and loaded."""
+    # Patch the get_cell method
+    mock_get_cell([atoms_with_all_props])
+    
+    save_msgpack(atoms_with_all_props, test_file)
+    loaded_atoms = load_msgpack(test_file)
+    
+    # Check cell rank instead of deprecated number_of_lattice_vectors
+    assert loaded_atoms.cell.rank == atoms_with_all_props.cell.rank
+
+
+def test_property_constraints(atoms_with_all_props, test_file):
+    """Test that constraints are correctly saved and loaded."""
+    # Patch the get_cell method
+    mock_get_cell([atoms_with_all_props])
+    
+    save_msgpack(atoms_with_all_props, test_file)
+    loaded_atoms = load_msgpack(test_file)
+    
+    assert len(loaded_atoms.constraints) == len(atoms_with_all_props.constraints)
+    assert isinstance(loaded_atoms.constraints[0], type(atoms_with_all_props.constraints[0]))
+    
+    # Check constraint details
+    original_constraint = atoms_with_all_props.constraints[0]
+    loaded_constraint = loaded_atoms.constraints[0]
+    
+    if isinstance(original_constraint, FixAtoms):
+        assert np.array_equal(original_constraint.index, loaded_constraint.index)
+
+
+def test_property_numbers(atoms_with_all_props, test_file):
+    """Test that atomic numbers are correctly saved and loaded."""
+    # Patch the get_cell method
+    mock_get_cell([atoms_with_all_props])
+    
+    save_msgpack(atoms_with_all_props, test_file)
+    loaded_atoms = load_msgpack(test_file)
+    assert np.array_equal(loaded_atoms.get_atomic_numbers(), atoms_with_all_props.get_atomic_numbers())
+
+
+def test_property_forces(atoms_with_all_props, test_file):
+    """Test that forces are correctly saved and loaded."""
+    # Patch the get_cell method
+    mock_get_cell([atoms_with_all_props])
+    
+    save_msgpack(atoms_with_all_props, test_file)
+    loaded_atoms = load_msgpack(test_file)
+    assert 'forces' in loaded_atoms.arrays
+    assert np.allclose(loaded_atoms.arrays['forces'], atoms_with_all_props.arrays['forces'])
+
+
+def test_property_stress(atoms_with_all_props, test_file):
+    """Test that stress is correctly saved and loaded."""
+    # Patch the get_cell method
+    mock_get_cell([atoms_with_all_props])
+    
+    save_msgpack(atoms_with_all_props, test_file)
+    loaded_atoms = load_msgpack(test_file)
+    assert hasattr(loaded_atoms, 'stress')
+    assert np.allclose(loaded_atoms.stress, atoms_with_all_props.stress)
+
+
+def test_all_properties_list(atoms_with_all_props, test_file):
+    """Test that all properties are correctly saved and loaded in a list context."""
+    # Create a second copy of the atoms with all properties
+    atoms2 = atoms_with_all_props.copy()
+    # Ensure custom attributes are copied correctly
+    atoms2.ase_objtype = atoms_with_all_props.ase_objtype
+    atoms2.top_mask = atoms_with_all_props.top_mask.copy()  # Explicitly copy the top_mask
+    # Ensure stress is copied correctly
+    if hasattr(atoms_with_all_props, 'stress'):
+        atoms2.stress = atoms_with_all_props.stress.copy()
+    
+    atoms_list = [atoms_with_all_props, atoms2]
+    
+    # Patch the get_cell method
+    mock_get_cell(atoms_list)
+    
+    save_msgpack(atoms_list, test_file)
+    loaded_list = load_msgpack(test_file)
+    
+    for i in range(2):
+        loaded_atoms = loaded_list[i]
+        original_atoms = atoms_list[i]
+        
+        # Check all standard properties
+        assert np.array_equal(loaded_atoms.get_tags(), original_atoms.get_tags())
+        assert np.allclose(loaded_atoms.get_masses(), original_atoms.get_masses())
+        assert np.allclose(loaded_atoms.get_momenta(), original_atoms.get_momenta())
+        assert np.allclose(loaded_atoms.get_initial_charges(), original_atoms.get_initial_charges())
+        assert np.allclose(loaded_atoms.get_initial_magnetic_moments(), original_atoms.get_initial_magnetic_moments())
+        
+        # Check new properties
+        assert hasattr(loaded_atoms, 'ase_objtype')
+        assert loaded_atoms.ase_objtype == original_atoms.ase_objtype
+        
+        assert hasattr(loaded_atoms, 'top_mask')
+        assert np.array_equal(loaded_atoms.top_mask, original_atoms.top_mask)
+        
+        # Check number_of_lattice_vectors indirectly
+        assert loaded_atoms.cell.rank == original_atoms.cell.rank
+        
+        assert len(loaded_atoms.constraints) == len(original_atoms.constraints)
+        assert np.array_equal(loaded_atoms.get_atomic_numbers(), original_atoms.get_atomic_numbers())
+        
+        # Check forces and stress
+        assert 'forces' in loaded_atoms.arrays
+        assert np.allclose(loaded_atoms.arrays['forces'], original_atoms.arrays['forces'])
+        
+        # Ensure stress is handled correctly
+        assert hasattr(loaded_atoms, 'stress')
+        assert hasattr(original_atoms, 'stress')
+        assert np.allclose(loaded_atoms.stress, original_atoms.stress)
