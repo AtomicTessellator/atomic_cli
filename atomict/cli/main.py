@@ -9,9 +9,14 @@ from rich.console import Console
 from atomict.__version__ import __version__
 from atomict.cli.commands import login, user
 from atomict.cli.ext.custom_classes import DefaultCommandGroup
-from .commands import adsorbate, catalysis, k8s, project, task, traj, upload
-from .commands.exploration import soec, sqs
-from .commands.simulation import fhiaims, kpoint, vibes
+
+try:
+    from .commands import adsorbate, catalysis, k8s, project, task, traj, upload
+    from .commands.exploration import soec, sqs
+    from .commands.simulation import fhiaims, kpoint, vibes
+except ImportError:
+    sys.exit(1)
+
 
 console = Console()
 
