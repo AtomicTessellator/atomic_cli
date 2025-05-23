@@ -325,18 +325,37 @@ class ATAtoms:
                 
         return state
 
+    def _recursive_serialize(self, obj):
+        """Recursively convert non-serializable objects to serializable forms."""
+        import numpy as np
+        # Handle numpy arrays
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        # Handle numpy scalars
+        elif isinstance(obj, (np.integer, np.floating)):
+            return float(obj) if isinstance(obj, np.floating) else int(obj)
+        # Handle dicts
+        elif isinstance(obj, dict):
+            return {k: self._recursive_serialize(v) for k, v in obj.items()}
+        # Handle lists/tuples
+        elif isinstance(obj, (list, tuple)):
+            return [self._recursive_serialize(v) for v in obj]
+        # Handle objects with .todict() (e.g., Spacegroup)
+        elif hasattr(obj, 'todict') and callable(getattr(obj, 'todict')):
+            return self._recursive_serialize(obj.todict())
+        # Handle objects with __dict__ (as a fallback, but avoid recursion on builtins)
+        elif hasattr(obj, '__dict__') and not isinstance(obj, type):
+            return {k: self._recursive_serialize(v) for k, v in obj.__dict__.items() if not k.startswith('__')}
+        # Handle basic types
+        elif isinstance(obj, (str, int, float, bool)) or obj is None:
+            return obj
+        # Fallback: string representation
+        else:
+            return str(obj)
+
     def _serialize_state(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Convert numpy arrays to lists for serialization and comparison"""
-        serialized = {}
-        for key, value in state.items():
-            if isinstance(value, np.ndarray):
-                serialized[key] = value.tolist()
-            elif isinstance(value, (np.integer, np.floating)):
-                serialized[key] = float(value) if isinstance(value, np.floating) else int(value)
-            else:
-                serialized[key] = value
-        
-        return serialized
+        """Convert all non-serializable objects in the state to serializable forms recursively."""
+        return self._recursive_serialize(state)
     
     def _serialize_diff(self, diff):
         """Convert DeepDiff output to JSON serializable format"""

@@ -3,6 +3,7 @@ import numpy as np
 from ase.build import molecule, bulk
 from ase import Atom
 from ase.calculators.emt import EMT
+from ase.calculators.aims import Aims
 from ase.optimize import BFGS
 from atomict.ase.atatoms import ATAtoms
 from ase.atoms import Atoms
@@ -221,8 +222,21 @@ def test_all_the_things():
     
     # Geometry optimization
     atoms.set_calculator(EMT())
-    opt = BFGS(atoms)
-    opt.run(fmax=0.01)
+
+    # aims calc
+    # from ase.calculators.aims import AimsProfile
+    # import os
+    # species_dir = '/home/steven/test/species_defaults/defaults_2020/light'
+    # profile = AimsProfile(os.environ['AIMS_COMMAND'], default_species_dir=species_dir)
+    # calc = Aims(
+    #     profile=profile,
+    #     xc='pbe0',
+    #     species_dir=species_dir,
+    #     k_grid=(4, 4, 4)  # Add k-point sampling
+    # )
+    # atoms.calc = calc
+    # opt = BFGS(atoms)
+    # opt.run(fmax=0.01)
 
     # forces
     original_positions = atoms.get_positions().copy()
