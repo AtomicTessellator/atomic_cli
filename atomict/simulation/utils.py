@@ -10,6 +10,7 @@ except ImportError:
 import logging
 import os
 
+from atomict.io.msgpack import load_msgpack_trajectory
 from atomict.io.fhiaims import read_aims_output
 from atomict.io.utils import human_filesize
 from atomict.simulation.mlrelax import get_mlrelax, get_mlrelax_files
@@ -69,7 +70,12 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
         download_workspace(files["results"], mlrelax_dir)
 
         traj_file = os.path.join(mlrelax_dir, "relax.traj")
-        atoms = read(traj_file)
+        atraj_file = os.path.join(mlrelax_dir, "relax.atraj")
+
+        if not os.path.exists(atraj_file):
+            atoms = load_msgpack_trajectory(atraj_file)
+        else:
+            atoms = read(traj_file)
         
         if isinstance(atoms, list):
             return atoms[-1]
