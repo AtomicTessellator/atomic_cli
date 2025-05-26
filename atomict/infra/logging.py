@@ -28,7 +28,6 @@ class LokiHandler(logging.Handler):
     def emit(self, record):
         """Queue log record for sending to Loki"""
         try:
-            # Format the log message
             msg = self.format(record)
             
             # Create Loki-compatible log entry
@@ -45,46 +44,64 @@ class LokiHandler(logging.Handler):
                 labels["task_id"] = self.task_id
             
             # Add to queue
-            self.queue.put({
+            entry = {
                 "stream": labels,
                 "values": [[timestamp, msg]]
-            })
+            }
+            self.queue.put(entry)
             
-        except Exception:
+        except Exception as e:
+            print(f"[LokiHandler.emit] ERROR: {e}")
+            import traceback
+            traceback.print_exc()
             self.handleError(record)
     
     def _worker(self):
         """Background worker that batches and sends logs to Loki"""
-        batch = []
-        last_flush = time.time()
         
-        while not self.stop_event.is_set():
-            try:
-                # Try to get items from queue with timeout
-                timeout = max(0.1, self.flush_interval - (time.time() - last_flush))
-                
+        try:
+            batch = []
+            last_flush = time.time()
+            
+            while not self.stop_event.is_set():
                 try:
-                    item = self.queue.get(timeout=timeout)
-                    batch.append(item)
-                except:
-                    pass  # Queue.get timed out
-                
-                # Check if we should flush
-                should_flush = (
-                    len(batch) >= self.batch_size or 
-                    (time.time() - last_flush) >= self.flush_interval
-                )
-                
-                if should_flush and batch:
-                    self._send_batch(batch)
-                    batch = []
-                    last_flush = time.time()
+                    # Try to get items from queue with timeout
+                    timeout = max(0.1, self.flush_interval - (time.time() - last_flush))
                     
-            except Exception as e:
-                # Log to stderr to avoid recursion
-                import sys
-                print(f"Error in Loki handler worker: {e}", file=sys.stderr)
-    
+                    try:
+                        item = self.queue.get(timeout=timeout)
+                        batch.append(item)
+                    except:
+                        pass  # Queue.get timed out
+                    
+                    # Check if we should flush
+                    time_since_flush = time.time() - last_flush
+                    should_flush = (
+                        len(batch) >= self.batch_size or 
+                        time_since_flush >= self.flush_interval
+                    )
+                    
+                    if should_flush:
+                        if batch:
+                            self._send_batch(batch)
+                            batch = []
+                        else:
+                            pass
+                        last_flush = time.time()  # Update last_flush even if batch was empty
+                        
+                except Exception as e:
+                    # Log to stderr to avoid recursion
+                    import sys
+                    print(f"[LokiHandler._worker] ERROR in worker: {e}", file=sys.stderr)
+                    import traceback
+                    traceback.print_exc()
+            
+        except Exception as e:
+            import sys
+            print(f"[LokiHandler._worker] FATAL ERROR in worker thread: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc()
+        
     def _send_batch(self, batch):
         """Send a batch of logs to Loki"""
         try:
@@ -121,10 +138,11 @@ class LokiHandler(logging.Handler):
         except Exception as e:
             # Log to stderr to avoid recursion
             import sys
-            print(f"Failed to send logs to Loki: {e}", file=sys.stderr)
+            print(f"[LokiHandler._send_batch] ERROR sending to Loki: {e}", file=sys.stderr)
     
     def close(self):
         """Flush remaining logs and stop the worker thread"""
+        
         self.stop_event.set()
         # Flush any remaining logs
         remaining = []
@@ -167,8 +185,12 @@ def config_loggers(prefix: str = '', task_id: Optional[str] = None, *args, **kwa
         }
     )
     
-    # Add Loki handler if endpoint is configured
+    # Apply the configuration FIRST
+    dictConfig(logging_config)
+    
+    # Add Loki handler if endpoint is configured AFTER dictConfig
     loki_endpoint = os.environ.get("AT_LOGGING_ENDPOINT")
+    
     if loki_endpoint:
         # Create and configure Loki handler
         loki_handler = LokiHandler(url=loki_endpoint, task_id=task_id)
@@ -181,6 +203,3 @@ def config_loggers(prefix: str = '', task_id: Optional[str] = None, *args, **kwa
         for logger_name in ["atomict.api"]:
             logger = logging.getLogger(logger_name)
             logger.addHandler(loki_handler)
-    
-    # Apply the configuration
-    dictConfig(logging_config)
