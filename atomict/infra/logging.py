@@ -159,7 +159,14 @@ class LokiHandler(logging.Handler):
         super().close()
 
 
-def config_loggers(prefix: str = '', task_id: Optional[str] = None, *args, **kwargs):
+def config_loggers(
+    prefix: str = '',
+    task_id: Optional[str] = None,
+    batch_size: int = 10,
+    flush_interval: float = 2.0,
+    *args,
+    **kwargs
+):
     """Configure loggers with console and optional Loki output
     
     Args:
@@ -193,7 +200,12 @@ def config_loggers(prefix: str = '', task_id: Optional[str] = None, *args, **kwa
     
     if loki_endpoint:
         # Create and configure Loki handler
-        loki_handler = LokiHandler(url=loki_endpoint, task_id=task_id)
+        loki_handler = LokiHandler(
+            url=loki_endpoint,
+            task_id=task_id,
+            batch_size=batch_size,
+            flush_interval=flush_interval,
+        )
         loki_handler.setFormatter(logging.Formatter(f"%(levelname)s %(asctime)s {prefix} %(message)s"))
         
         # Add to root logger
