@@ -3,7 +3,7 @@ from click.testing import CliRunner
 from pathlib import Path
 # writes to tempfile due to conflicts with library code
 import tempfile
-from atomict.cli.main import convert_command
+from atomict.cli.main import convert
 
 
 @pytest.fixture
@@ -39,7 +39,7 @@ def test_successful_conversion(runner, fixture_path, temp_dir, input_fixture, ou
         pytest.skip(f"Fixture file {input_file} not found")
     
     # Run the conversion command
-    result = runner.invoke(convert_command, [str(input_file), str(output_file)])
+    result = runner.invoke(convert, [str(input_file), str(output_file)])
     
     # Check that the command ran successfully
     assert result.exit_code == 0
@@ -53,7 +53,7 @@ def test_input_file_not_found(runner, temp_dir):
     nonexistent_file = temp_dir / "nonexistent.xyz"
     output_file = temp_dir / "output.cif"
     
-    result = runner.invoke(convert_command, [str(nonexistent_file), str(output_file)])
+    result = runner.invoke(convert, [str(nonexistent_file), str(output_file)])
     
     assert result.exit_code == 0  # The command exits gracefully
     assert "Input file" in result.output
@@ -69,7 +69,7 @@ def test_unsupported_input_format(runner, temp_dir):
     unsupported_file.write_text("dummy content")
     output_file = temp_dir / "output.cif"
     
-    result = runner.invoke(convert_command, [str(unsupported_file), str(output_file)])
+    result = runner.invoke(convert, [str(unsupported_file), str(output_file)])
     
     assert result.exit_code == 0  # The command exits gracefully
     assert "not supported" in result.output
@@ -87,7 +87,7 @@ def test_unsupported_output_format(runner, fixture_path, temp_dir):
     if not input_file.exists():
         pytest.skip(f"Fixture file {input_file} not found")
     
-    result = runner.invoke(convert_command, [str(input_file), str(output_file)])
+    result = runner.invoke(convert, [str(input_file), str(output_file)])
     
     assert result.exit_code == 0  # The command exits gracefully
     assert "not supported" in result.output
@@ -113,7 +113,7 @@ def test_read_error(runner, fixture_path, temp_dir, monkeypatch):
     import ase.io
     monkeypatch.setattr(ase.io, "read", mock_read)
     
-    result = runner.invoke(convert_command, [str(input_file), str(output_file)])
+    result = runner.invoke(convert, [str(input_file), str(output_file)])
     
     assert result.exit_code == 0  # The command exits gracefully
     assert "Unknown file type" in result.output
@@ -147,7 +147,7 @@ def test_write_error(runner, fixture_path, temp_dir, monkeypatch):
     monkeypatch.setattr(ase.io, "read", mock_read)
     monkeypatch.setattr(ase.io, "write", mock_write)
     
-    result = runner.invoke(convert_command, [str(input_file), str(output_file)])
+    result = runner.invoke(convert, [str(input_file), str(output_file)])
     
     assert result.exit_code == 0  # The command exits gracefully
     assert "Error writing" in result.output
