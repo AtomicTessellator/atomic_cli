@@ -72,7 +72,7 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
         traj_file = os.path.join(mlrelax_dir, "relax.traj")
         atraj_file = os.path.join(mlrelax_dir, "relax.atraj")
 
-        if not os.path.exists(atraj_file):
+        if os.path.exists(atraj_file):
             atoms = load_msgpack_trajectory(atraj_file)
         else:
             atoms = read(traj_file)
