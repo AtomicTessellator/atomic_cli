@@ -54,7 +54,7 @@ class ATAtoms:
     """
     
     def __init__(self, atoms: Atoms, server_url: Optional[str] = None, 
-                 batch_size: int = 10, sync_interval: float = 60.0, project_id: Optional[str] = '',
+                 batch_size: int = 10, sync_interval: float = 10.0, project_id: Optional[str] = '',
                  batch_diffs: bool = False):
         """
         Initialize the ATAtoms wrapper.
@@ -64,37 +64,29 @@ class ATAtoms:
         atoms: ASE Atoms object to wrap
         server_url: URL of the server to send diffs to (if None, will use AT_SERVER env var)
         batch_size: Number of diffs to accumulate before sending to server in a single request
-        sync_interval: Maximum time in seconds between syncs to server
+        sync_interval: Maximum time in seconds between syncs to server (default: 10 seconds)
         project_id: ID of the project to associate with the atoms
-        batch_diffs: Whether to batch diffs (False sends immediately, True uses batching)
+        batch_diffs: Whether to batch diffs
         """
-        # Validate that atoms is an ASE Atoms object
         if not isinstance(atoms, Atoms):
             raise TypeError(f"Expected ASE Atoms object, got {type(atoms).__name__}: {atoms}")
-            
-        # Initialize core properties
+
         self._atoms = atoms
         self._server_url = server_url or os.environ.get('AT_SERVER')
         self._project_id = project_id
         self._object_id = str(uuid.uuid4())
         self._batch_size = batch_size
         self._sync_interval = sync_interval
-        self._diffs = []  # Track the state diffs
+        self._diffs = []
         self._last_sync_time = time.time()
-        self._seq_num = 0  # Initialize sequence number counter
-        self._state_id = None  # Will be set after server initialization
-        self._run_id = None   # Will be set after run initialization
-        self._initialized = False  # Flag to track initialization status
+        self._seq_num = 0
+        self._state_id = None
+        self._run_id = None
+        self._initialized = False
         self._batch_diffs = batch_diffs
-        
-        # Initialize state tracking
-        self._initial_state = self._get_current_state()  # Save the initial state
-        self._previous_state = self._serialize_state(self._initial_state)  # Serialize for comparison
-        
-        # Generate structure_id hash
+        self._initial_state = self._get_current_state()
+        self._previous_state = self._serialize_state(self._initial_state)
         self._structure_id = self._hash_state(self._previous_state)
-        
-        # Record the initial state
         self._capture_state_diff()
     
     def _hash_state(self, state_data):
@@ -215,7 +207,7 @@ class ATAtoms:
             self._initialized = True
             return None
         
-        diff = DeepDiff(self._previous_state, serialized_current, verbose_level=1, )
+        diff = DeepDiff(self._previous_state, serialized_current, verbose_level=1)
         
         if diff:
             timestamp = datetime.datetime.now().isoformat()
@@ -236,8 +228,9 @@ class ATAtoms:
                 self._diffs.append(diff_item)
                 
                 # Check if we should sync based on batch size or time interval
+                current_time = time.time()
                 if (len(self._diffs) >= self._batch_size or 
-                    time.time() - self._last_sync_time >= self._sync_interval):
+                    current_time - self._last_sync_time >= self._sync_interval):
                     logger.info(f"Batch threshold reached, syncing {len(self._diffs)} diffs")
                     self._sync_diffs()
             else:
@@ -472,7 +465,7 @@ class ATAtoms:
     
     def __del__(self):
         """Ensure any remaining diffs are synced before garbage collection"""
-        if hasattr(self, '_diffs') and self._diffs and self._batch_diffs:
+        if hasattr(self, '_diffs') and self._diffs:
             try:
                 self._sync_diffs()
             except:
@@ -689,14 +682,11 @@ class ATAtoms:
             
             # Send the batch in a single request
             response = post(
-                'api/atatoms-diffs/batch/',  # Use the new batch endpoint
+                'api/atatoms-diffs/batch/',
                 batch_data,
                 extra_headers={'Content-Type': 'application/json'}
             )
-            
             logger.info(f"Sent batch of {len(self._diffs)} diffs to server")
-            
-            # Reset tracking variables
             self._diffs = []
             self._last_sync_time = time.time()
             
