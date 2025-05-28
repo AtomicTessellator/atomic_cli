@@ -12,7 +12,7 @@ import requests
 class LokiHandler(logging.Handler):
     """Custom logging handler that sends logs to Loki using requests"""
     
-    def __init__(self, url: str, task_id: Optional[str] = None, batch_size: int = 100, flush_interval: float = 5.0):
+    def __init__(self, url: str, task_id: Optional[str] = None, batch_size: int = 100, flush_interval: float = 5.0, auth: Optional[tuple[str, str]] = None):
         super().__init__()
         self.url = url
         self.task_id = task_id
@@ -21,6 +21,15 @@ class LokiHandler(logging.Handler):
         self.queue = Queue()
         self.stop_event = threading.Event()
         
+        if auth is None:
+            # Try and get auth from environment variables
+            username = os.environ.get("AT_LOGGING_USERNAME")
+            password = os.environ.get("AT_LOGGING_PASSWORD")
+            if username and password:
+                auth = (username, password)
+
+        # _auth is set once during init and never modified, making it safe to read from any thread
+        self._auth = auth
         # Start background thread for batching and sending logs
         self.worker_thread = threading.Thread(target=self._worker, daemon=True)
         self.worker_thread.start()
@@ -131,7 +140,8 @@ class LokiHandler(logging.Handler):
                 f"{self.url}/loki/api/v1/push",
                 json=payload,
                 headers=headers,
-                timeout=5
+                timeout=5,
+                auth=self._auth
             )
             response.raise_for_status()
             
