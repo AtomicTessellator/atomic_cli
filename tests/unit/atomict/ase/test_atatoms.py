@@ -218,7 +218,7 @@ def test_all_the_things():
     """Test all ASE atoms operations on ATAtoms objects."""
     # Initialize ATAtoms with project_id
     malachite = create_malachite()
-    atoms = ATAtoms(malachite, project_id="ad7a74f8-e2b2-426c-9dc6-7471aaa19e2a", batch_diffs=True)
+    atoms = ATAtoms(malachite, project_id="ad7a74f8-e2b2-426c-9dc6-7471aaa19e2a")
     
     # Geometry optimization
     atoms.set_calculator(EMT())
