@@ -237,7 +237,7 @@ class ATAtoms:
             else:
                 self._send_diff(diff)
         else:
-            logger.info("No state change detected")
+            logger.debug("No state change detected")
     
     @property
     def calc(self):
@@ -435,7 +435,7 @@ class ATAtoms:
         Send a diff to the server at /api/atatoms-diffs
         """
         if not self._server_url:
-            logger.info("No server URL provided. Skipping diff send.")
+            logger.debug("No server URL provided. Skipping diff send.")
             return None
 
         if not self.atomic_state_id:
@@ -482,7 +482,7 @@ class ATAtoms:
         Dict with server response data
         """
         if not self._server_url:
-            logger.info("No server URL provided. Skipping state save.")
+            logger.debug("No server URL provided. Skipping state save.")
             return {"info": "No server URL provided. State was not saved."}
 
         current_state = self._get_current_state()
@@ -573,7 +573,7 @@ class ATAtoms:
         """Send accumulated diffs to the server in a single request and clear the queue"""
         # offline mode
         if not self._server_url:
-            logger.info("No server URL provided. Skipping diffs sync and pruning.")
+            logger.debug("No server URL provided. Skipping diffs sync and pruning.")
             self._diffs = []
             return
             
