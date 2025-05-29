@@ -5,7 +5,6 @@ import json
 import datetime
 import os
 import sys
-import functools
 import hashlib
 import threading
 import queue
