@@ -59,26 +59,6 @@ class QueueWorker:
             logger.warning("Network operation queue is full, operation dropped")
 
 
-def track_state_changes():
-    """
-    Decorator to track state changes after method execution.
-    """
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(self, *args, **kwargs):
-            # Call the original method
-            result = func(self, *args, **kwargs)
-            logger.info(f"got {func.__name__} result: {result}")
-            # Track state changes after the method call
-            if hasattr(self, '_capture_state_diff'):
-                logger.info(f"Capturing diff after {func.__name__}")
-                self._capture_state_diff()
-            
-            return result
-        return wrapper
-    return decorator
-
-
 class ATAtoms:
     """
     A wrapper around ASE Atoms that transparently tracks modifications
@@ -86,17 +66,13 @@ class ATAtoms:
     """
     
     def __init__(self, atoms: Atoms, server_url: Optional[str] = None, 
-                 batch_size: int = 10, sync_interval: float = 10.0, project_id: Optional[str] = '',
+                 batch_size: int = 20, sync_interval: float = 10.0, project_id: Optional[str] = '',
                  batch_diffs: bool = False):
         """
-        Initialize the ATAtoms wrapper.
-        
-        Parameters:
-        -----------
         atoms: ASE Atoms object to wrap
         server_url: URL of the server to send diffs to (if None, will use AT_SERVER env var)
         batch_size: Number of diffs to accumulate before sending to server in a single request
-        sync_interval: Maximum time in seconds between syncs to server (default: 10 seconds)
+        sync_interval: Maximum time in seconds between syncs to server
         project_id: ID of the project to associate with the atoms
         batch_diffs: Whether to batch diffs
         """
@@ -109,11 +85,11 @@ class ATAtoms:
         self._object_id = str(uuid.uuid4())
         self._batch_size = batch_size
         self._sync_interval = sync_interval
-        self._worker = QueueWorker()
+        self._worker = self._create_worker()
         self._diffs = []
         self._last_sync_time = time.time()
         self._seq_num = 0
-        self._state_id = None
+        self.atomic_state_id = None
         self._run_id = None
         self._initialized = False
         self._batch_diffs = batch_diffs
@@ -121,6 +97,13 @@ class ATAtoms:
         self._previous_state = self._serialize_state(self._initial_state)
         self._structure_id = self._hash_state(self._previous_state)
         self._capture_state_diff()
+    
+    def _create_worker(self) -> QueueWorker:
+        """Create and return a new QueueWorker instance.
+        
+        This method is separated out to allow for easier testing and mocking.
+        """
+        return QueueWorker()
     
     def _hash_state(self, state_data):
         """Generate a SHA-256 hash of the state data"""
@@ -165,9 +148,9 @@ class ATAtoms:
                 extra_headers={'Content-Type': 'application/json'}
             )
             if response and 'id' in response:
-                self._state_id = response['id']
-                logger.info(f"Successfully initialized state on server with ID: {self._state_id}")
-                if self._state_id:
+                self.atomic_state_id = response['id']
+                logger.info(f"Successfully initialized state on server with ID: {self.atomic_state_id}")
+                if self.atomic_state_id:
                     self._initialize_run_on_server()
             else:
                 print(f"Warning: Server response did not contain expected 'id' field: {response}")
@@ -182,7 +165,7 @@ class ATAtoms:
             logger.info("No server URL provided. Skipping run initialization.")
             return
             
-        if not self._state_id:
+        if not self.atomic_state_id:
             logger.warning("Cannot initialize run without a valid state ID")
             return
             
@@ -190,8 +173,8 @@ class ATAtoms:
             run_data = {
                 'id': str(uuid.uuid4()),
                 'name': f"ATAtomsRun-{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-                'starting_state': self._state_id,
-                'end_state': self._state_id,
+                'starting_state': self.atomic_state_id,
+                'end_state': self.atomic_state_id,
                 'project': self._project_id,
                 'metadata': json.dumps({
                     'created_by': 'ATAtoms',
@@ -384,7 +367,15 @@ class ATAtoms:
         return len(self._atoms)
 
     def __getattr__(self, name):
-        attr = getattr(self._atoms, name)
+        # First check if the attribute exists directly on the class or instance
+        if name in dir(self.__class__) or name in self.__dict__:
+            return object.__getattribute__(self, name)
+            
+        # If not found on self, try to get it from the wrapped atoms object
+        try:
+            attr = getattr(self._atoms, name)
+        except AttributeError:
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
         
         if callable(attr):
             def wrapped_method(*args, **kwargs):
@@ -416,6 +407,29 @@ class ATAtoms:
             except:
                 pass
 
+    def __enter__(self):
+        """Context manager entry point"""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit point - syncs diffs and cleans up worker thread"""
+        try:
+            if hasattr(self, '_diffs') and self._diffs:
+                self._sync_diffs()
+
+            if hasattr(self, '_worker'):
+                self._worker._queue.join()
+
+            if hasattr(self, '_worker'):
+                self._worker._queue.put(None)
+                self._worker._thread.join(timeout=1.0)
+                
+        except Exception as e:
+            logger.error(f"Error during ATAtoms cleanup: {e}")
+            return False
+            
+        return False
+
     def _send_diff(self, diff):
         """
         Send a diff to the server at /api/atatoms-diffs
@@ -424,10 +438,10 @@ class ATAtoms:
             logger.info("No server URL provided. Skipping diff send.")
             return None
 
-        if not self._state_id:
+        if not self.atomic_state_id:
             logger.warning("Cannot send diff without state_id. Attempting to initialize on server first.")
             self._initialize_on_server()
-            if not self._state_id:
+            if not self.atomic_state_id:
                 return None
 
         try:
@@ -566,15 +580,13 @@ class ATAtoms:
         if not self._diffs:
             return
         
-        if not self._state_id:
+        if not self.atomic_state_id:
             self._initialize_on_server()
-            if not self._state_id:
+            if not self.atomic_state_id:
                 return
             
         try:
             batch_data = {
-                'atomic_state_id': self._state_id,
-                'structure_id': self._structure_id,
                 'run': self._run_id,
                 'diffs': []
             }

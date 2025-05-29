@@ -1,3 +1,4 @@
+import os
 import pytest
 import numpy as np
 from ase.build import molecule, bulk
@@ -218,10 +219,10 @@ def test_all_the_things():
     """Test all ASE atoms operations on ATAtoms objects."""
     # Initialize ATAtoms with project_id
     malachite = create_malachite()
-    atoms = ATAtoms(malachite, project_id="ad7a74f8-e2b2-426c-9dc6-7471aaa19e2a")
+    atoms = ATAtoms(malachite, project_id=os.environ['AT_PROJECT_ID'])
     
     # Geometry optimization
-    atoms.set_calculator(EMT())
+    atoms.calc = EMT()
 
     # aims calc
     # from ase.calculators.aims import AimsProfile
@@ -330,3 +331,53 @@ def test_all_the_things():
     # Save final state
     state_id = atoms.save_current_state()
     assert state_id is not None
+
+
+def test_context_manager_cleanup():
+    """Test that the context manager properly cleans up resources."""
+    import threading
+    from unittest.mock import Mock, patch
+    import time
+    import queue
+    
+    # Create a mock worker that simulates the real worker's behavior
+    mock_worker = Mock()
+    mock_worker._queue = queue.Queue()
+    
+    # Create a thread that will stay alive until explicitly stopped
+    stop_event = threading.Event()
+    def worker_thread():
+        while not stop_event.is_set():
+            try:
+                # Simulate processing the queue
+                item = mock_worker._queue.get(timeout=0.1)
+                if item is None:  # Signal to stop
+                    break
+                mock_worker._queue.task_done()
+            except queue.Empty:
+                pass
+    
+    mock_worker._thread = threading.Thread(target=worker_thread)
+    mock_worker._thread.start()
+
+    try:
+        # Create a mock ATAtoms instance
+        with patch('atomict.ase.atatoms.ATAtoms._create_worker', return_value=mock_worker) as mock_create_worker:
+            with ATAtoms(create_malachite(), batch_diffs=True) as at_atoms:
+                # Verify worker was created
+                mock_create_worker.assert_called_once()
+                
+                # Verify thread is alive during context
+                assert mock_worker._thread.is_alive()
+                
+                # Simulate some operations
+                original_positions = at_atoms.get_positions().copy()
+                at_atoms.set_positions(original_positions)
+                at_atoms.set_positions(original_positions * 0.8)  # 20% compression
+        
+        # Verify thread is no longer alive after context
+        assert not mock_worker._thread.is_alive()
+    finally:
+        # Ensure the thread is stopped even if the test fails
+        stop_event.set()
+        mock_worker._thread.join(timeout=1.0)
