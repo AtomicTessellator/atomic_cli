@@ -25,6 +25,20 @@ logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
 
+class ATAtomsError(Exception):
+    pass
+
+
+class ATAtomsServerError(ATAtomsError):
+    """Raised when server operations fail"""
+    pass
+
+
+class ATAtomsInitializationError(ATAtomsServerError):
+    """Raised when server initialization fails"""
+    pass
+
+
 class QueueWorker:
     """Handles network operations in a separate thread"""
     def __init__(self):
@@ -214,7 +228,6 @@ class ATAtoms:
         if diff:
             timestamp = datetime.datetime.now().isoformat()
             current_seq = self._seq_num
-            self._seq_num += 1
             logger.info(f"State change detected, creating diff with seq_num={current_seq}")
             diff_item = {
                 'timestamp': timestamp,
@@ -235,6 +248,8 @@ class ATAtoms:
                     self._sync_diffs()
             else:
                 self._send_diff(diff)
+
+            self._seq_num += 1
         else:
             logger.info("No state change detected")
     
@@ -441,7 +456,7 @@ class ATAtoms:
             logger.warning("Cannot send diff without state_id. Attempting to initialize on server first.")
             self._initialize_on_server()
             if not self.atomic_state_id:
-                return None
+                raise ATAtomsInitializationError("Failed to initialize ATAtoms state on server after retry attempt")
 
         try:
             serialized_diff = self._serialize_diff(diff)
