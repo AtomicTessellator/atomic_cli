@@ -108,7 +108,7 @@ class ATAtoms:
         """Generate a SHA-256 hash of the state data"""
         state_json = json.dumps(state_data, sort_keys=True)
         _hash = hashlib.sha256(state_json.encode('utf-8')).hexdigest()
-        logger.info(f"created structure id: {_hash}")
+        logger.info(f"Created structure id: {_hash}")
         return _hash
     
     def _initialize_on_server(self):
@@ -152,7 +152,7 @@ class ATAtoms:
                 if self.atomic_state_id:
                     self._initialize_run_on_server()
             else:
-                print(f"Warning: Server response did not contain expected 'id' field: {response}")
+                logger.warning(f"Server response did not contain expected 'id' field: {response}")
             
         except Exception as e:
             logger.error(f"Failed to queue initialization on server: {e}")
@@ -187,9 +187,9 @@ class ATAtoms:
             )
             if response and 'id' in response:
                 self._run_id = response['id']
-                print(f"Successfully initialized run on server with ID: {self._run_id}")
+                logger.info(f"Successfully initialized run on server with ID: {self._run_id}")
             else:
-                print(f"Warning: Server response did not contain expected 'id' field: {response}")
+                logger.warning(f"Server response did not contain expected 'id' field: {response}")
                 
         except Exception as e:
             logger.error(f"Failed to queue run initialization on server: {e}")
@@ -236,7 +236,7 @@ class ATAtoms:
             else:
                 self._send_diff(diff)
         else:
-            logger.debug("No state change detected")
+            logger.info("No state change detected")
     
     @property
     def calc(self):
@@ -434,7 +434,7 @@ class ATAtoms:
         Send a diff to the server at /api/atatoms-diffs
         """
         if not self._server_url:
-            logger.debug("No server URL provided. Skipping diff send.")
+            logger.info("No server URL provided. Skipping diff send.")
             return None
 
         if not self.atomic_state_id:
