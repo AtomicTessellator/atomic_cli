@@ -28,7 +28,7 @@ logger.setLevel(logging.INFO)
 class QueueWorker:
     """Handles network operations in a separate thread"""
     def __init__(self):
-        self._queue = queue.Queue()
+        self._queue = queue.Queue(maxsize=100_000)
         self._thread = threading.Thread(target=self._process_queue, daemon=True)
         self._thread.start()
         
@@ -402,7 +402,7 @@ class ATAtoms:
         if hasattr(self, '_diffs') and self._diffs:
             try:
                 self._sync_diffs()
-                self._worker._queue.join()
+                self._worker._queue.join(timeout=5.0)
             except:
                 pass
 
@@ -598,7 +598,6 @@ class ATAtoms:
                     'data': serialized_diff
                 })
 
-            diffs_to_send = self._diffs
             self._diffs = []
             self._last_sync_time = time.time()
             
@@ -608,7 +607,7 @@ class ATAtoms:
                     batch_data,
                     extra_headers={'Content-Type': 'application/json'}
                 )
-                logger.info(f"Sent batch of {len(diffs_to_send)} diffs to server")
+                logger.info(f"Sent batch of {len(batch_data['diffs'])} diffs to server")
 
             self._worker.enqueue(_do_sync_diffs, batch_data)
             
