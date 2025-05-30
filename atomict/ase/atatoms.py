@@ -236,7 +236,6 @@ class ATAtoms:
             }
             
             self._previous_state = serialized_current
-            logger.info(f"Incremented internal seq_num to {self._seq_num}")
             
             if self._batch_diffs:
                 logger.info(f"Adding diff to batch queue (queue size now: {len(self._diffs)+1})")
@@ -250,6 +249,7 @@ class ATAtoms:
                 self._send_diff(diff)
 
             self._seq_num += 1
+            logger.info(f"Incremented internal seq_num to {self._seq_num}")
         else:
             logger.info("No state change detected")
     
