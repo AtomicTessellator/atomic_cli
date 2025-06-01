@@ -86,7 +86,7 @@ class TestAssociateUserUploadWithPhono3pySimRun:
         assert result == {'id': 'association_123'}
         mock_post.assert_called_once_with(
             'api/phono3py-run-simulation-file/',
-            payload={'user_upload_id': 'upload_456', 'phono3py_run_id': 'run_789'}
+            payload={'user_upload_id': 'upload_456', 'phono3py_run_simulation_id': 'run_789'}
         )
 
 

@@ -48,7 +48,7 @@ def associate_user_upload_with_phono3py_sim_run(user_upload_id: str, phono3py_ru
     """
     result = post(
         "api/phono3py-run-simulation-file/",
-        payload={"user_upload_id": user_upload_id, "phono3py_run_id": phono3py_run_id},
+        payload={"user_upload_id": user_upload_id, "phono3py_run_simulation_id": phono3py_run_id},
     )
     return result
 
