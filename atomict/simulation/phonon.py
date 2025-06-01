@@ -1,12 +1,91 @@
-from atomict.api import post
+from atomict.api import get, post
+from atomict.simulation.models import MODEL_ORB_D3_V2, MODEL_MATTERSIM_1_0_0_5M, MODEL_ORB_V3_CONSERVATIVE, MODEL_ESEN_30M_OAM
 
 
-def associate_user_upload_with_phonon_analysis(user_upload_id: str, pa_id: str):
+def get_phonon_run(id: str, **params):
     """
-    Associate a user upload with a Phonon Analysis
+    Get Phonon Run
+    
+    A Phonon Run is a collection of Phonon Simulations.
+
+    Args:
+        id: str - The ID of the Phonon Run
+        **params: Additional GET parameters to pass to the API
+    """
+    # Build query string from parameters
+    query_string = '&'.join(f"{k}={v}" for k, v in params.items())
+    base_url = f"api/phono3py-run/{id}/"
+    
+    # Add query string if we have parameters
+    url = f"{base_url}?{query_string}" if query_string else base_url
+    
+    result = get(url)
+    return result
+
+
+def get_phono3py_sim_run(id: str, **params):
+    """
+    Get Phonon Simulation Run
+
+    Args:
+        id: str - The ID of the Phonon Simulation Run
+        **params: Additional GET parameters to pass to the API
+    """
+    # Build query string from parameters
+    query_string = '&'.join(f"{k}={v}" for k, v in params.items())
+    base_url = f"api/phono3py-run-simulation/{id}/"
+    
+    # Add query string if we have parameters
+    url = f"{base_url}?{query_string}" if query_string else base_url
+    
+    result = get(url)
+    return result
+
+
+def associate_user_upload_with_phono3py_sim_run(user_upload_id: str, phono3py_run_id: str):
+    """
+    Associate a user upload with a Phonon Simulation Run
     """
     result = post(
-        "api/phonon-analysis-file/",
-        payload={"user_upload_id": user_upload_id, "analysis_id": pa_id},
+        "api/phono3py-run-simulation-file/",
+        payload={"user_upload_id": user_upload_id, "phono3py_run_id": phono3py_run_id},
     )
+    return result
+
+
+def create_phono3py_run(project_id: str, source_geometry_id: str, action: str, name: str = None, description: str = None, model: int = MODEL_ORB_D3_V2, extra_simulation_kwargs: dict = None):
+    """
+    Create a Phonon Run
+
+    Args:
+        project_id: str - The ID of the Project
+        source_geometry_id: str - The ID of the Source Geometry
+        action: str - The action to perform
+        name: str - The name of the Phonon Run
+    """
+
+    if model not in [MODEL_ORB_D3_V2, MODEL_MATTERSIM_1_0_0_5M, MODEL_ORB_V3_CONSERVATIVE, MODEL_ESEN_30M_OAM]:
+        raise ValueError(f"Invalid model: {model}")
+
+    if action not in ["LAUNCH", "DRAFT"]:
+        raise ValueError(f"Invalid action: {action} (must be 'LAUNCH' or 'DRAFT')")
+    
+    payload = {
+        "project_id": project_id,
+        "source_geometry_id": source_geometry_id,
+        "action": action,
+        "name": name,
+        "description": description,
+        "model": model,
+        "extra_simulation_kwargs": extra_simulation_kwargs,
+    }
+    result = post("api/phono3py-run/", payload=payload)
+    return result
+
+
+def get_phono3py_sim_run_files(phono3py_sim_run_id: str):
+    """
+    Get the files associated with a Phonon Simulation Run
+    """
+    result = get(f"api/phono3py-run-simulation-file/?phono3py_run_simulation__id={phono3py_sim_run_id}")
     return result

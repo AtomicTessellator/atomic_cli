@@ -1,12 +1,8 @@
 from atomict.api import get, post
+from atomict.simulation.models import MODEL_ORB_D3_V2, MODEL_MATTERSIM_1_0_0_5M, MODEL_ORB_V3_CONSERVATIVE, MODEL_ESEN_30M_OAM
 
 COMPUTATION_TYPE_RELAXATION = 0
 COMPUTATION_TYPE_SINGLE_POINT = 1
-
-MODEL_ORB_D3_V2 = 0
-MODEL_MATTERSIM_1_0_0_5M = 1
-MODEL_ORB_V3_CONSERVATIVE = 2
-MODEL_ESEN_30M_OAM = 3
 
 
 def get_mlrelax(id: str, **params):
