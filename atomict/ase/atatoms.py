@@ -78,12 +78,10 @@ class ATAtoms:
     and tracks diffs between Atoms states. An ATAtoms run is a collection of diffs.
     """
     
-    def __init__(self, atoms: Atoms, server_url: Optional[str] = None, 
-                 batch_size: int = 20, sync_interval: float = 10.0, project_id: Optional[str] = '',
-                 batch_diffs: bool = False):
+    def __init__(self, atoms: Atoms, batch_size: int = 20, sync_interval: float = 10.0,
+                 project_id: Optional[str] = '', batch_diffs: bool = False):
         """
         atoms: ASE Atoms object to wrap
-        server_url: URL of the server to send diffs to (if None, will use AT_SERVER env var)
         batch_size: Number of diffs to accumulate before sending to server in a single request
         sync_interval: Maximum time in seconds between syncs to server
         project_id: ID of the project to associate with the atoms
@@ -93,7 +91,6 @@ class ATAtoms:
             raise TypeError(f"Expected ASE Atoms object, got {type(atoms).__name__}: {atoms}")
 
         self._atoms = atoms
-        self._server_url = server_url or os.environ.get('AT_SERVER')
         self._project_id = project_id
         self._object_id = str(uuid.uuid4())
         self._batch_size = batch_size
@@ -128,9 +125,6 @@ class ATAtoms:
     def _initialize_on_server(self):
         """Send the initial state to create an object on the server"""
         # If no server URL is set, skip the server initialization and run offline
-        if not self._server_url:
-            logger.info("No server URL provided. Skipping server initialization.")
-            return
         
         try:
             state_data = {
@@ -174,9 +168,6 @@ class ATAtoms:
     def _initialize_run_on_server(self):
         """Create an AtomicRun object on the server using the initial state"""
         # If no server URL is set, skip the run initialization and run offline
-        if not self._server_url:
-            logger.info("No server URL provided. Skipping run initialization.")
-            return
             
         if not self.atomic_state_id:
             logger.warning("Cannot initialize run without a valid state ID")
@@ -212,8 +203,6 @@ class ATAtoms:
         """
         Capture differences between current and previous state
         """
-        if not self._server_url:
-            logger.info("No server configured, skipping creating diffs.")
 
         current_state = self._get_current_state()
         serialized_current = self._serialize_state(current_state)
@@ -448,9 +437,6 @@ class ATAtoms:
         """
         Send a diff to the server at /api/atatoms-diffs
         """
-        if not self._server_url:
-            logger.info("No server URL provided. Skipping diff send.")
-            return None
 
         if not self.atomic_state_id:
             logger.warning("Cannot send diff without state_id. Attempting to initialize on server first.")
@@ -495,9 +481,6 @@ class ATAtoms:
         --------
         Dict with server response data
         """
-        if not self._server_url:
-            logger.debug("No server URL provided. Skipping state save.")
-            return {"info": "No server URL provided. State was not saved."}
 
         current_state = self._get_current_state()
         serialized_state = self._serialize_state(current_state)
@@ -548,9 +531,6 @@ class ATAtoms:
 
     def update_run_end_state(self, state_id):
         """Update the end state of the current run"""
-        if not self._server_url:
-            logger.info("No server URL provided. Skipping run end state update.")
-            return
             
         if not self._run_id:
             logger.warning("Cannot update run end state: no run ID available")
@@ -586,10 +566,6 @@ class ATAtoms:
     def _sync_diffs(self):
         """Send accumulated diffs to the server in a single request and clear the queue"""
         # offline mode
-        if not self._server_url:
-            logger.debug("No server URL provided. Skipping diffs sync and pruning.")
-            self._diffs = []
-            return
             
         if not self._diffs:
             return
