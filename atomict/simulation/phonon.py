@@ -14,7 +14,7 @@ def get_phonon_run(id: str, **params):
     """
     # Build query string from parameters
     query_string = '&'.join(f"{k}={v}" for k, v in params.items())
-    base_url = f"api/phono3py-run/{id}/"
+    base_url = f"api/phonon-run/{id}/"
     
     # Add query string if we have parameters
     url = f"{base_url}?{query_string}" if query_string else base_url
@@ -23,7 +23,7 @@ def get_phonon_run(id: str, **params):
     return result
 
 
-def get_phono3py_sim_run(id: str, **params):
+def get_phonon_sim_run(id: str, **params):
     """
     Get Phonon Simulation Run
 
@@ -33,7 +33,7 @@ def get_phono3py_sim_run(id: str, **params):
     """
     # Build query string from parameters
     query_string = '&'.join(f"{k}={v}" for k, v in params.items())
-    base_url = f"api/phono3py-run-simulation/{id}/"
+    base_url = f"api/phonon-run-simulation/{id}/"
     
     # Add query string if we have parameters
     url = f"{base_url}?{query_string}" if query_string else base_url
@@ -42,18 +42,18 @@ def get_phono3py_sim_run(id: str, **params):
     return result
 
 
-def associate_user_upload_with_phono3py_sim_run(user_upload_id: str, phono3py_run_id: str):
+def associate_user_upload_with_phonon_sim_run(user_upload_id: str, phonon_run_id: str):
     """
     Associate a user upload with a Phonon Simulation Run
     """
     result = post(
-        "api/phono3py-run-simulation-file/",
-        payload={"user_upload_id": user_upload_id, "phono3py_run_simulation_id": phono3py_run_id},
+        "api/phonon-run-simulation-file/",
+        payload={"user_upload_id": user_upload_id, "phono3py_run_simulation_id": phonon_run_id},
     )
     return result
 
 
-def create_phono3py_run(project_id: str, source_geometry_id: str, action: str, name: str = None, description: str = None, model: int = MODEL_ORB_D3_V2, extra_simulation_kwargs: dict = None):
+def create_phonon_run(project_id: str, source_geometry_id: str, action: str, name: str = None, description: str = None, model: int = MODEL_ORB_D3_V2, extra_simulation_kwargs: dict = None):
     """
     Create a Phonon Run
 
@@ -79,13 +79,13 @@ def create_phono3py_run(project_id: str, source_geometry_id: str, action: str, n
         "model": model,
         "extra_simulation_kwargs": extra_simulation_kwargs,
     }
-    result = post("api/phono3py-run/", payload=payload)
+    result = post("api/phonon-run/", payload=payload)
     return result
 
 
-def get_phono3py_sim_run_files(phono3py_sim_run_id: str):
+def get_phonon_sim_run_files(phonon_sim_run_id: str):
     """
     Get the files associated with a Phonon Simulation Run
     """
-    result = get(f"api/phono3py-run-simulation-file/?phono3py_run_simulation__id={phono3py_sim_run_id}")
+    result = get(f"api/phonon-run-simulation-file/?phono3py_run_simulation__id={phonon_sim_run_id}")
     return result
