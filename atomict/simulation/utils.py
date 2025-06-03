@@ -85,8 +85,10 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
     elif sim["starting_structure_userupload"]:
         logging.info(f"Previous UserUpload: {sim['starting_structure_userupload']['uuid']}")
 
-        download_file(sim["starting_structure_userupload"]["uuid"], workbench_dir + "/relaxed.cif")
-        atoms = read(workbench_dir + "/relaxed.cif")
+        extension = sim["starting_structure_userupload"]["orig_name"].split(".")[-1]
+
+        download_file(sim["starting_structure_userupload"]["uuid"], workbench_dir + f"/relaxed.{extension}")
+        atoms = read(workbench_dir + f"/relaxed.{extension}")
 
         if isinstance(atoms, list):
             return atoms[-1]
