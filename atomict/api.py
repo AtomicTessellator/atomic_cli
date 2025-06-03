@@ -90,7 +90,7 @@ def post(path: str, payload: dict, files=None, extra_headers={}):
     if os.environ.get("AT_TOKEN"):
         headers["Authorization"] = f"Token {os.environ.get('AT_TOKEN')}"
 
-    api_root = os.environ.get("AT_SERVER")
+    api_root = os.environ.get("AT_SERVER", "https://api.atomictessellator.com")
 
     if files is not None:
         response = requests.post(
@@ -130,7 +130,7 @@ def patch(path: str, payload: dict):
     if os.environ.get("AT_TOKEN"):
         headers["Authorization"] = f"Token {os.environ.get('AT_TOKEN')}"
 
-    api_root = os.environ.get("AT_SERVER")
+    api_root = os.environ.get("AT_SERVER", "https://api.atomictessellator.com")
     response = requests.patch(f"{api_root}/{path}", data=payload_enc, headers=headers)
 
     if response.status_code == requests.codes.ok:
@@ -163,7 +163,7 @@ def delete(path: str):
     if os.environ.get("AT_TOKEN"):
         headers["Authorization"] = f"Token {os.environ.get('AT_TOKEN')}"
 
-    api_root = os.environ.get("AT_SERVER")
+    api_root = os.environ.get("AT_SERVER", "https://api.atomictessellator.com")
     response = requests.delete(f"{api_root}/{path}", headers=headers)
 
     if response.status_code == requests.codes.ok:
