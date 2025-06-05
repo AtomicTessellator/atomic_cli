@@ -206,6 +206,11 @@ class ATAtoms:
 
         current_state = self._get_current_state()
         serialized_current = self._serialize_state(current_state)
+        new_atomic_state_id = self._hash_state(serialized_current)
+        if self._structure_id == new_atomic_state_id:
+            logger.info("New state hash matches current")
+            return
+
         if not self._initialized:
             logger.info("Initializing on server (first state)")
             self._initialize_on_server()
@@ -225,7 +230,7 @@ class ATAtoms:
             }
             
             self._previous_state = serialized_current
-            logger.info(f"Incremented internal seq_num to {self._seq_num}")
+            self._structure_id = self._hash_state(self._previous_state)
             
             if self._batch_diffs:
                 logger.info(f"Adding diff to batch queue (queue size now: {len(self._diffs)+1})")
@@ -239,6 +244,7 @@ class ATAtoms:
                 self._send_diff(diff)
 
             self._seq_num += 1
+            logger.info(f"Incremented internal seq_num to {self._seq_num}")
         else:
             logger.info("No state change detected")
     
