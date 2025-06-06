@@ -2,10 +2,6 @@ import pytest
 from unittest.mock import Mock, patch
 from atomict.simulation.phonon import (
     get_phonon_run,
-    get_phono3py_sim_run,
-    associate_user_upload_with_phono3py_sim_run,
-    create_phono3py_run,
-    get_phono3py_sim_run_files,
 )
 from atomict.simulation.models import (
     MODEL_ORB_D3_V2,
