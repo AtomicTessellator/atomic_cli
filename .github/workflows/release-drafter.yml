@@ -2,12 +2,12 @@ name: Build, Release and Publish
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize, closed]
+    types: [opened, reopened, synchronize]
     branches:
-      - 'publish-to-test-pypi'
+      - 'main'
   push:
     branches:
-      - 'publish-to-test-pypi'
+      - 'main'
 
 jobs:
   build:
@@ -135,16 +135,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  publish-to-testpypi:
-    name: Publish Python 🐍 distribution 📦 to TestPyPI
+  publish-to-pypi:
+    name: Publish Python 🐍 distribution 📦 to PyPI
     needs:
     - create-release
     runs-on: ubuntu-latest
-
     environment:
-      name: testpypi
-      url: https://test.pypi.org/p/atomict-cli
-
+      name: pypi
+      url: https://pypi.org/p/atomict  # Replace <package-name> with your PyPI project name
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 
@@ -154,10 +152,7 @@ jobs:
       with:
         name: python-package-distributions
         path: dist/
-    - name: Publish distribution 📦 to TestPyPI
+    - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        repository-url: https://test.pypi.org/legacy/
-
 #test 123
 #another test pr#12312312
