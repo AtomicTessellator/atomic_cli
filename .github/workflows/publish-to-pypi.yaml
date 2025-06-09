@@ -59,7 +59,7 @@ jobs:
 
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/atomict
+      url: https://test.pypi.org/p/atomict-cli
 
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
