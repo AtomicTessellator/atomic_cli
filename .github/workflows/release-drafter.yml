@@ -2,7 +2,7 @@ name: Build, Release and Publish
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize]
+    types: [opened, reopened, synchronize, closed]
     branches:
       - 'publish-to-test-pypi'
   push:
@@ -98,7 +98,7 @@ jobs:
   create-release:
     name: Create Release
     needs: build
-    if: github.event_name == 'push'
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -106,6 +106,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
 
       - name: Extract version
         id: version
@@ -137,6 +139,7 @@ jobs:
   publish-to-testpypi:
     name: Publish to TestPyPI
     needs: create-release
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     environment:
       name: testpypi
