@@ -41,7 +41,7 @@ version = {attr = "atomict.__version__.__version__"}
 dependencies = {file = ["requirements.txt"]}
 
 [project.optional-dependencies]
-utils = ["ase==3.23.0", "spglib==2.5.0", "pymatgen==2025.3.10"]
+utils = ["ase==3.23.0", "spglib==2.5.0", "pymatgen==2025.3.10", "msgpack==1.1.0", "msgpack_numpy==0.4.8"]
 
 dev = [
     "pytest~=8.0",

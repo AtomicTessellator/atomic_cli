@@ -15,7 +15,7 @@ def mock_client():
 
 def test_login_command_fails_with_error_message(mock_client):
     # Setup
-    runner = CliRunner(mix_stderr=False)
+    runner = CliRunner()
     # Mock the auth method to return an empty dict instead of None
     mock_client.auth.return_value = {}
 

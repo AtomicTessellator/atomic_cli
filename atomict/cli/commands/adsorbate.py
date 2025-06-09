@@ -13,12 +13,12 @@ console = Console()
 
 
 @click.group(name="adsorbate")
-def adsorbate():
+def adsorbate_group():
     """Manage adsorbates"""
     pass
 
 
-@adsorbate.command()
+@adsorbate_group.command()
 @click.argument("id", required=False)
 @click.option("--json-output", is_flag=True, help="Output in JSON format")
 @click.option("--search", help="Search term")
@@ -96,7 +96,7 @@ def get(
         console.print(table)
 
 
-@adsorbate.command()
+@adsorbate_group.command()
 @click.option("--ase-atoms", required=True, help="ASE atoms string representation")
 @click.option("--smiles", help="SMILES string representation of the molecule")
 @click.option(
@@ -133,7 +133,7 @@ def create(
     console.print(f"[green]Created adsorbate {result['id']}[/green]")
 
 
-@adsorbate.command()
+@adsorbate_group.command()
 @click.argument("id")
 @click.option("--ase-atoms", help="ASE atoms string representation")
 @click.option("--smiles", help="SMILES string representation of the molecule")
@@ -173,7 +173,7 @@ def update(
     console.print(f"[green]Updated adsorbate {result['id']}[/green]")
 
 
-@adsorbate.command()
+@adsorbate_group.command()
 @click.argument("id")
 def delete(id: str):
     """Delete an adsorbate"""

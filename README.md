@@ -9,6 +9,10 @@ pip install atomict[utils]
 
 # ", with a git url
 pip install git+https://github.com/AtomicTessellator/atomic_cli#egg=atomict[utils]
+
+# Troubleshooting
+If pip install is not working, try:
+pip install --upgrade setuptools pip wheel
 ```
 
 ## Installation for devs

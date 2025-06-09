@@ -14,12 +14,12 @@ console = Console()
 
 
 @click.group(name="k8s")
-def k8s():
+def k8s_group():
     """Manage Kubernetes jobs and clusters"""
     pass
 
 
-@k8s.command()
+@k8s_group.command()
 @click.argument("id", required=False)
 @click.option("--search", help="Search term")
 @click.option("--ordering", help="Field to order results by")
@@ -109,7 +109,7 @@ def get(
         console.print(table)
 
 
-@k8s.command()
+@k8s_group.command()
 @click.argument("id", required=False)
 @click.option("--search", help="Search term")
 @click.option("--ordering", help="Field to order results by")
