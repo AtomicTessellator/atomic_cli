@@ -40,7 +40,7 @@ jobs:
   add-version-tag:
     name: Add Version Tag
     needs: build
-    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -72,7 +72,7 @@ jobs:
   auto-merge:
     name: Auto-merge PR
     needs: [build, add-version-tag]
-    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize')
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -156,4 +156,4 @@ jobs:
         repository-url: https://test.pypi.org/legacy/
 
 #test 123
-#another test pr
+#another test pr#12312312
