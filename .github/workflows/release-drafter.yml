@@ -136,15 +136,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish-to-testpypi:
-    name: Publish to TestPyPI
-    needs: create-release
-    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
+    name: Publish Python 🐍 distribution 📦 to TestPyPI
+    needs:
+    - create-release
     runs-on: ubuntu-latest
+
     environment:
       name: testpypi
       url: https://test.pypi.org/p/atomict-cli
+
     permissions:
-      id-token: write
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
 
     steps:
     - name: Download all the dists
