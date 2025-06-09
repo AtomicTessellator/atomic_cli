@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "atomict"
+name = "atomict-cli"
 authors = [
     {name = "Steven Anderson", email = "steven@atomictessellator.com"},
     {name = "Alain Richardt", email = "alain@atomictessellator.com"},

@@ -1,6 +1,8 @@
 name: Publish Python 🐍 distribution 📦 to PyPI and TestPyPI
 
-on: push
+on: 
+  release:
+    types: [published]
 
 jobs:
   build:
@@ -32,7 +34,7 @@ jobs:
   publish-to-pypi:
     name: >-
       Publish Python 🐍 distribution 📦 to PyPI
-    if: ${{ startsWith(github.ref, 'ref/tags/') && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'staging' }}
+    if: startsWith(github.ref, 'refs/tags/') && github.base_ref == 'main'  
     needs:
     - build
     runs-on: ubuntu-latest
@@ -53,13 +55,14 @@ jobs:
 
   publish-to-testpypi:
     name: Publish Python 🐍 distribution 📦 to TestPyPI
+    if: startsWith(github.ref, 'refs/tags/') && github.base_ref == 'publish-to-test-pypi'
     needs:
     - build
     runs-on: ubuntu-latest
 
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/atomict
+      url: https://test.pypi.org/p/atomict-cli
 
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
