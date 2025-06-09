@@ -2,7 +2,7 @@ name: Build, Release and Publish
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize]
+    types: [opened, reopened, synchronize, closed]
     branches:
       - 'publish-to-test-pypi'
 
@@ -62,8 +62,8 @@ jobs:
 
   create-release:
     name: Create Release
-    needs: auto-merge
-    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
+    needs: [build, auto-merge]
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
     permissions:
       contents: write
