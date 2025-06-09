@@ -1,4 +1,53 @@
-template: |
-  ## What’s Changed
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    branches:
+      - 'publish-to-test-pypi'
+    tags:
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 
-  $CHANGES
+  pull_request:
+    # Only following types are handled by the action, but one can default to all as well
+    types: [opened, reopened, synchronize, closed]
+    branches:
+      - 'publish-to-test-pypi'
+
+name: Create Release
+
+
+permissions:
+  contents: read
+
+jobs:
+  update_release_draft:
+    permissions:
+      # write permission is required to create a github release
+      contents: write
+      # write permission is required for autolabeler
+      # otherwise, read permission is required at least
+      pull-requests: write
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(grep -m 1 "__version__" atomict/__version__.py | cut -d'"' -f2)
+          # Validate version format (x.y.z)
+          if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Invalid version format. Expected x.y.z, got $VERSION"
+            exit 1
+          fi
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      # Drafts your next Release notes as Pull Requests are merged into "master"
+      - uses: release-drafter/release-drafter@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: v${{ steps.version.outputs.version }}
+
+#testtesttest
