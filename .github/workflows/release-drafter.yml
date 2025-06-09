@@ -2,7 +2,10 @@ name: Build, Release and Publish
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize, closed]
+    types: [opened, reopened, synchronize]
+    branches:
+      - 'publish-to-test-pypi'
+  push:
     branches:
       - 'publish-to-test-pypi'
 
@@ -34,9 +37,41 @@ jobs:
         name: python-package-distributions
         path: dist/
 
+  add-version-tag:
+    name: Add Version Tag
+    needs: build
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(grep -m 1 "__version__" atomict/__version__.py | cut -d'"' -f2)
+          # Validate version format (x.y.z)
+          if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Invalid version format. Expected x.y.z, got $VERSION"
+            exit 1
+          fi
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Create Tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag -a "v${{ steps.version.outputs.version }}" -m "Version ${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"
+
   auto-merge:
     name: Auto-merge PR
-    needs: build
+    needs: [build, add-version-tag]
     if: github.event_name == 'pull_request' && github.event.action == 'opened'
     runs-on: ubuntu-latest
     permissions:
@@ -62,8 +97,8 @@ jobs:
 
   create-release:
     name: Create Release
-    needs: [build, auto-merge]
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    needs: build
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -71,8 +106,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.base.ref }}
 
       - name: Extract version
         id: version
