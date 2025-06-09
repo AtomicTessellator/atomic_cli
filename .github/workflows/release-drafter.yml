@@ -97,8 +97,7 @@ jobs:
 
   create-release:
     name: Create Release
-    needs: build
-    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
+    needs: auto-merge
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -139,7 +138,6 @@ jobs:
   publish-to-testpypi:
     name: Publish to TestPyPI
     needs: create-release
-    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     environment:
       name: testpypi
