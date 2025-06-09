@@ -13,7 +13,7 @@ console = Console()
 
 
 @click.group(name="upload")
-def upload():
+def upload_group():
     """Manage file uploads"""
     pass
 
@@ -49,7 +49,7 @@ def upload():
 #     console.print(f"Upload ID: {result['id']}")
 
 
-@upload.command()
+@upload_group.command()
 @click.option("--limit", type=int, help="Number of results to return")
 @click.option("--type", "file_type", help="Filter by file type")
 @click.option("--json-output", is_flag=True, help="Output in JSON format")
