@@ -8,7 +8,7 @@ on:
 
   pull_request:
     # Only following types are handled by the action, but one can default to all as well
-    types: [opened, reopened, synchronize, closed]
+    types: [opened, reopened, synchronize]
     branches:
       - 'publish-to-test-pypi'
 
@@ -27,7 +27,6 @@ jobs:
       # otherwise, read permission is required at least
       pull-requests: write
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
