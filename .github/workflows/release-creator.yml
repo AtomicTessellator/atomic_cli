@@ -10,11 +10,57 @@ on:
       - 'main'
 
 jobs:
+  check-approval:
+    name: Check for Approval
+    runs-on: ubuntu-latest
+    outputs:
+      approved: ${{ steps.check.outputs.approved }}
+    steps:
+      - name: Check for approval
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const maxAttempts = 2880; // 24 hours with 30 second intervals
+            const interval = 30000; // 30 seconds
+            
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+              const reviews = await github.rest.pulls.listReviews({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number
+              });
+              
+              // Check for any CHANGES_REQUESTED or DENIED reviews
+              const hasDenial = reviews.data.some(review => 
+                review.state === 'CHANGES_REQUESTED' || review.state === 'DENIED'
+              );
+              
+              if (hasDenial) {
+                core.setFailed('Pull request has been denied or changes requested');
+                return;
+              }
+              
+              // Check for at least one APPROVED review
+              const hasApproval = reviews.data.some(review => review.state === 'APPROVED');
+              if (hasApproval) {
+                core.setOutput('approved', true);
+                return;
+              }
+              
+              // If no decision yet, wait and try again
+              if (attempt < maxAttempts - 1) {
+                await new Promise(resolve => setTimeout(resolve, interval));
+              }
+            }
+            
+            // If we've exhausted all attempts without a decision
+            core.setFailed('Timed out waiting for approval or denial after 24 hours');
+
   build:
     name: Build distribution 📦
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-
+    needs: check-approval
     steps:
     - uses: actions/checkout@v4
       with:
@@ -39,7 +85,7 @@ jobs:
 
   add-version-tag:
     name: Add Version Tag
-    needs: build
+    needs: [build, check-approval]
     if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize')
     runs-on: ubuntu-latest
     permissions:
@@ -71,7 +117,7 @@ jobs:
 
   auto-merge:
     name: Auto-merge PR
-    needs: [build, add-version-tag]
+    needs: [build, add-version-tag, check-approval]
     if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize')
     runs-on: ubuntu-latest
     permissions:
@@ -97,7 +143,7 @@ jobs:
 
   create-release:
     name: Create Release
-    needs: auto-merge
+    needs: [auto-merge, check-approval]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -137,8 +183,7 @@ jobs:
 
   publish-to-pypi:
     name: Publish Python 🐍 distribution 📦 to PyPI
-    needs:
-    - create-release
+    needs: [create-release, check-approval]
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -154,4 +199,3 @@ jobs:
         path: dist/
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
-#build test
