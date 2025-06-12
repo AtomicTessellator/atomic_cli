@@ -1,92 +1,18 @@
-name: Build, Release and Publish
+name: Tag Build, Release and Publish
 
 on:
-  pull_request:
-    types: [opened, reopened, synchronize]
-    branches:
-      - 'main'
   push:
     branches:
       - 'main'
-
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+      - 'tests/**'
+      - '.gitignore'
 jobs:
-  check-approval:
-    name: Check for Approval
-    runs-on: ubuntu-latest
-    outputs:
-      approved: ${{ steps.check.outputs.approved }}
-    steps:
-      - name: Check for approval
-        id: check
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const maxAttempts = 2880; // 24 hours with 30 second intervals
-            const interval = 30000; // 30 seconds
-            
-            for (let attempt = 0; attempt < maxAttempts; attempt++) {
-              const reviews = await github.rest.pulls.listReviews({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: context.issue.number
-              });
-              
-              // Check for any CHANGES_REQUESTED or DENIED reviews
-              const hasDenial = reviews.data.some(review => 
-                review.state === 'CHANGES_REQUESTED' || review.state === 'DENIED'
-              );
-              
-              if (hasDenial) {
-                core.setFailed('Pull request has been denied or changes requested');
-                return;
-              }
-              
-              // Check for at least one APPROVED review
-              const hasApproval = reviews.data.some(review => review.state === 'APPROVED');
-              if (hasApproval) {
-                core.setOutput('approved', true);
-                return;
-              }
-              
-              // If no decision yet, wait and try again
-              if (attempt < maxAttempts - 1) {
-                await new Promise(resolve => setTimeout(resolve, interval));
-              }
-            }
-            
-            // If we've exhausted all attempts without a decision
-            core.setFailed('Timed out waiting for approval or denial after 24 hours');
-
-  build:
-    name: Build distribution 📦
-    runs-on: ubuntu-latest
-    needs: check-approval
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.x"
-    - name: Install pypa/build
-      run: >-
-        python3 -m
-        pip install
-        build
-        --user
-    - name: Build a binary wheel and a source tarball
-      run: python3 -m build
-    - name: Store the distribution packages
-      uses: actions/upload-artifact@v4
-      with:
-        name: python-package-distributions
-        path: dist/
-
   add-version-tag:
     name: Add Version Tag
-    needs: [build, check-approval]
-    if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -94,7 +20,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.head_commit.id }}
 
       - name: Extract version
         id: version
@@ -115,35 +41,9 @@ jobs:
           git tag -a "v${{ steps.version.outputs.version }}" -m "Version ${{ steps.version.outputs.version }}"
           git push origin "v${{ steps.version.outputs.version }}"
 
-  auto-merge:
-    name: Auto-merge PR
-    needs: [build, add-version-tag, check-approval]
-    if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize')
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
-      contents: write
-    steps:
-      - name: Enable auto-merge
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.pulls.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-              merge_method: 'squash'
-            })
-            await github.rest.pulls.merge({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-              merge_method: 'squash'
-            })
-
   create-release:
     name: Create Release
-    needs: [auto-merge, check-approval]
+    needs: [add-version-tag]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -152,7 +52,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.base.ref }}
+          ref: ${{ github.event.head_commit.id }}
 
       - name: Extract version
         id: version
@@ -181,13 +81,39 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  build:
+    name: Build distribution 📦
+    runs-on: ubuntu-latest
+    needs: [create-release]
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.x"
+    - name: Install pypa/build
+      run: >-
+        python3 -m
+        pip install
+        build
+        --user
+    - name: Build a binary wheel and a source tarball
+      run: python3 -m build
+    - name: Store the distribution packages
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-package-distributions
+        path: dist/
+
   publish-to-pypi:
     name: Publish Python 🐍 distribution 📦 to PyPI
-    needs: [create-release, check-approval]
+    needs: [build]
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/atomict  # Replace <package-name> with your PyPI project name
+      url: https://pypi.org/p/atomict
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 

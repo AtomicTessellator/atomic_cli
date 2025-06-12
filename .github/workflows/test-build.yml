@@ -1,0 +1,35 @@
+name: Test Build
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches:
+      - 'main'
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+      - 'tests/**'
+      - '.gitignore'
+
+jobs:
+  build:
+    name: Build distribution 📦
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.x"
+    - name: Install pypa/build
+      run: >-
+        python3 -m
+        pip install
+        build
+        --user
+    - name: Build a binary wheel and a source tarball
+      run: python3 -m build
+
