@@ -79,7 +79,7 @@ class ATAtoms:
     """
     
     def __init__(self, atoms: Atoms, batch_size: int = 20, sync_interval: float = 10.0,
-                 project_id: Optional[str] = '', batch_diffs: bool = False):
+                 project_id: Optional[str] = '', batch_diffs: bool = False, is_result: bool = False):
         """
         atoms: ASE Atoms object to wrap
         batch_size: Number of diffs to accumulate before sending to server in a single request
@@ -103,6 +103,7 @@ class ATAtoms:
         self._run_id = None
         self._initialized = False
         self._batch_diffs = batch_diffs
+        self._is_result = is_result
         self._initial_state = self._get_current_state()
         self._previous_state = self._serialize_state(self._initial_state)
         self._structure_id = self._hash_state(self._previous_state)
@@ -183,7 +184,8 @@ class ATAtoms:
                 'metadata': json.dumps({
                     'created_by': 'ATAtoms',
                     'initial_structure_id': self._structure_id,
-                    'timestamp': datetime.datetime.now().isoformat()
+                    'timestamp': datetime.datetime.now().isoformat(),
+                    'is_result': self._is_result
                 })
             }
             response = post(
