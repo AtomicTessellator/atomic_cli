@@ -208,6 +208,77 @@ def create_malachite():
     return malachite
 
 
+def create_cu_ta_li_alloy():
+    """Create a Cu-Ta-Li superalloy structure based on the nanocrystalline alloy 
+    with Cu3Li precipitates stabilized by Ta-rich complexions.
+    
+    This creates a simplified model of the breakthrough Cu-Ta-Li alloy that combines
+    copper's conductivity with superalloy-like strength at high temperatures.
+    """
+    # Start with an FCC copper matrix (typical for copper alloys)
+    # Using a 2x2x2 supercell to accommodate precipitates and complexions
+    a_cu = 3.615  # Copper lattice parameter in Angstroms
+    supercell_size = 2
+    lattice_param = a_cu * supercell_size
+    
+    # Create base FCC copper structure
+    cu_bulk = bulk('Cu', crystalstructure='fcc', a=a_cu)
+    cu_supercell = cu_bulk.repeat((supercell_size, supercell_size, supercell_size))
+    
+    # Get positions and symbols
+    positions = cu_supercell.get_positions().copy()
+    symbols = cu_supercell.get_chemical_symbols().copy()
+    
+    # Model Cu3Li precipitates by replacing some Cu atoms with Li
+    # Cu3Li has a structure where Li atoms are surrounded by Cu atoms
+    # Replace strategic Cu atoms with Li to form Cu3Li-like clusters
+    n_atoms = len(symbols)
+    li_indices = [4, 12, 20]  # Strategic positions for Li atoms to form Cu3Li clusters
+    
+    for idx in li_indices:
+        if idx < n_atoms:
+            symbols[idx] = 'Li'
+    
+    # Add Ta atoms at grain boundary/complexion positions
+    # Ta acts as a stabilizer at interfaces - add a few Ta atoms
+    # Place Ta atoms at positions that would represent grain boundary complexions
+    ta_positions = [
+        [lattice_param * 0.25, lattice_param * 0.25, lattice_param * 0.5],
+        [lattice_param * 0.75, lattice_param * 0.75, lattice_param * 0.5],
+        [lattice_param * 0.5, lattice_param * 0.25, lattice_param * 0.75],
+    ]
+    
+    # Add Ta atoms to the structure
+    for ta_pos in ta_positions:
+        positions = np.vstack([positions, ta_pos])
+        symbols.append('Ta')
+    
+    # Create the alloy structure
+    cu_ta_li_alloy = Atoms(symbols=symbols,
+                          positions=positions,
+                          cell=[lattice_param, lattice_param, lattice_param],
+                          pbc=True)
+    
+    # Add some disorder to simulate the nanocrystalline nature
+    # Small random displacements to represent grain boundary regions
+    displacement_magnitude = 0.05  # Small displacements in Angstroms
+    random_displacements = np.random.normal(0, displacement_magnitude, positions.shape)
+    
+    # Apply larger displacements near Ta atoms (grain boundary regions)
+    for i, symbol in enumerate(symbols):
+        if symbol == 'Ta':
+            # Increase disorder around Ta atoms
+            for j in range(len(positions)):
+                distance = np.linalg.norm(positions[j] - positions[i])
+                if distance < 2.0:  # Within 2 Angstroms of Ta
+                    random_displacements[j] *= 2.0
+    
+    new_positions = positions + random_displacements
+    cu_ta_li_alloy.set_positions(new_positions)
+    
+    return cu_ta_li_alloy
+
+
 def test_context_manager_cleanup():
     """Test that the context manager properly cleans up resources."""
     import threading
