@@ -5,16 +5,40 @@ from ase.calculators.emt import EMT
 from ase.optimize import BFGS
 from atomict.ase.atatoms import ATAtoms
 from ase.atoms import Atoms
+import pytest
+from unittest.mock import patch, Mock
 
 
-def test_basic_initialization():
+@pytest.fixture
+def mock_post():
+    """Mock the post function from atomict.api as imported in atatoms module"""
+    with patch('atomict.ase.atatoms.post') as mock:
+        mock.return_value = {'id': 'test-state-id'}
+        yield mock
+
+
+@pytest.fixture
+def mock_patch():
+    """Mock the patch function from atomict.api as imported in atatoms module"""
+    with patch('atomict.ase.atatoms.patch') as mock:
+        mock.return_value = {'id': 'test-run-id'}
+        yield mock
+
+
+@pytest.fixture
+def mock_api_calls(mock_post, mock_patch):
+    """Fixture that combines both API mocks"""
+    return {'post': mock_post, 'patch': mock_patch}
+
+
+def test_basic_initialization(mock_api_calls):
     """Test basic initialization of ATAtoms."""
     atoms_orig = molecule('H2O')
     atoms = ATAtoms(atoms_orig)
     assert len(atoms) == 3
 
 
-def test_atomic_position_manipulation():
+def test_atomic_position_manipulation(mock_api_calls):
     """Test manipulating atomic positions."""
     atoms = ATAtoms(molecule('H2O'))
     
@@ -28,7 +52,7 @@ def test_atomic_position_manipulation():
     assert np.isclose(atoms[1].position[0], 1.5)
 
 
-def test_structural_transformations():
+def test_structural_transformations(mock_api_calls):
     """Test structural transformations like translation and rotation."""
     atoms = ATAtoms(molecule('CH4'))
     orig_pos = atoms.get_positions().copy()
@@ -43,7 +67,7 @@ def test_structural_transformations():
     assert not np.allclose(atoms.get_positions(), orig_pos + [1.0, 0.0, 0.0])
 
 
-def test_cell_operations():
+def test_cell_operations(mock_api_calls):
     """Test operations on the cell."""
     atoms = ATAtoms(bulk('Cu'))
     orig_cell = atoms.get_cell().array.copy()
@@ -59,7 +83,7 @@ def test_cell_operations():
     assert atoms.get_cell().volume > pre_vacuum_volume
 
 
-def test_atom_addition_deletion():
+def test_atom_addition_deletion(mock_api_calls):
     """Test adding and removing atoms."""
     atoms = ATAtoms(molecule('H2'))
     n_atoms = len(atoms)
@@ -74,7 +98,7 @@ def test_atom_addition_deletion():
     assert len(atoms) == n_atoms
 
 
-def test_slice_operations():
+def test_slice_operations(mock_api_calls):
     """Test slicing operations on ATAtoms."""
     atoms = ATAtoms(molecule('CH4'))
     sliced = atoms[1:3]
@@ -82,7 +106,7 @@ def test_slice_operations():
     assert isinstance(sliced, ATAtoms)
 
 
-def test_repeat_operation():
+def test_repeat_operation(mock_api_calls):
     """Test the repeat operation."""
     atoms = ATAtoms(bulk('Al'))
     n_atoms = len(atoms)
@@ -91,7 +115,7 @@ def test_repeat_operation():
     assert isinstance(repeated, ATAtoms)
 
 
-def test_property_setting():
+def test_property_setting(mock_api_calls):
     """Test setting various properties on atoms."""
     atoms = ATAtoms(molecule('O2'))
     
@@ -110,7 +134,7 @@ def test_property_setting():
     assert np.isclose(atoms.get_array('custom_data')[0], 3.14)
 
 
-def test_positions_assignment():
+def test_positions_assignment(mock_api_calls):
     """Test direct assignment of positions."""
     atoms = ATAtoms(molecule('H2'))
     new_positions = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]])
@@ -121,7 +145,7 @@ def test_positions_assignment():
 ##########################################
 ### below tests are for manual testing ###
 ##########################################
-def test_bfgs_optimization():
+def test_bfgs_optimization(mock_api_calls):
     """Test saving state during an optimization workflow."""
     # Create system and add some random displacements
     atoms = ATAtoms(bulk('Cu', cubic=True), project_id="ad7a74f8-e2b2-426c-9dc6-7471aaa19e2a")
@@ -137,9 +161,6 @@ def test_bfgs_optimization():
     
     # Run a few steps of optimization
     opt.run(steps=2)
-    
-    # Save the state after initial optimization
-    # state_id = atoms.save_current_state()
     
     # Check that positions changed from initial
     assert not np.allclose(atoms.get_positions(), initial_positions)
@@ -206,6 +227,77 @@ def create_malachite():
     malachite.set_positions(positions)
     
     return malachite
+
+
+def create_cu_ta_li_alloy():
+    """Create a Cu-Ta-Li superalloy structure based on the nanocrystalline alloy 
+    with Cu3Li precipitates stabilized by Ta-rich complexions.
+    
+    This creates a simplified model of the breakthrough Cu-Ta-Li alloy that combines
+    copper's conductivity with superalloy-like strength at high temperatures.
+    """
+    # Start with an FCC copper matrix (typical for copper alloys)
+    # Using a 2x2x2 supercell to accommodate precipitates and complexions
+    a_cu = 3.615  # Copper lattice parameter in Angstroms
+    supercell_size = 2
+    lattice_param = a_cu * supercell_size
+    
+    # Create base FCC copper structure
+    cu_bulk = bulk('Cu', crystalstructure='fcc', a=a_cu)
+    cu_supercell = cu_bulk.repeat((supercell_size, supercell_size, supercell_size))
+    
+    # Get positions and symbols
+    positions = cu_supercell.get_positions().copy()
+    symbols = cu_supercell.get_chemical_symbols().copy()
+    
+    # Model Cu3Li precipitates by replacing some Cu atoms with Li
+    # Cu3Li has a structure where Li atoms are surrounded by Cu atoms
+    # Replace strategic Cu atoms with Li to form Cu3Li-like clusters
+    n_atoms = len(symbols)
+    li_indices = [4, 12, 20]  # Strategic positions for Li atoms to form Cu3Li clusters
+    
+    for idx in li_indices:
+        if idx < n_atoms:
+            symbols[idx] = 'Li'
+    
+    # Add Ta atoms at grain boundary/complexion positions
+    # Ta acts as a stabilizer at interfaces - add a few Ta atoms
+    # Place Ta atoms at positions that would represent grain boundary complexions
+    ta_positions = [
+        [lattice_param * 0.25, lattice_param * 0.25, lattice_param * 0.5],
+        [lattice_param * 0.75, lattice_param * 0.75, lattice_param * 0.5],
+        [lattice_param * 0.5, lattice_param * 0.25, lattice_param * 0.75],
+    ]
+    
+    # Add Ta atoms to the structure
+    for ta_pos in ta_positions:
+        positions = np.vstack([positions, ta_pos])
+        symbols.append('Ta')
+    
+    # Create the alloy structure
+    cu_ta_li_alloy = Atoms(symbols=symbols,
+                          positions=positions,
+                          cell=[lattice_param, lattice_param, lattice_param],
+                          pbc=True)
+    
+    # Add some disorder to simulate the nanocrystalline nature
+    # Small random displacements to represent grain boundary regions
+    displacement_magnitude = 0.05  # Small displacements in Angstroms
+    random_displacements = np.random.normal(0, displacement_magnitude, positions.shape)
+    
+    # Apply larger displacements near Ta atoms (grain boundary regions)
+    for i, symbol in enumerate(symbols):
+        if symbol == 'Ta':
+            # Increase disorder around Ta atoms
+            for j in range(len(positions)):
+                distance = np.linalg.norm(positions[j] - positions[i])
+                if distance < 2.0:  # Within 2 Angstroms of Ta
+                    random_displacements[j] *= 2.0
+    
+    new_positions = positions + random_displacements
+    cu_ta_li_alloy.set_positions(new_positions)
+    
+    return cu_ta_li_alloy
 
 
 def test_context_manager_cleanup():
