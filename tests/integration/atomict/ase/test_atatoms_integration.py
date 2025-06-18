@@ -6,16 +6,41 @@ from ase.calculators.aims import Aims
 from ase.optimize import BFGS
 from atomict.ase.atatoms import ATAtoms
 from ase.atoms import Atoms
-from ase.constraints import UnitCellFilter
+from ase.filters import UnitCellFilter
+import pytest
+from unittest.mock import patch, Mock
 
 from tests.unit.atomict.ase.test_atatoms import create_malachite
 
 
-def test_atatoms_integration():
+@pytest.fixture
+def mock_post():
+    """Mock the post function from atomict.api as imported in atatoms module"""
+    with patch('atomict.ase.atatoms.post') as mock:
+        mock.return_value = {'id': 'test-state-id'}
+        yield mock
+
+
+@pytest.fixture
+def mock_patch():
+    """Mock the patch function from atomict.api as imported in atatoms module"""
+    with patch('atomict.ase.atatoms.patch') as mock:
+        mock.return_value = {'id': 'test-run-id'}
+        yield mock
+
+
+@pytest.fixture
+def mock_api_calls(mock_post, mock_patch):
+    """Fixture that combines both API mocks"""
+    return {'post': mock_post, 'patch': mock_patch}
+
+
+def test_atatoms_integration(mock_api_calls):
     """Test all ASE atoms operations on ATAtoms objects."""
     # Initialize ATAtoms with project_id
     malachite = create_malachite()
-    atoms = ATAtoms(malachite, project_id=os.environ['AT_PROJECT_ID'])
+    project_id = os.environ.get('AT_PROJECT_ID', 'test-project-id')
+    atoms = ATAtoms(malachite, project_id=project_id)
     
     # Geometry optimization
     atoms.calc = EMT()
