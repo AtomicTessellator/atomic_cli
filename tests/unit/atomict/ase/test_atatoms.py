@@ -5,16 +5,40 @@ from ase.calculators.emt import EMT
 from ase.optimize import BFGS
 from atomict.ase.atatoms import ATAtoms
 from ase.atoms import Atoms
+import pytest
+from unittest.mock import patch, Mock
 
 
-def test_basic_initialization():
+@pytest.fixture
+def mock_post():
+    """Mock the post function from atomict.api as imported in atatoms module"""
+    with patch('atomict.ase.atatoms.post') as mock:
+        mock.return_value = {'id': 'test-state-id'}
+        yield mock
+
+
+@pytest.fixture
+def mock_patch():
+    """Mock the patch function from atomict.api as imported in atatoms module"""
+    with patch('atomict.ase.atatoms.patch') as mock:
+        mock.return_value = {'id': 'test-run-id'}
+        yield mock
+
+
+@pytest.fixture
+def mock_api_calls(mock_post, mock_patch):
+    """Fixture that combines both API mocks"""
+    return {'post': mock_post, 'patch': mock_patch}
+
+
+def test_basic_initialization(mock_api_calls):
     """Test basic initialization of ATAtoms."""
     atoms_orig = molecule('H2O')
     atoms = ATAtoms(atoms_orig)
     assert len(atoms) == 3
 
 
-def test_atomic_position_manipulation():
+def test_atomic_position_manipulation(mock_api_calls):
     """Test manipulating atomic positions."""
     atoms = ATAtoms(molecule('H2O'))
     
@@ -28,7 +52,7 @@ def test_atomic_position_manipulation():
     assert np.isclose(atoms[1].position[0], 1.5)
 
 
-def test_structural_transformations():
+def test_structural_transformations(mock_api_calls):
     """Test structural transformations like translation and rotation."""
     atoms = ATAtoms(molecule('CH4'))
     orig_pos = atoms.get_positions().copy()
@@ -43,7 +67,7 @@ def test_structural_transformations():
     assert not np.allclose(atoms.get_positions(), orig_pos + [1.0, 0.0, 0.0])
 
 
-def test_cell_operations():
+def test_cell_operations(mock_api_calls):
     """Test operations on the cell."""
     atoms = ATAtoms(bulk('Cu'))
     orig_cell = atoms.get_cell().array.copy()
@@ -59,7 +83,7 @@ def test_cell_operations():
     assert atoms.get_cell().volume > pre_vacuum_volume
 
 
-def test_atom_addition_deletion():
+def test_atom_addition_deletion(mock_api_calls):
     """Test adding and removing atoms."""
     atoms = ATAtoms(molecule('H2'))
     n_atoms = len(atoms)
@@ -74,7 +98,7 @@ def test_atom_addition_deletion():
     assert len(atoms) == n_atoms
 
 
-def test_slice_operations():
+def test_slice_operations(mock_api_calls):
     """Test slicing operations on ATAtoms."""
     atoms = ATAtoms(molecule('CH4'))
     sliced = atoms[1:3]
@@ -82,7 +106,7 @@ def test_slice_operations():
     assert isinstance(sliced, ATAtoms)
 
 
-def test_repeat_operation():
+def test_repeat_operation(mock_api_calls):
     """Test the repeat operation."""
     atoms = ATAtoms(bulk('Al'))
     n_atoms = len(atoms)
@@ -91,7 +115,7 @@ def test_repeat_operation():
     assert isinstance(repeated, ATAtoms)
 
 
-def test_property_setting():
+def test_property_setting(mock_api_calls):
     """Test setting various properties on atoms."""
     atoms = ATAtoms(molecule('O2'))
     
@@ -110,7 +134,7 @@ def test_property_setting():
     assert np.isclose(atoms.get_array('custom_data')[0], 3.14)
 
 
-def test_positions_assignment():
+def test_positions_assignment(mock_api_calls):
     """Test direct assignment of positions."""
     atoms = ATAtoms(molecule('H2'))
     new_positions = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]])
@@ -121,7 +145,7 @@ def test_positions_assignment():
 ##########################################
 ### below tests are for manual testing ###
 ##########################################
-def test_bfgs_optimization():
+def test_bfgs_optimization(mock_api_calls):
     """Test saving state during an optimization workflow."""
     # Create system and add some random displacements
     atoms = ATAtoms(bulk('Cu', cubic=True), project_id="ad7a74f8-e2b2-426c-9dc6-7471aaa19e2a")
@@ -137,9 +161,6 @@ def test_bfgs_optimization():
     
     # Run a few steps of optimization
     opt.run(steps=2)
-    
-    # Save the state after initial optimization
-    # state_id = atoms.save_current_state()
     
     # Check that positions changed from initial
     assert not np.allclose(atoms.get_positions(), initial_positions)
