@@ -128,7 +128,7 @@ def convert(input_file, output_file, strict_map_keys):
             elif input_ext in traj_msgpack_formats:
                 atoms, _ = load_msgpack_trajectory(input_file, strict_map_key=strict_map_keys)
             else:
-                atoms = read(input_file)
+                atoms = read(input_file, index=":")
         except UnknownFileTypeError:
             console.print(f"[red]Error: Unknown file type for input file '{input_file}'[/red]")
             console.print(f"[yellow]The file extension '{input_ext}' is not recognized.[/yellow]")
