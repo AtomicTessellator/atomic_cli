@@ -6,7 +6,7 @@ from ase.calculators.aims import Aims
 from ase.optimize import BFGS
 from atomict.ase.atatoms import ATAtoms
 from ase.atoms import Atoms
-from ase.constraints import UnitCellFilter
+from ase.filters import UnitCellFilter
 import pytest
 from unittest.mock import patch, Mock
 
