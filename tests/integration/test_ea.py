@@ -4,7 +4,7 @@ Integration tests for EA exploration methods.
 These tests require:
 - .env file with ATOMICT_USERNAME and ATOMICT_PASSWORD
 - Access to reality_server API
-- A valid test project_id (set TEST_PROJECT_ID env var)
+- A valid project_id for testing (set TEST_PROJECT_ID env var)
 - A valid test structure_id (set TEST_STRUCTURE_ID env var)
 
 To run: uv run pytest tests/integration/test_ea.py -v -m integration
@@ -54,114 +54,121 @@ def test_project_id():
 @pytest.fixture(scope="session")
 def test_structure_id():
     """Get test structure ID from environment"""
-    structure_id = os.getenv("TEST_STRUCTURE_ID")
+    structure_id = os.getenv("TEST_RELAXED_STRUCTURE_ID")
     if not structure_id:
-        pytest.skip("TEST_STRUCTURE_ID environment variable must be set")
+        pytest.skip("TEST_RELAXED_STRUCTURE_ID environment variable must be set")
     return structure_id
 
 
+@pytest.fixture(scope="session")
+def test_structure_type():
+    """Get structure type from environment (defaults to mlrelax)"""
+    return os.getenv("TEST_RELAXED_STRUCTURE_TYPE", "mlrelax")
+
+
+@pytest.fixture(scope="session")
+def test_cluster_id():
+    """Get first available cluster for LAUNCH tests"""
+    try:
+        from atomict.cli.core.client import get_client
+        client = get_client()
+        clusters = client.get_all("/api/k8s-cluster/")
+        
+        if not clusters:
+            pytest.skip("No clusters available for LAUNCH tests")
+            
+        return clusters[0]["id"]
+    except Exception as e:
+        pytest.skip(f"Failed to fetch clusters: {e}")
+
+
 @pytest.fixture
-def cleanup_explorations():
-    """Fixture to track created explorations for cleanup"""
-    created_explorations = []
+def cleanup_ea_explorations():
+    """Track created EA explorations for cleanup"""
+    created_ids = []
+    yield created_ids
 
-    yield created_explorations
-
-    # Cleanup any explorations that were created during tests
-    for exploration_id in created_explorations:
+    # Cleanup after test
+    for exploration_id in created_ids:
         try:
             delete_ea_exploration(exploration_id)
-        except Exception as e:
-            print(f"Failed to cleanup exploration {exploration_id}: {e}")
+        except Exception:
+            pass  # Best effort cleanup
 
 
 @pytest.fixture
-def cleanup_analyses():
-    """Fixture to track created analyses for cleanup"""
-    created_analyses = []
+def cleanup_ea_analyses():
+    """Track created EA analyses for cleanup"""
+    created_ids = []
+    yield created_ids
 
-    yield created_analyses
-
-    # Cleanup any analyses that were created during tests
-    for analysis_id in created_analyses:
+    # Cleanup after test
+    for analysis_id in created_ids:
         try:
             delete_ea_exploration_analysis(analysis_id)
-        except Exception as e:
-            print(f"Failed to cleanup analysis {analysis_id}: {e}")
+        except Exception:
+            pass  # Best effort cleanup
 
 
 @pytest.mark.integration
 class TestEAExplorationIntegration:
-    """Integration tests for EA exploration operations"""
+    """Integration tests for EA exploration CRUD operations"""
 
-    def test_create_and_delete_ea_exploration_basic(
-        self, test_project_id, test_structure_id, cleanup_explorations
+    def test_create_ea_exploration_draft(
+        self,
+        test_project_id,
+        test_structure_id,
+        test_structure_type,
+        cleanup_ea_explorations,
     ):
-        """Test basic EA exploration creation and deletion"""
+        """Test creating an EA exploration in DRAFT mode"""
 
-        # Create EA exploration
-        exploration_data = create_ea_exploration(
+        result = create_ea_exploration(
             project_id=test_project_id,
             name="Integration Test EA Exploration",
             structure_id=test_structure_id,
-            structure_type="userupload",
+            structure_type=test_structure_type,
+            action="DRAFT",
             description="Created by integration test",
         )
 
-        assert "id" in exploration_data
-        assert exploration_data["name"] == "Integration Test EA Exploration"
-        assert exploration_data["description"] == "Created by integration test"
+        # Track for cleanup
+        cleanup_ea_explorations.append(result["id"])
 
-        exploration_id = exploration_data["id"]
-        cleanup_explorations.append(exploration_id)
+        # Verify response structure
+        assert "id" in result
+        assert result["name"] == "Integration Test EA Exploration"
+        assert result["description"] == "Created by integration test"
+        assert result["task"]["status"] == 0  # DRAFT status
 
-        # Verify we can retrieve the exploration
-        retrieved = get_ea_exploration(exploration_id)
-        assert retrieved["id"] == exploration_id
+        # Verify default parameters
+        assert result["strains_list"] == [-0.06, -0.03, 0.03, 0.06]
+        assert result["stress_algorithm"] == 2  # ASESS
+        assert result["stress_method"] == 1  # Dynamic
+        assert result["calculator"] == 0  # FHI-AIMS
+        assert result["num_last_samples"] == 1000
+        assert result["make_conventional_cell"] is False
+        assert result["remove_spurious_distortions"] is True
+
+        # Test getting the created exploration
+        retrieved = get_ea_exploration(result["id"])
+        assert retrieved["id"] == result["id"]
         assert retrieved["name"] == "Integration Test EA Exploration"
 
-        # Delete the exploration
-        delete_ea_exploration(exploration_id)
-        # Remove from cleanup list since we deleted it
-        cleanup_explorations.remove(exploration_id)
-
-        # Verify deletion worked (should raise exception or return error)
-        with pytest.raises(Exception):
-            get_ea_exploration(exploration_id)
-
-    def test_create_ea_exploration_with_launch_action(
-        self, test_project_id, test_structure_id, cleanup_explorations
-    ):
-        """Test EA exploration creation with LAUNCH action"""
-
-        exploration_data = create_ea_exploration(
-            project_id=test_project_id,
-            name="Launch Test EA Exploration",
-            structure_id=test_structure_id,
-            action="LAUNCH",
-            strains_list=[-0.05, -0.025, 0.025, 0.05],
-            stress_algorithm=1,  # OHESS
-            stress_method=0,  # Static
-            calculator=0,  # FHI-AIMS
-        )
-
-        assert "id" in exploration_data
-        exploration_id = exploration_data["id"]
-        cleanup_explorations.append(exploration_id)
-
-        # Check that task was created (should have task field)
-        retrieved = get_ea_exploration(exploration_id)
-        assert "task" in retrieved
-
     def test_create_ea_exploration_with_custom_parameters(
-        self, test_project_id, test_structure_id, cleanup_explorations
+        self,
+        test_project_id,
+        test_structure_id,
+        test_structure_type,
+        cleanup_ea_explorations,
     ):
-        """Test EA exploration creation with various parameter combinations"""
+        """Test EA exploration creation with custom parameters"""
 
-        exploration_data = create_ea_exploration(
+        result = create_ea_exploration(
             project_id=test_project_id,
             name="Custom Params EA Test",
             structure_id=test_structure_id,
+            structure_type=test_structure_type,
             strains_list=[-0.08, -0.04, 0.04, 0.08, 0.12],
             stress_algorithm=2,  # ASESS
             stress_method=1,  # Dynamic
@@ -173,12 +180,11 @@ class TestEAExplorationIntegration:
             is_ht=False,
         )
 
-        assert "id" in exploration_data
-        exploration_id = exploration_data["id"]
-        cleanup_explorations.append(exploration_id)
+        # Track for cleanup
+        cleanup_ea_explorations.append(result["id"])
 
-        # Verify parameters were set correctly
-        retrieved = get_ea_exploration(exploration_id)
+        # Verify custom parameters were set correctly
+        retrieved = get_ea_exploration(result["id"])
         assert retrieved["strains_list"] == [-0.08, -0.04, 0.04, 0.08, 0.12]
         assert retrieved["stress_algorithm"] == 2
         assert retrieved["stress_method"] == 1
@@ -188,72 +194,202 @@ class TestEAExplorationIntegration:
         assert retrieved["add_vacuum"] == 15
         assert retrieved["is_ht"] is False
 
+    def test_create_ea_exploration_with_launch_action(
+        self,
+        test_project_id,
+        test_structure_id,
+        test_structure_type,
+        test_cluster_id,
+        cleanup_ea_explorations,
+    ):
+        """Test EA exploration creation with LAUNCH action"""
+
+        result = create_ea_exploration(
+            project_id=test_project_id,
+            name="Launch Test EA Exploration",
+            structure_id=test_structure_id,
+            structure_type=test_structure_type,
+            action="LAUNCH",
+            strains_list=[-0.05, -0.025, 0.025, 0.05],
+            stress_algorithm=1,  # OHESS
+            stress_method=0,  # Static
+            calculator=0,  # FHI-AIMS
+            extra_kwargs={"selected_cluster": test_cluster_id}
+        )
+
+        # Track for cleanup
+        cleanup_ea_explorations.append(result["id"])
+
+        # Check that task was created (should have task field)
+        retrieved = get_ea_exploration(result["id"])
+        assert "task" in retrieved
+
+    def test_create_and_delete_ea_exploration(
+        self, test_project_id, test_structure_id, test_structure_type
+    ):
+        """Test creating and then deleting an EA exploration"""
+
+        # Create exploration
+        create_result = create_ea_exploration(
+            project_id=test_project_id,
+            name="Delete Test EA Exploration",
+            structure_id=test_structure_id,
+            structure_type=test_structure_type,
+            action="DRAFT",
+        )
+
+        exploration_id = create_result["id"]
+
+        # Verify it exists
+        get_result = get_ea_exploration(exploration_id)
+        assert get_result["id"] == exploration_id
+
+        # Delete it
+        delete_result = delete_ea_exploration(exploration_id)
+
+        # Verify it's deleted (should raise exception or return 404)
+        with pytest.raises(Exception):
+            get_ea_exploration(exploration_id)
+
+    def test_ea_exploration_different_structure_types(
+        self, test_project_id, test_structure_id, test_structure_type, cleanup_ea_explorations
+    ):
+        """Test EA exploration creation with the configured structure type"""
+
+        # Test with configured structure type (mlrelax)
+        result = create_ea_exploration(
+            project_id=test_project_id,
+            name="MLrelax Structure Test",
+            structure_id=test_structure_id,
+            structure_type=test_structure_type,
+        )
+
+        # Track for cleanup
+        cleanup_ea_explorations.append(result["id"])
+
+        # Verify structure reference is set correctly
+        retrieved = get_ea_exploration(result["id"])
+        if test_structure_type == "mlrelax":
+            assert "starting_structure_mlrelax" in retrieved
+            assert retrieved["starting_structure_mlrelax"] is not None
+        elif test_structure_type == "userupload":
+            assert "starting_structure_userupload" in retrieved
+            assert retrieved["starting_structure_userupload"] is not None
+        elif test_structure_type == "fhiaims":
+            assert "starting_structure" in retrieved
+            assert retrieved["starting_structure"] is not None
+
+    def test_ea_exploration_validation_errors(
+        self, test_project_id, test_structure_id, test_structure_type
+    ):
+        """Test that validation errors are properly raised"""
+
+        # Test invalid action
+        with pytest.raises(ValueError, match="Action must be 'DRAFT' or 'LAUNCH'"):
+            create_ea_exploration(
+                project_id=test_project_id,
+                name="Invalid Action",
+                structure_id=test_structure_id,
+                structure_type=test_structure_type,
+                action="INVALID",
+            )
+
+        # Test invalid structure type
+        with pytest.raises(ValueError, match="structure_type must be one of"):
+            create_ea_exploration(
+                project_id=test_project_id,
+                name="Invalid Structure Type",
+                structure_id=test_structure_id,
+                structure_type="invalid_type",
+            )
+
+        # Test invalid strains list (too few elements)
+        with pytest.raises(
+            ValueError, match="strains_list must contain at least 4 elements"
+        ):
+            create_ea_exploration(
+                project_id=test_project_id,
+                name="Invalid Strains",
+                structure_id=test_structure_id,
+                structure_type=test_structure_type,
+                strains_list=[0.01, 0.02],  # Only 2 elements
+            )
+
     def test_ea_exploration_analysis_workflow(
-        self, test_project_id, test_structure_id, cleanup_explorations, cleanup_analyses
+        self,
+        test_project_id,
+        test_structure_id,
+        test_structure_type,
+        cleanup_ea_explorations,
+        cleanup_ea_analyses,
     ):
         """Test complete EA exploration analysis workflow"""
 
         # Create exploration first
-        exploration_data = create_ea_exploration(
+        exploration_result = create_ea_exploration(
             project_id=test_project_id,
             name="Analysis Test EA Exploration",
             structure_id=test_structure_id,
+            structure_type=test_structure_type,
         )
 
-        exploration_id = exploration_data["id"]
-        cleanup_explorations.append(exploration_id)
+        exploration_id = exploration_result["id"]
+        cleanup_ea_explorations.append(exploration_id)
 
         # Create analysis
-        analysis_data = create_ea_exploration_analysis(
+        analysis_result = create_ea_exploration_analysis(
             exploration_id=exploration_id,
             compute_directional_properties=True,
             action="DRAFT",
         )
 
-        assert "id" in analysis_data
-        analysis_id = analysis_data["id"]
-        cleanup_analyses.append(analysis_id)
+        assert "id" in analysis_result
+        analysis_id = analysis_result["id"]
+        cleanup_ea_analyses.append(analysis_id)
 
         # Delete analysis
         delete_ea_exploration_analysis(analysis_id)
-        cleanup_analyses.remove(analysis_id)
+        cleanup_ea_analyses.remove(analysis_id)
 
-    def test_multiple_structure_types(
-        self, test_project_id, test_structure_id, cleanup_explorations
+
+@pytest.mark.integration
+class TestEAWorkflow:
+    """End-to-end workflow tests"""
+
+    def test_complete_ea_workflow(
+        self, test_project_id, test_structure_id, test_structure_type
     ):
-        """Test EA exploration creation with different structure types"""
+        """Test complete EA exploration workflow"""
 
-        # Test with userupload structure (default)
-        exploration_data = create_ea_exploration(
+        # Step 1: Create exploration
+        create_result = create_ea_exploration(
             project_id=test_project_id,
-            name="UserUpload Structure Test",
+            name="Workflow Test EA",
             structure_id=test_structure_id,
-            structure_type="userupload",
+            structure_type=test_structure_type,
+            action="DRAFT",
+            description="Complete workflow test",
+            strains_list=[-0.04, -0.02, 0.02, 0.04],
+            stress_algorithm=2,  # ASESS
+            stress_method=1,  # Dynamic
         )
 
-        assert "id" in exploration_data
-        cleanup_explorations.append(exploration_data["id"])
+        exploration_id = create_result["id"]
+        assert create_result["task"]["status"] == 0  # DRAFT status
 
-        # Verify structure reference is set correctly
-        retrieved = get_ea_exploration(exploration_data["id"])
-        assert "starting_structure_userupload" in retrieved
-        assert retrieved["starting_structure_userupload"] is not None
+        # Step 2: Get exploration details
+        get_result = get_ea_exploration(exploration_id)
+        assert get_result["id"] == exploration_id
+        assert get_result["name"] == "Workflow Test EA"
 
-    def test_ea_exploration_validation_errors(self, test_project_id, test_structure_id):
-        """Test that API validation errors are properly handled"""
+        # Step 3: Verify parameters
+        assert get_result["strains_list"] == [-0.04, -0.02, 0.02, 0.04]
+        assert get_result["stress_algorithm"] == 2
+        assert get_result["stress_method"] == 1
 
-        # Test with invalid project_id
+        # Step 4: Clean up
+        delete_result = delete_ea_exploration(exploration_id)
+
+        # Step 5: Verify deletion (should raise exception or return 404)
         with pytest.raises(Exception):
-            create_ea_exploration(
-                project_id="invalid-project-id",
-                name="Should Fail",
-                structure_id=test_structure_id,
-            )
-
-        # Test with invalid structure_id
-        with pytest.raises(Exception):
-            create_ea_exploration(
-                project_id=test_project_id,
-                name="Should Fail",
-                structure_id="invalid-structure-id",
-            )
+            get_ea_exploration(exploration_id)

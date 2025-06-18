@@ -257,7 +257,7 @@ def create_ea_exploration_analysis(
         raise ValueError("Action must be 'DRAFT' or 'LAUNCH'")
 
     payload = {
-        "exploration_id": exploration_id,
+        "exploration": exploration_id,
         "compute_directional_properties": compute_directional_properties,
         "action": action,
     }
@@ -299,8 +299,8 @@ def create_ea_exploration_analysis_file(
         dict: API response containing the created analysis file
     """
     payload = {
-        "analysis_id": analysis_id,
-        "user_upload_id": user_upload_id,
+        "analysis": analysis_id,
+        "user_upload": user_upload_id,
     }
 
     result = post(
