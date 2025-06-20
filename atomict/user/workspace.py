@@ -1,10 +1,11 @@
 import logging
 import os
 import shutil
+from typing import Any, Dict, List, Optional
 
 from atomict.infra.distwork.task import TaskStatus, update_task_status
 from atomict.io.utils import human_filesize
-from atomict.user.files import download_file, upload_single_file
+from atomict.user.files import download_file, upload_single_file, get_user_uploads, delete_user_upload
 
 
 def display_name(user_upload):
@@ -86,7 +87,9 @@ def upload_workspace(
 
             try:
                 result = upload_single_file(file_path, inner_workspace)
-                if result["status"] != "OK":
+                if result is None:
+                    raise Exception(f"Failed to upload {inner_workspace} - no result returned")
+                elif result.get("status") != "OK":
                     logging.error(f"Failed to upload {inner_workspace}")
                     logging.error(result)
                     raise Exception(f"Failed to upload {inner_workspace} {result}")
@@ -97,7 +100,8 @@ def upload_workspace(
                 logging.error(e)
                 raise
 
-            associate_function(result["UserUpload"]["id"], simulation_id)
+            if result and "UserUpload" in result:
+                associate_function(result["UserUpload"]["id"], simulation_id)
 
             uploaded_size += file_size
             current_percent = 80 + int((uploaded_size / total_size) * 20)
@@ -106,3 +110,174 @@ def upload_workspace(
             if current_percent - last_update_percent >= 2:
                 update_task_status(sim["task"]["id"], percent=current_percent)
                 last_update_percent = current_percent
+
+
+def delete_user_workspace(workspace_type: str = "all") -> Dict[str, Any]:
+    """Delete user workspace files.
+    
+    Args:
+        workspace_type: Type of workspace to delete ("all", "uploads", "temp")
+        
+    Returns:
+        Dictionary with deletion results including counts and any errors
+    """
+    results = {
+        "deleted_count": 0,
+        "failed_count": 0,
+        "errors": []
+    }
+    
+    try:
+        # Get all user uploads
+        uploads_response = get_user_uploads()
+        if uploads_response is None:
+            uploads = []
+        elif isinstance(uploads_response, dict):
+            uploads = uploads_response.get("results", [])
+        else:
+            uploads = uploads_response
+        
+        for upload in uploads:
+            try:
+                upload_uuid = upload.get("uuid") or upload.get("id")
+                if upload_uuid:
+                    delete_user_upload(upload_uuid)
+                    results["deleted_count"] += 1
+                    logging.info(f"Deleted upload: {upload.get('orig_name', upload_uuid)}")
+            except Exception as e:
+                results["failed_count"] += 1
+                upload_name = upload.get('orig_name', upload.get('uuid', upload.get('id', 'unknown')))
+                error_msg = f"Failed to delete {upload_name}: {str(e)}"
+                results["errors"].append(error_msg)
+                logging.error(error_msg)
+                
+    except Exception as e:
+        error_msg = f"Failed to retrieve workspace files: {str(e)}"
+        results["errors"].append(error_msg)
+        logging.error(error_msg)
+    
+    return results
+
+
+def get_workspace_summary() -> Dict[str, Any]:
+    """Get workspace usage statistics and file counts.
+    
+    Returns:
+        Dictionary containing workspace summary statistics
+    """
+    summary = {
+        "total_files": 0,
+        "total_size": 0,
+        "file_types": {},
+        "recent_files": []
+    }
+    
+    try:
+        uploads_response = get_user_uploads(limit=1000)  # Get up to 1000 files
+        if uploads_response is None:
+            uploads = []
+        elif isinstance(uploads_response, dict):
+            uploads = uploads_response.get("results", [])
+        else:
+            uploads = uploads_response
+        
+        summary["total_files"] = len(uploads)
+        
+        for upload in uploads:
+            file_size = upload.get("size", 0)
+            summary["total_size"] += file_size
+            
+            # Track file types
+            file_type = upload.get("type", "unknown")
+            summary["file_types"][file_type] = summary["file_types"].get(file_type, 0) + 1
+            
+        # Get recent files (first 10)
+        summary["recent_files"] = uploads[:10]
+        
+    except Exception as e:
+        logging.error(f"Failed to get workspace summary: {str(e)}")
+        summary["error"] = str(e)
+    
+    return summary
+
+
+def clean_workspace(
+    older_than_days: int = 30, 
+    file_types: Optional[List[str]] = None,
+    max_files: int = 100
+) -> Dict[str, Any]:
+    """Clean workspace of old files by criteria.
+    
+    Args:
+        older_than_days: Delete files older than this many days
+        file_types: List of file types to target (None = all types)
+        max_files: Maximum number of files to delete in one operation
+        
+    Returns:
+        Dictionary with cleaning results
+    """
+    from datetime import datetime, timedelta
+    
+    results = {
+        "deleted_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "errors": []
+    }
+    
+    cutoff_date = datetime.now() - timedelta(days=older_than_days)
+    
+    try:
+        uploads_response = get_user_uploads(ordering="-uploaded")  
+        if uploads_response is None:
+            uploads = []
+        elif isinstance(uploads_response, dict):
+            uploads = uploads_response.get("results", [])
+        else:
+            uploads = uploads_response
+        
+        deleted_count = 0
+        for upload in uploads:
+            if deleted_count >= max_files:
+                break
+                
+            # Check file age
+            uploaded_str = upload.get("uploaded")
+            if uploaded_str:
+                try:
+                    # Parse the uploaded date (assumes ISO format)
+                    uploaded_date = datetime.fromisoformat(uploaded_str.replace('Z', '+00:00'))
+                    if uploaded_date.replace(tzinfo=None) > cutoff_date:
+                        results["skipped_count"] += 1
+                        continue
+                except Exception:
+                    # Skip if we can't parse the date
+                    results["skipped_count"] += 1
+                    continue
+            
+            # Check file type filter
+            if file_types and upload.get("type") not in file_types:
+                results["skipped_count"] += 1
+                continue
+            
+            # Delete the file
+            try:
+                upload_uuid = upload.get("uuid") or upload.get("id")
+                if upload_uuid:
+                    delete_user_upload(upload_uuid)
+                    results["deleted_count"] += 1
+                    deleted_count += 1
+                    logging.info(f"Cleaned old file: {upload.get('orig_name', upload_uuid)}")
+            except Exception as e:
+                results["failed_count"] += 1
+                upload_name = upload.get('orig_name', upload.get('uuid', upload.get('id', 'unknown')))
+                error_msg = f"Failed to clean {upload_name}: {str(e)}"
+                results["errors"].append(error_msg)
+                logging.error(error_msg)
+                
+    except Exception as e:
+        error_msg = f"Failed to clean workspace: {str(e)}"
+        results["errors"].append(error_msg)
+        logging.error(error_msg)
+    
+    return results

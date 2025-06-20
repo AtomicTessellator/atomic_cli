@@ -16,3 +16,16 @@ from .organization import (
     get_active_organization,
     set_active_organization,
 )
+
+# Kubernetes management
+from .infra.k8s import (
+    list_clusters,
+    get_cluster,
+)
+
+# Enhanced task management
+from .infra.distwork.task import (
+    cancel_task,
+    get_task_status_history,
+    tail_task_logs,
+)
