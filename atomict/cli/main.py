@@ -11,7 +11,7 @@ from atomict.cli.commands import login, user
 from atomict.cli.ext.custom_classes import DefaultCommandGroup
 
 try:
-    from .commands import adsorbate, catalysis, k8s, project, task, traj, upload
+    from .commands import adsorbate, catalysis, k8s, organization, project, task, traj, upload
     from .commands.exploration import soec, sqs
     from .commands.simulation import fhiaims, kpoint, vibes
 except ImportError:
@@ -199,7 +199,8 @@ if type -q tess
 end
 """
     click.echo(f"# Shell completion for {shell}")
-    click.echo(completion_script.strip())
+    if completion_script:
+        click.echo(completion_script.strip())
     click.echo(
         "# Don't forget to source your rc file! `source ~/.bashrc` or `source ~/.zshrc` ..."
     )
@@ -220,6 +221,7 @@ cli.add_command(traj.traj)
 cli.add_command(user.user_group)
 cli.add_command(login._login)
 cli.add_command(vibes.vibes_group)
+cli.add_command(organization.org_group)
 
 
 def main():
