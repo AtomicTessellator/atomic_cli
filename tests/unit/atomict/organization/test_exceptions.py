@@ -1,12 +1,13 @@
 import pytest
-from atomict.organization.exceptions import (
-    OrganizationNotFoundError,
-    OrganizationUserNotFoundError,
-    OrganizationInviteNotFoundError,
-    OrganizationPermissionError,
-    InvalidOrganizationDataError,
-)
+
 from atomict.exceptions import APIValidationError, PermissionDenied
+from atomict.organization.exceptions import (
+    InvalidOrganizationDataError,
+    OrganizationInviteNotFoundError,
+    OrganizationNotFoundError,
+    OrganizationPermissionError,
+    OrganizationUserNotFoundError,
+)
 
 
 class TestOrganizationNotFoundError:
@@ -20,21 +21,21 @@ class TestOrganizationNotFoundError:
         """Test creating exception with custom message"""
         message = "Organization 123 not found"
         error = OrganizationNotFoundError(message)
-        
+
         assert str(error) == message
         assert isinstance(error, APIValidationError)
 
     def test_exception_creation_without_message(self):
         """Test creating exception without message"""
         error = OrganizationNotFoundError()
-        
+
         assert isinstance(error, APIValidationError)
 
     def test_exception_raising(self):
         """Test raising OrganizationNotFoundError"""
         with pytest.raises(OrganizationNotFoundError) as exc_info:
             raise OrganizationNotFoundError("Test organization not found")
-        
+
         assert str(exc_info.value) == "Test organization not found"
 
     def test_exception_catching_as_parent(self):
@@ -54,21 +55,21 @@ class TestOrganizationUserNotFoundError:
         """Test creating exception with custom message"""
         message = "Organization user 456 not found"
         error = OrganizationUserNotFoundError(message)
-        
+
         assert str(error) == message
         assert isinstance(error, APIValidationError)
 
     def test_exception_creation_without_message(self):
         """Test creating exception without message"""
         error = OrganizationUserNotFoundError()
-        
+
         assert isinstance(error, APIValidationError)
 
     def test_exception_raising(self):
         """Test raising OrganizationUserNotFoundError"""
         with pytest.raises(OrganizationUserNotFoundError) as exc_info:
             raise OrganizationUserNotFoundError("Test user not found")
-        
+
         assert str(exc_info.value) == "Test user not found"
 
     def test_exception_catching_as_parent(self):
@@ -88,21 +89,21 @@ class TestOrganizationInviteNotFoundError:
         """Test creating exception with custom message"""
         message = "Organization invite 789 not found"
         error = OrganizationInviteNotFoundError(message)
-        
+
         assert str(error) == message
         assert isinstance(error, APIValidationError)
 
     def test_exception_creation_without_message(self):
         """Test creating exception without message"""
         error = OrganizationInviteNotFoundError()
-        
+
         assert isinstance(error, APIValidationError)
 
     def test_exception_raising(self):
         """Test raising OrganizationInviteNotFoundError"""
         with pytest.raises(OrganizationInviteNotFoundError) as exc_info:
             raise OrganizationInviteNotFoundError("Test invite not found")
-        
+
         assert str(exc_info.value) == "Test invite not found"
 
     def test_exception_catching_as_parent(self):
@@ -122,21 +123,21 @@ class TestOrganizationPermissionError:
         """Test creating exception with custom message"""
         message = "Access denied to organization 123"
         error = OrganizationPermissionError(message)
-        
+
         assert str(error) == message
         assert isinstance(error, PermissionDenied)
 
     def test_exception_creation_without_message(self):
         """Test creating exception without message"""
         error = OrganizationPermissionError()
-        
+
         assert isinstance(error, PermissionDenied)
 
     def test_exception_raising(self):
         """Test raising OrganizationPermissionError"""
         with pytest.raises(OrganizationPermissionError) as exc_info:
             raise OrganizationPermissionError("Test permission denied")
-        
+
         assert str(exc_info.value) == "Test permission denied"
 
     def test_exception_catching_as_parent(self):
@@ -156,21 +157,21 @@ class TestInvalidOrganizationDataError:
         """Test creating exception with custom message"""
         message = "Organization name is required"
         error = InvalidOrganizationDataError(message)
-        
+
         assert str(error) == message
         assert isinstance(error, APIValidationError)
 
     def test_exception_creation_without_message(self):
         """Test creating exception without message"""
         error = InvalidOrganizationDataError()
-        
+
         assert isinstance(error, APIValidationError)
 
     def test_exception_raising(self):
         """Test raising InvalidOrganizationDataError"""
         with pytest.raises(InvalidOrganizationDataError) as exc_info:
             raise InvalidOrganizationDataError("Test data validation error")
-        
+
         assert str(exc_info.value) == "Test data validation error"
 
     def test_exception_catching_as_parent(self):
@@ -191,15 +192,15 @@ class TestExceptionHierarchy:
             OrganizationInviteNotFoundError,
             InvalidOrganizationDataError,
         ]
-        
+
         for exc_class in api_validation_exceptions:
             assert issubclass(exc_class, APIValidationError)
-        
+
         # PermissionDenied descendants
         permission_exceptions = [
             OrganizationPermissionError,
         ]
-        
+
         for exc_class in permission_exceptions:
             assert issubclass(exc_class, PermissionDenied)
 
@@ -208,7 +209,7 @@ class TestExceptionHierarchy:
         exc1 = OrganizationNotFoundError("Test 1")
         exc2 = OrganizationNotFoundError("Test 2")
         exc3 = OrganizationUserNotFoundError("Test 1")
-        
+
         assert exc1 != exc2
         assert exc1 != exc3
         assert exc2 != exc3
@@ -216,13 +217,13 @@ class TestExceptionHierarchy:
     def test_exception_chaining(self):
         """Test exception chaining with 'from' clause"""
         original_error = APIValidationError("Original error")
-        
+
         with pytest.raises(OrganizationNotFoundError) as exc_info:
             try:
                 raise original_error
             except APIValidationError as e:
                 raise OrganizationNotFoundError("Organization not found") from e
-        
+
         assert exc_info.value.__cause__ is original_error
 
     def test_multiple_exception_catching(self):
@@ -233,24 +234,26 @@ class TestExceptionHierarchy:
             OrganizationInviteNotFoundError("Invite not found"),
             InvalidOrganizationDataError("Invalid data"),
         ]
-        
+
         for exception in exceptions_to_test:
-            with pytest.raises((
-                OrganizationNotFoundError,
-                OrganizationUserNotFoundError,
-                OrganizationInviteNotFoundError,
-                InvalidOrganizationDataError,
-            )):
+            with pytest.raises(
+                (
+                    OrganizationNotFoundError,
+                    OrganizationUserNotFoundError,
+                    OrganizationInviteNotFoundError,
+                    InvalidOrganizationDataError,
+                )
+            ):
                 raise exception
 
     def test_permission_error_distinction(self):
         """Test that permission errors are distinct from validation errors"""
         validation_error = InvalidOrganizationDataError("Invalid data")
         permission_error = OrganizationPermissionError("Access denied")
-        
+
         assert isinstance(validation_error, APIValidationError)
         assert not isinstance(validation_error, PermissionDenied)
-        
+
         assert isinstance(permission_error, PermissionDenied)
         assert not isinstance(permission_error, APIValidationError)
 
@@ -263,15 +266,18 @@ class TestExceptionMessages:
         org_id = "123"
         user_id = "456"
         invite_id = "789"
-        
+
         exceptions = [
             (OrganizationNotFoundError, f"Organization {org_id} not found"),
             (OrganizationUserNotFoundError, f"Organization user {user_id} not found"),
-            (OrganizationInviteNotFoundError, f"Organization invite {invite_id} not found"),
+            (
+                OrganizationInviteNotFoundError,
+                f"Organization invite {invite_id} not found",
+            ),
             (OrganizationPermissionError, f"Access denied to organization {org_id}"),
             (InvalidOrganizationDataError, f"Invalid data for organization {org_id}"),
         ]
-        
+
         for exc_class, message in exceptions:
             error = exc_class(message)
             assert str(error) == message
@@ -285,7 +291,7 @@ class TestExceptionMessages:
             OrganizationPermissionError,
             InvalidOrganizationDataError,
         ]
-        
+
         for exc_class in exceptions:
             error = exc_class("")
             assert str(error) == ""
@@ -299,7 +305,7 @@ class TestExceptionMessages:
             OrganizationPermissionError,
             InvalidOrganizationDataError,
         ]
-        
+
         for exc_class in exceptions:
             # Most exception classes handle None by converting to empty string or default
             error = exc_class(None)

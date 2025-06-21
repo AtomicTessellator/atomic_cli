@@ -9,11 +9,12 @@ To run: uv run pytest tests/integration/test_k8s.py -v -m integration
 """
 
 import os
+
 import pytest
 from dotenv import load_dotenv
 
 from atomict.auth import authenticate
-from atomict.infra.k8s import list_clusters, get_cluster
+from atomict.infra.k8s import get_cluster, list_clusters
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -41,10 +42,10 @@ class TestK8sClusterListIntegration:
     def test_list_clusters_basic(self, setup_authentication):
         """Test basic cluster listing."""
         clusters = list_clusters()
-        
+
         # Should return a list (even if empty)
         assert isinstance(clusters, list)
-        
+
         # If clusters exist, verify they have expected structure
         if clusters:
             cluster = clusters[0]
@@ -52,7 +53,11 @@ class TestK8sClusterListIntegration:
             assert "name" in cluster
             # Optional fields that might be present
             expected_optional_fields = [
-                "public", "has_gpu", "loki_url", "created_at", "updated_at"
+                "public",
+                "has_gpu",
+                "loki_url",
+                "created_at",
+                "updated_at",
             ]
             # Just verify the cluster is a dict with some expected fields
             assert isinstance(cluster, dict)
@@ -61,7 +66,7 @@ class TestK8sClusterListIntegration:
         """Test cluster listing with search filter."""
         # Test with a search term that likely won't match anything
         clusters = list_clusters(search="nonexistent-cluster-name-xyz")
-        
+
         # Should return empty list or filtered results
         assert isinstance(clusters, list)
 
@@ -69,10 +74,10 @@ class TestK8sClusterListIntegration:
         """Test cluster listing with ordering."""
         # Test ordering by creation date
         clusters = list_clusters(ordering="-created_at")
-        
+
         # Should return a list
         assert isinstance(clusters, list)
-        
+
         # If multiple clusters exist, verify ordering
         if len(clusters) > 1:
             # Can't easily verify ordering without parsing dates,
@@ -84,7 +89,7 @@ class TestK8sClusterListIntegration:
         # Test with public filter
         public_clusters = list_clusters(public=True)
         assert isinstance(public_clusters, list)
-        
+
         # If clusters exist, verify they are public
         for cluster in public_clusters:
             if "public" in cluster:
@@ -93,11 +98,9 @@ class TestK8sClusterListIntegration:
     def test_list_clusters_combined_filters(self, setup_authentication):
         """Test cluster listing with multiple filters combined."""
         clusters = list_clusters(
-            search="",  # Empty search should not filter
-            ordering="name",
-            public=True
+            search="", ordering="name", public=True  # Empty search should not filter
         )
-        
+
         assert isinstance(clusters, list)
 
 
@@ -109,28 +112,34 @@ class TestK8sClusterDetailIntegration:
     def available_cluster_id(self, setup_authentication):
         """Get an available cluster ID for testing, or skip if none exist."""
         clusters = list_clusters()
-        
+
         if not clusters:
             pytest.skip("No clusters available for testing get_cluster functionality")
-        
+
         return clusters[0]["id"]
 
     def test_get_cluster_success(self, setup_authentication, available_cluster_id):
         """Test successful cluster retrieval."""
         cluster = get_cluster(available_cluster_id)
-        
+
         # Verify cluster has required fields
         assert isinstance(cluster, dict)
         assert "id" in cluster
         assert "name" in cluster
         assert cluster["id"] == available_cluster_id
-        
+
         # Check for optional but common fields
         optional_fields = [
-            "public", "has_gpu", "loki_url", "loki_internal_cluster_url",
-            "loki_username", "cost_per_minute", "created_at", "updated_at"
+            "public",
+            "has_gpu",
+            "loki_url",
+            "loki_internal_cluster_url",
+            "loki_username",
+            "cost_per_minute",
+            "created_at",
+            "updated_at",
         ]
-        
+
         # At least some of these should be present
         present_fields = [field for field in optional_fields if field in cluster]
         # No strict requirement, but log for debugging
@@ -140,7 +149,7 @@ class TestK8sClusterDetailIntegration:
         """Test retrieval of non-existent cluster."""
         # Use a UUID that definitely doesn't exist
         fake_id = "00000000-0000-0000-0000-000000000000"
-        
+
         # This should raise an exception or return an error
         # The exact behavior depends on the API implementation
         try:
@@ -165,7 +174,7 @@ class TestK8sClusterEdgeCases:
         original_token = os.environ.get("AT_TOKEN")
         if original_token:
             del os.environ["AT_TOKEN"]
-        
+
         try:
             # This should fail due to missing authentication
             with pytest.raises(Exception):
@@ -179,7 +188,7 @@ class TestK8sClusterEdgeCases:
         """Test cluster retrieval with invalid ID format."""
         # Test with obviously invalid ID format
         invalid_id = "not-a-valid-uuid"
-        
+
         try:
             result = get_cluster(invalid_id)
             # If it doesn't raise an exception, check for error response
@@ -196,7 +205,7 @@ class TestK8sClusterEdgeCases:
         """Test cluster listing with invalid filter values."""
         # Test with invalid boolean value
         clusters = list_clusters(public="invalid-boolean")
-        
+
         # API should handle this gracefully (either ignore or return error)
         assert isinstance(clusters, list) or (
             isinstance(clusters, dict) and "error" in clusters

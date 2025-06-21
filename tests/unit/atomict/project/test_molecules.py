@@ -1,10 +1,12 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
+
 from atomict.project.molecules import (
     create_project_molecule,
     delete_project_molecule,
-    list_project_molecules,
     get_project_molecule,
+    list_project_molecules,
 )
 
 
@@ -14,11 +16,13 @@ class TestCreateProjectMolecule:
     @patch("atomict.project.molecules.post")
     def test_create_project_molecule_basic(self, mock_post):
         """Test basic project molecule creation without name"""
-        mock_post.return_value = {"id": "mol-123", "smiles": "CCO", "project": "proj-456"}
+        mock_post.return_value = {
+            "id": "mol-123",
+            "smiles": "CCO",
+            "project": "proj-456",
+        }
 
-        result = create_project_molecule(
-            project_id="proj-456", smiles="CCO"
-        )
+        result = create_project_molecule(project_id="proj-456", smiles="CCO")
 
         # Verify API call
         mock_post.assert_called_once_with(
@@ -39,7 +43,7 @@ class TestCreateProjectMolecule:
             "id": "mol-123",
             "smiles": "CCO",
             "name": "Ethanol",
-            "project": "proj-456"
+            "project": "proj-456",
         }
 
         result = create_project_molecule(
@@ -61,7 +65,7 @@ class TestCreateProjectMolecule:
             "id": "mol-123",
             "smiles": "CCO",
             "name": "Ethanol",
-            "project": "proj-456"
+            "project": "proj-456",
         }
 
     @patch("atomict.project.molecules.post")
@@ -126,7 +130,7 @@ class TestListProjectMolecules:
         mock_response = {
             "results": [
                 {"id": "mol-1", "smiles": "CCO", "name": "Ethanol"},
-                {"id": "mol-2", "smiles": "CC", "name": "Ethane"}
+                {"id": "mol-2", "smiles": "CC", "name": "Ethane"},
             ]
         }
         mock_get.return_value = mock_response
@@ -142,9 +146,7 @@ class TestListProjectMolecules:
     def test_list_project_molecules_with_project_filter(self, mock_get):
         """Test listing project molecules filtered by project"""
         mock_response = {
-            "results": [
-                {"id": "mol-1", "smiles": "CCO", "project": "proj-123"}
-            ]
+            "results": [{"id": "mol-1", "smiles": "CCO", "project": "proj-123"}]
         }
         mock_get.return_value = mock_response
 
@@ -192,7 +194,7 @@ class TestGetProjectMolecule:
             "id": "mol-123",
             "smiles": "CCO",
             "name": "Ethanol",
-            "project": "proj-456"
+            "project": "proj-456",
         }
         mock_get.return_value = mock_response
 
@@ -210,7 +212,7 @@ class TestGetProjectMolecule:
         mock_response = {
             "id": uuid_id,
             "smiles": "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
-            "name": "Caffeine"
+            "name": "Caffeine",
         }
         mock_get.return_value = mock_response
 
@@ -228,7 +230,7 @@ class TestGetProjectMolecule:
             "id": "mol-789",
             "smiles": "CO",
             "name": None,
-            "project": "proj-456"
+            "project": "proj-456",
         }
         mock_get.return_value = mock_response
 

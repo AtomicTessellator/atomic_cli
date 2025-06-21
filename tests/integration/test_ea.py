@@ -11,16 +11,17 @@ To run: uv run pytest tests/integration/test_ea.py -v -m integration
 """
 
 import os
+
 import pytest
 from dotenv import load_dotenv
 
 from atomict.auth import authenticate
 from atomict.simulation.ea import (
     create_ea_exploration,
-    delete_ea_exploration,
-    get_ea_exploration,
     create_ea_exploration_analysis,
+    delete_ea_exploration,
     delete_ea_exploration_analysis,
+    get_ea_exploration,
 )
 
 
@@ -71,12 +72,13 @@ def test_cluster_id():
     """Get first available cluster for LAUNCH tests"""
     try:
         from atomict.cli.core.client import get_client
+
         client = get_client()
         clusters = client.get_all("/api/k8s-cluster/")
-        
+
         if not clusters:
             pytest.skip("No clusters available for LAUNCH tests")
-            
+
         return clusters[0]["id"]
     except Exception as e:
         pytest.skip(f"Failed to fetch clusters: {e}")
@@ -214,7 +216,7 @@ class TestEAExplorationIntegration:
             stress_algorithm=1,  # OHESS
             stress_method=0,  # Static
             calculator=0,  # FHI-AIMS
-            extra_kwargs={"selected_cluster": test_cluster_id}
+            extra_kwargs={"selected_cluster": test_cluster_id},
         )
 
         # Track for cleanup
@@ -252,7 +254,11 @@ class TestEAExplorationIntegration:
             get_ea_exploration(exploration_id)
 
     def test_ea_exploration_different_structure_types(
-        self, test_project_id, test_structure_id, test_structure_type, cleanup_ea_explorations
+        self,
+        test_project_id,
+        test_structure_id,
+        test_structure_type,
+        cleanup_ea_explorations,
     ):
         """Test EA exploration creation with the configured structure type"""
 

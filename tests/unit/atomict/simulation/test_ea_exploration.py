@@ -1,16 +1,18 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
+
 from atomict.simulation.ea import (
-    create_ea_exploration,
-    delete_ea_exploration,
-    delete_ea_exploration_sample,
-    create_ea_exploration_analysis,
-    delete_ea_exploration_analysis,
-    create_ea_exploration_analysis_file,
-    delete_ea_exploration_analysis_file,
+    CALCULATORS,
     STRESS_ALGORITHMS,
     STRESS_METHODS,
-    CALCULATORS,
+    create_ea_exploration,
+    create_ea_exploration_analysis,
+    create_ea_exploration_analysis_file,
+    delete_ea_exploration,
+    delete_ea_exploration_analysis,
+    delete_ea_exploration_analysis_file,
+    delete_ea_exploration_sample,
 )
 
 

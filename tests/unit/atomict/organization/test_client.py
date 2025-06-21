@@ -1,19 +1,22 @@
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
+
+from atomict.exceptions import APIValidationError, PermissionDenied
 from atomict.organization.client import (
-    list_organizations,
-    get_organization,
-    create_organization,
-    update_organization,
-    delete_organization,
-    list_organization_users,
     add_user_to_organization,
-    remove_user_from_organization,
-    list_organization_invites,
-    send_organization_invite,
+    create_organization,
+    delete_organization,
     delete_organization_invite,
     get_active_organization,
+    get_organization,
+    list_organization_invites,
+    list_organization_users,
+    list_organizations,
+    remove_user_from_organization,
+    send_organization_invite,
     set_active_organization,
+    update_organization,
 )
 from atomict.organization.exceptions import (
     InvalidOrganizationDataError,
@@ -22,7 +25,6 @@ from atomict.organization.exceptions import (
     OrganizationPermissionError,
     OrganizationUserNotFoundError,
 )
-from atomict.exceptions import APIValidationError, PermissionDenied
 
 
 @pytest.fixture

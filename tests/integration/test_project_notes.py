@@ -10,6 +10,7 @@ To run: PYTHONPATH=/path/to/atomic_cli uv run pytest tests/integration/test_proj
 """
 
 import os
+
 import pytest
 from dotenv import load_dotenv
 
@@ -68,9 +69,7 @@ def cleanup_project_notes():
 class TestProjectNoteIntegration:
     """Integration tests for project note CRUD operations"""
 
-    def test_create_project_note_basic(
-        self, test_project_id, cleanup_project_notes
-    ):
+    def test_create_project_note_basic(self, test_project_id, cleanup_project_notes):
         """Test creating a basic project note"""
         result = create_project_note(
             project_id=test_project_id,
@@ -84,7 +83,10 @@ class TestProjectNoteIntegration:
         # Verify response structure
         assert "id" in result
         assert result["title"] == "Integration Test Note"
-        assert result["content_html"] == "<p>This is a test note created by integration tests.</p>"
+        assert (
+            result["content_html"]
+            == "<p>This is a test note created by integration tests.</p>"
+        )
         assert result["show_description"] is True  # default value
         assert result["project"] == test_project_id
 
@@ -144,7 +146,7 @@ class TestProjectNoteIntegration:
         )
         note2 = create_project_note(
             project_id=test_project_id,
-            title="List Test Note 2", 
+            title="List Test Note 2",
             content="<p>Second note for list test.</p>",
         )
 
@@ -165,7 +167,10 @@ class TestProjectNoteIntegration:
         found_notes = [note for note in notes if note["id"] in created_note_ids]
 
         assert len(found_notes) == 2
-        assert {note["title"] for note in found_notes} == {"List Test Note 1", "List Test Note 2"}
+        assert {note["title"] for note in found_notes} == {
+            "List Test Note 1",
+            "List Test Note 2",
+        }
 
     def test_list_project_notes_all(self):
         """Test listing all project notes without filter"""
@@ -173,7 +178,7 @@ class TestProjectNoteIntegration:
 
         # Should return some response (could be empty or have notes)
         assert notes_response is not None
-        
+
         # Handle paginated response format
         if isinstance(notes_response, dict):
             if "results" in notes_response:
@@ -207,8 +212,12 @@ class TestProjectNoteIntegration:
         # Verify the update
         updated_note = get_project_note(note_id)
         assert updated_note["title"] == "Updated Title"
-        assert updated_note["content_html"] == "<p>Original content.</p>"  # Should remain unchanged
-        assert updated_note["show_description"] == created_note["show_description"]  # Should remain unchanged
+        assert (
+            updated_note["content_html"] == "<p>Original content.</p>"
+        )  # Should remain unchanged
+        assert (
+            updated_note["show_description"] == created_note["show_description"]
+        )  # Should remain unchanged
 
     def test_update_project_note_content_only(
         self, test_project_id, cleanup_project_notes
@@ -233,8 +242,13 @@ class TestProjectNoteIntegration:
         # Verify the update
         updated_note = get_project_note(note_id)
         assert updated_note["title"] == "Original Title"  # Should remain unchanged
-        assert updated_note["content_html"] == "<p>Updated content with <strong>formatting</strong>.</p>"
-        assert updated_note["show_description"] == created_note["show_description"]  # Should remain unchanged
+        assert (
+            updated_note["content_html"]
+            == "<p>Updated content with <strong>formatting</strong>.</p>"
+        )
+        assert (
+            updated_note["show_description"] == created_note["show_description"]
+        )  # Should remain unchanged
 
     def test_update_project_note_show_description_only(
         self, test_project_id, cleanup_project_notes
@@ -260,7 +274,9 @@ class TestProjectNoteIntegration:
         # Verify the update
         updated_note = get_project_note(note_id)
         assert updated_note["title"] == "Original Title"  # Should remain unchanged
-        assert updated_note["content_html"] == "<p>Original content.</p>"  # Should remain unchanged
+        assert (
+            updated_note["content_html"] == "<p>Original content.</p>"
+        )  # Should remain unchanged
         # Backend automatically sets show_description=True when content is not empty
         assert updated_note["show_description"] is True
 
@@ -290,7 +306,10 @@ class TestProjectNoteIntegration:
         # Verify the updates
         updated_note = get_project_note(note_id)
         assert updated_note["title"] == "Completely Updated Title"
-        assert updated_note["content_html"] == "<p>Completely updated content with <em>emphasis</em>.</p>"
+        assert (
+            updated_note["content_html"]
+            == "<p>Completely updated content with <em>emphasis</em>.</p>"
+        )
         # Backend automatically sets show_description=True when content is not empty
         assert updated_note["show_description"] is True
 
@@ -323,7 +342,7 @@ class TestProjectNoteWorkflow:
 
     def test_complete_project_note_workflow(self, test_project_id):
         """Test complete project note workflow: create → get → update → list → delete"""
-        
+
         # Step 1: Create note
         created_note = create_project_note(
             project_id=test_project_id,
@@ -340,7 +359,10 @@ class TestProjectNoteWorkflow:
         retrieved_note = get_project_note(note_id)
         assert retrieved_note["id"] == note_id
         assert retrieved_note["title"] == "Workflow Test Note"
-        assert retrieved_note["content_html"] == "<p>Initial content for workflow test.</p>"
+        assert (
+            retrieved_note["content_html"]
+            == "<p>Initial content for workflow test.</p>"
+        )
 
         # Step 3: Update note with new content and settings
         update_project_note(
@@ -353,7 +375,10 @@ class TestProjectNoteWorkflow:
         # Step 4: Verify updates
         updated_note = get_project_note(note_id)
         assert updated_note["title"] == "Updated Workflow Test Note"
-        assert updated_note["content_html"] == "<p>Updated content with <strong>bold text</strong>.</p>"
+        assert (
+            updated_note["content_html"]
+            == "<p>Updated content with <strong>bold text</strong>.</p>"
+        )
         # Backend automatically sets show_description=True when content is not empty
         assert updated_note["show_description"] is True
 
@@ -467,10 +492,10 @@ class TestProjectNoteValidation:
         """Test listing notes with invalid project ID - should raise validation error"""
         # Backend validates UUID format and raises APIValidationError for invalid UUID
         from atomict.exceptions import APIValidationError
-        
+
         with pytest.raises(APIValidationError) as exc_info:
             list_project_notes(project_id="invalid-project-id")
-        
+
         # Should contain UUID validation error
         error_data = exc_info.value.args[0]
         assert "project__id" in error_data

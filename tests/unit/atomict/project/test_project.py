@@ -1,12 +1,14 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
+
 from atomict.project.project import (
     create_project,
     delete_project,
-    project_exists,
-    get_project_by_name,
     get_project,
+    get_project_by_name,
     list_projects,
+    project_exists,
     update_project,
 )
 

@@ -11,19 +11,20 @@ To run: PYTHONPATH=/path/to/atomic_cli uv run pytest tests/integration/test_kpoi
 """
 
 import os
+
 import pytest
 from dotenv import load_dotenv
 
 from atomict.auth import authenticate
 from atomict.simulation.kpoint import (
-    create_kpoint_exploration,
-    delete_kpoint_exploration,
-    get_kpoint_exploration,
-    delete_kpoint_simulation,
-    create_kpoint_analysis,
-    delete_kpoint_analysis,
-    get_kpoint_analysis,
     STRUCTURE_FIELD_MAP,
+    create_kpoint_analysis,
+    create_kpoint_exploration,
+    delete_kpoint_analysis,
+    delete_kpoint_exploration,
+    delete_kpoint_simulation,
+    get_kpoint_analysis,
+    get_kpoint_exploration,
 )
 
 
@@ -74,12 +75,13 @@ def test_cluster_id():
     """Get first available cluster for LAUNCH tests"""
     try:
         from atomict.cli.core.client import get_client
+
         client = get_client()
         clusters = client.get_all("/api/k8s-cluster/")
-        
+
         if not clusters:
             pytest.skip("No clusters available for LAUNCH tests")
-            
+
         return clusters[0]["id"]
     except Exception as e:
         pytest.skip(f"Failed to fetch clusters: {e}")
@@ -210,7 +212,7 @@ class TestKPointExplorationIntegration:
             action="LAUNCH",
             k_point_range_lower=4,
             k_point_range_upper=7,
-            extra_kwargs={"selected_cluster": test_cluster_id}
+            extra_kwargs={"selected_cluster": test_cluster_id},
         )
 
         # Track for cleanup
@@ -248,7 +250,11 @@ class TestKPointExplorationIntegration:
             get_kpoint_exploration(exploration_id)
 
     def test_kpoint_exploration_different_structure_types(
-        self, test_project_id, test_structure_id, test_structure_type, cleanup_kpoint_explorations
+        self,
+        test_project_id,
+        test_structure_id,
+        test_structure_type,
+        cleanup_kpoint_explorations,
     ):
         """Test K-point exploration creation with the configured structure type"""
 

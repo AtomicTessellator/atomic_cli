@@ -1,14 +1,15 @@
 """Unit tests for project stars operations"""
 
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from atomict.project.stars import (
     create_project_star,
     delete_project_star,
-    list_project_stars,
     get_project_star,
+    list_project_stars,
 )
 
 

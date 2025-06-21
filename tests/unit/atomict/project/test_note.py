@@ -1,7 +1,8 @@
 """Unit tests for project note operations"""
 
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from atomict.project.note import (
@@ -22,20 +23,18 @@ class TestCreateProjectNote(unittest.TestCase):
         mock_post.return_value = {"id": "note-123", "title": "Test Note"}
 
         result = create_project_note(
-            project_id="proj-456",
-            title="Test Note",
-            content="<p>Test content</p>"
+            project_id="proj-456", title="Test Note", content="<p>Test content</p>"
         )
 
         mock_post.assert_called_once_with(
             "api/project-note/",
             {
                 "project": "proj-456",
-                "title": "Test Note", 
+                "title": "Test Note",
                 "content_html": "<p>Test content</p>",
                 "show_description": True,
             },
-            extra_headers={"Content-Type": "application/json"}
+            extra_headers={"Content-Type": "application/json"},
         )
         assert result == {"id": "note-123", "title": "Test Note"}
 
@@ -46,9 +45,9 @@ class TestCreateProjectNote(unittest.TestCase):
 
         result = create_project_note(
             project_id="proj-456",
-            title="Test Note", 
+            title="Test Note",
             content="<p>Test content</p>",
-            show_description=False
+            show_description=False,
         )
 
         mock_post.assert_called_once_with(
@@ -59,7 +58,7 @@ class TestCreateProjectNote(unittest.TestCase):
                 "content_html": "<p>Test content</p>",
                 "show_description": False,
             },
-            extra_headers={"Content-Type": "application/json"}
+            extra_headers={"Content-Type": "application/json"},
         )
         assert result == {"id": "note-123", "title": "Test Note"}
 
@@ -88,7 +87,7 @@ class TestGetProjectNote(unittest.TestCase):
             "id": "note-123",
             "title": "Test Note",
             "content_html": "<p>Test content</p>",
-            "show_description": True
+            "show_description": True,
         }
         mock_get.return_value = expected_note
 
@@ -107,7 +106,7 @@ class TestListProjectNotes(unittest.TestCase):
         expected_notes = {
             "results": [
                 {"id": "note-1", "title": "Note 1"},
-                {"id": "note-2", "title": "Note 2"}
+                {"id": "note-2", "title": "Note 2"},
             ]
         }
         mock_get.return_value = expected_notes
@@ -156,7 +155,7 @@ class TestUpdateProjectNote(unittest.TestCase):
             note_id="note-123",
             title="Updated Note",
             content="<p>Updated content</p>",
-            show_description=False
+            show_description=False,
         )
 
         mock_patch.assert_called_once_with(
@@ -165,7 +164,7 @@ class TestUpdateProjectNote(unittest.TestCase):
                 "title": "Updated Note",
                 "content_html": "<p>Updated content</p>",
                 "show_description": False,
-            }
+            },
         )
         assert result == {"id": "note-123", "title": "Updated Note"}
 
@@ -177,21 +176,22 @@ class TestUpdateProjectNote(unittest.TestCase):
         result = update_project_note(note_id="note-123", title="New Title")
 
         mock_patch.assert_called_once_with(
-            "api/project-note/note-123/",
-            {"title": "New Title"}
+            "api/project-note/note-123/", {"title": "New Title"}
         )
         assert result == {"id": "note-123", "title": "New Title"}
 
     @patch("atomict.project.note.patch")
     def test_update_project_note_content_only(self, mock_patch):
         """Test project note update with content only"""
-        mock_patch.return_value = {"id": "note-123", "content_html": "<p>New content</p>"}
+        mock_patch.return_value = {
+            "id": "note-123",
+            "content_html": "<p>New content</p>",
+        }
 
         result = update_project_note(note_id="note-123", content="<p>New content</p>")
 
         mock_patch.assert_called_once_with(
-            "api/project-note/note-123/",
-            {"content_html": "<p>New content</p>"}
+            "api/project-note/note-123/", {"content_html": "<p>New content</p>"}
         )
         assert result == {"id": "note-123", "content_html": "<p>New content</p>"}
 
@@ -203,8 +203,7 @@ class TestUpdateProjectNote(unittest.TestCase):
         result = update_project_note(note_id="note-123", show_description=True)
 
         mock_patch.assert_called_once_with(
-            "api/project-note/note-123/",
-            {"show_description": True}
+            "api/project-note/note-123/", {"show_description": True}
         )
         assert result == {"id": "note-123", "show_description": True}
 
@@ -215,10 +214,7 @@ class TestUpdateProjectNote(unittest.TestCase):
 
         result = update_project_note(note_id="note-123")
 
-        mock_patch.assert_called_once_with(
-            "api/project-note/note-123/",
-            {}
-        )
+        mock_patch.assert_called_once_with("api/project-note/note-123/", {})
         assert result == {"id": "note-123"}
 
     @patch("atomict.project.note.patch")
@@ -230,8 +226,7 @@ class TestUpdateProjectNote(unittest.TestCase):
 
         # Verify the field mapping: content -> content_html
         mock_patch.assert_called_once_with(
-            "api/project-note/note-123/",
-            {"content_html": "<h1>Test</h1>"}
+            "api/project-note/note-123/", {"content_html": "<h1>Test</h1>"}
         )
 
 

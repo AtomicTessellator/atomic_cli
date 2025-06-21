@@ -1,18 +1,19 @@
 """Unit tests for K-point convergence operations"""
 
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import pytest
 
+from atomict.exceptions import APIValidationError
 from atomict.simulation.kpoint import (
+    STRUCTURE_FIELD_MAP,
+    create_kpoint_analysis,
     create_kpoint_exploration,
+    delete_kpoint_analysis,
     delete_kpoint_exploration,
     delete_kpoint_simulation,
-    create_kpoint_analysis,
-    delete_kpoint_analysis,
-    STRUCTURE_FIELD_MAP,
 )
-from atomict.exceptions import APIValidationError
 
 
 class TestKPointExploration(unittest.TestCase):
@@ -71,7 +72,9 @@ class TestKPointExploration(unittest.TestCase):
             "starting_structure_mlrelax_id": "struct-456",
             "selected_cluster": "cluster-1",
         }
-        mock_post.assert_called_once_with("api/kpoint-exploration/", payload=expected_payload)
+        mock_post.assert_called_once_with(
+            "api/kpoint-exploration/", payload=expected_payload
+        )
 
     def test_create_kpoint_exploration_invalid_action(self):
         """Test validation for invalid action"""
@@ -159,7 +162,9 @@ class TestKPointAnalysis(unittest.TestCase):
         )
 
         expected_payload = {"exploration": "exploration-456", "custom_param": "value"}
-        mock_post.assert_called_once_with("api/kpoint-analysis/", payload=expected_payload)
+        mock_post.assert_called_once_with(
+            "api/kpoint-analysis/", payload=expected_payload
+        )
 
     @patch("atomict.simulation.kpoint.delete")
     def test_delete_kpoint_analysis(self, mock_delete):

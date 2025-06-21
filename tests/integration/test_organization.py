@@ -11,25 +11,26 @@ To run: uv run pytest tests/integration/test_organization.py -v -m integration
 """
 
 import os
-import pytest
 import uuid
+
+import pytest
 from dotenv import load_dotenv
 
 from atomict.auth import authenticate
 from atomict.organization.client import (
-    list_organizations,
-    get_organization,
-    create_organization,
-    update_organization,
-    delete_organization,
-    list_organization_users,
     add_user_to_organization,
-    remove_user_from_organization,
-    list_organization_invites,
-    send_organization_invite,
+    create_organization,
+    delete_organization,
     delete_organization_invite,
     get_active_organization,
+    get_organization,
+    list_organization_invites,
+    list_organization_users,
+    list_organizations,
+    remove_user_from_organization,
+    send_organization_invite,
     set_active_organization,
+    update_organization,
 )
 from atomict.organization.exceptions import (
     InvalidOrganizationDataError,
@@ -128,7 +129,9 @@ def cleanup_organization_invites():
 class TestOrganizationCRUDOperations:
     """Integration tests for organization CRUD operations"""
 
-    def test_create_organization_minimal(self, unique_organization_name, cleanup_organizations):
+    def test_create_organization_minimal(
+        self, unique_organization_name, cleanup_organizations
+    ):
         """Test creating an organization with minimal parameters"""
         result = create_organization(name=unique_organization_name)
 
@@ -182,7 +185,9 @@ class TestOrganizationCRUDOperations:
         assert get_result["name"] == unique_organization_name
         assert get_result["description"] == "Test organization for get operation"
 
-    def test_update_organization_partial(self, unique_organization_name, cleanup_organizations):
+    def test_update_organization_partial(
+        self, unique_organization_name, cleanup_organizations
+    ):
         """Test updating an organization with partial field updates"""
         # Create organization first
         create_result = create_organization(
@@ -197,14 +202,18 @@ class TestOrganizationCRUDOperations:
 
         # Verify update
         assert update_result["description"] == new_description
-        assert update_result["name"] == unique_organization_name  # Should remain unchanged
+        assert (
+            update_result["name"] == unique_organization_name
+        )  # Should remain unchanged
 
         # Verify by getting the organization again
         get_result = get_organization(org_id)
         assert get_result["description"] == new_description
         assert get_result["name"] == unique_organization_name
 
-    def test_update_organization_all_fields(self, unique_organization_name, cleanup_organizations):
+    def test_update_organization_all_fields(
+        self, unique_organization_name, cleanup_organizations
+    ):
         """Test updating all organization fields"""
         # Create organization first
         create_result = create_organization(name=unique_organization_name)
@@ -255,14 +264,17 @@ class TestOrganizationCRUDOperations:
         assert isinstance(result["results"], list)
         assert isinstance(result["count"], int)
 
-    def test_list_organizations_with_search(self, unique_organization_name, cleanup_organizations):
+    def test_list_organizations_with_search(
+        self, unique_organization_name, cleanup_organizations
+    ):
         """Test organization listing with search parameter"""
         search_term = "integration-search-test"
         org_name = f"{search_term}-{uuid.uuid4().hex[:8]}"
 
         # Create an organization with the search term
         create_result = create_organization(
-            name=org_name, description=f"Organization for testing search functionality with {search_term}"
+            name=org_name,
+            description=f"Organization for testing search functionality with {search_term}",
         )
         cleanup_organizations.append(create_result["id"])
 
@@ -293,7 +305,11 @@ class TestOrganizationUserManagement:
         assert isinstance(result["count"], int)
 
     def test_add_and_remove_user_workflow(
-        self, unique_organization_name, test_user_email, cleanup_organizations, cleanup_organization_users
+        self,
+        unique_organization_name,
+        test_user_email,
+        cleanup_organizations,
+        cleanup_organization_users,
     ):
         """Test complete user add/remove workflow"""
         if not test_user_email:
@@ -301,13 +317,16 @@ class TestOrganizationUserManagement:
 
         # Create organization first
         create_result = create_organization(
-            name=unique_organization_name, description="Test organization for user management"
+            name=unique_organization_name,
+            description="Test organization for user management",
         )
         org_id = create_result["id"]
         cleanup_organizations.append(org_id)
 
         # Add user to organization
-        add_result = add_user_to_organization(org_id=org_id, user_email=test_user_email, is_admin=False)
+        add_result = add_user_to_organization(
+            org_id=org_id, user_email=test_user_email, is_admin=False
+        )
 
         # Track for cleanup
         cleanup_organization_users.append(add_result["id"])
@@ -320,7 +339,11 @@ class TestOrganizationUserManagement:
         # Verify user appears in organization user list
         users_result = list_organization_users(org_id)
         user_emails = [
-            user["user"]["email"] if isinstance(user["user"], dict) else user["user_email"]
+            (
+                user["user"]["email"]
+                if isinstance(user["user"], dict)
+                else user["user_email"]
+            )
             for user in users_result["results"]
         ]
         assert test_user_email in user_emails
@@ -332,13 +355,21 @@ class TestOrganizationUserManagement:
         # Verify user was removed
         users_result_after = list_organization_users(org_id)
         user_emails_after = [
-            user["user"]["email"] if isinstance(user["user"], dict) else user["user_email"]
+            (
+                user["user"]["email"]
+                if isinstance(user["user"], dict)
+                else user["user_email"]
+            )
             for user in users_result_after["results"]
         ]
         assert test_user_email not in user_emails_after
 
     def test_add_user_as_admin(
-        self, unique_organization_name, test_user_email, cleanup_organizations, cleanup_organization_users
+        self,
+        unique_organization_name,
+        test_user_email,
+        cleanup_organizations,
+        cleanup_organization_users,
     ):
         """Test adding a user as admin"""
         if not test_user_email:
@@ -350,7 +381,9 @@ class TestOrganizationUserManagement:
         cleanup_organizations.append(org_id)
 
         # Add user as admin
-        add_result = add_user_to_organization(org_id=org_id, user_email=test_user_email, is_admin=True)
+        add_result = add_user_to_organization(
+            org_id=org_id, user_email=test_user_email, is_admin=True
+        )
 
         # Track for cleanup
         cleanup_organization_users.append(add_result["id"])
@@ -377,18 +410,25 @@ class TestOrganizationInviteManagement:
         assert isinstance(result["count"], int)
 
     def test_send_and_cancel_invite_workflow(
-        self, unique_organization_name, unique_invite_email, cleanup_organizations, cleanup_organization_invites
+        self,
+        unique_organization_name,
+        unique_invite_email,
+        cleanup_organizations,
+        cleanup_organization_invites,
     ):
         """Test complete invite send/cancel workflow"""
         # Create organization first
         create_result = create_organization(
-            name=unique_organization_name, description="Test organization for invite management"
+            name=unique_organization_name,
+            description="Test organization for invite management",
         )
         org_id = create_result["id"]
         cleanup_organizations.append(org_id)
 
         # Send invite
-        invite_result = send_organization_invite(org_id=org_id, email=unique_invite_email, is_admin=False)
+        invite_result = send_organization_invite(
+            org_id=org_id, email=unique_invite_email, is_admin=False
+        )
 
         # Track for cleanup
         cleanup_organization_invites.append(invite_result["id"])
@@ -410,11 +450,17 @@ class TestOrganizationInviteManagement:
 
         # Verify invite was cancelled
         invites_result_after = list_organization_invites(org_id)
-        invite_emails_after = [invite["email"] for invite in invites_result_after["results"]]
+        invite_emails_after = [
+            invite["email"] for invite in invites_result_after["results"]
+        ]
         assert unique_invite_email not in invite_emails_after
 
     def test_send_admin_invite(
-        self, unique_organization_name, unique_invite_email, cleanup_organizations, cleanup_organization_invites
+        self,
+        unique_organization_name,
+        unique_invite_email,
+        cleanup_organizations,
+        cleanup_organization_invites,
     ):
         """Test sending an admin invite"""
         # Create organization first
@@ -423,7 +469,9 @@ class TestOrganizationInviteManagement:
         cleanup_organizations.append(org_id)
 
         # Send admin invite
-        invite_result = send_organization_invite(org_id=org_id, email=unique_invite_email, is_admin=True)
+        invite_result = send_organization_invite(
+            org_id=org_id, email=unique_invite_email, is_admin=True
+        )
 
         # Track for cleanup
         cleanup_organization_invites.append(invite_result["id"])
@@ -446,7 +494,7 @@ class TestOrganizationPreferences:
             # Should return active organization response structure
             assert "active_organisation" in result
             assert "organisation_details" in result
-            
+
             # If there's an active organization, check its structure
             if result["active_organisation"]:
                 assert result["organisation_details"] is not None
@@ -471,10 +519,10 @@ class TestOrganizationPreferences:
         # Set the test organization as active
         try:
             result = set_active_organization(test_organization_id)
-            
+
             # The response should be the updated preferences with active organization
             assert "active_organisation" in result
-            
+
             # Verify the active organization changed
             new_active = get_active_organization()
             if new_active["active_organisation"]:
@@ -517,41 +565,57 @@ class TestOrganizationErrorHandling:
     def test_create_organization_validation_errors(self):
         """Test organization creation validation"""
         # Test empty name
-        with pytest.raises(InvalidOrganizationDataError, match="Organization name is required"):
+        with pytest.raises(
+            InvalidOrganizationDataError, match="Organization name is required"
+        ):
             create_organization(name="")
 
         # Test None name
-        with pytest.raises(InvalidOrganizationDataError, match="Organization name is required"):
+        with pytest.raises(
+            InvalidOrganizationDataError, match="Organization name is required"
+        ):
             create_organization(name=None)  # type: ignore
 
     def test_update_organization_validation_errors(self):
         """Test organization update validation"""
         # Test empty org_id
-        with pytest.raises(InvalidOrganizationDataError, match="Organization ID is required"):
+        with pytest.raises(
+            InvalidOrganizationDataError, match="Organization ID is required"
+        ):
             update_organization(org_id="", name="Test")
 
         # Test no fields to update
-        with pytest.raises(InvalidOrganizationDataError, match="At least one field must be provided"):
+        with pytest.raises(
+            InvalidOrganizationDataError, match="At least one field must be provided"
+        ):
             update_organization(org_id="test-id")
 
         # Test invalid fields
-        with pytest.raises(InvalidOrganizationDataError, match="No valid fields provided"):
+        with pytest.raises(
+            InvalidOrganizationDataError, match="No valid fields provided"
+        ):
             update_organization(org_id="test-id", invalid_field="value")
 
     def test_add_user_validation_errors(self):
         """Test user addition validation"""
         # Test empty org_id
-        with pytest.raises(InvalidOrganizationDataError, match="Organization ID is required"):
+        with pytest.raises(
+            InvalidOrganizationDataError, match="Organization ID is required"
+        ):
             add_user_to_organization(org_id="", user_email="test@example.com")
 
         # Test empty email
-        with pytest.raises(InvalidOrganizationDataError, match="User email is required"):
+        with pytest.raises(
+            InvalidOrganizationDataError, match="User email is required"
+        ):
             add_user_to_organization(org_id="test-id", user_email="")
 
     def test_send_invite_validation_errors(self):
         """Test invite sending validation"""
         # Test empty org_id
-        with pytest.raises(InvalidOrganizationDataError, match="Organization ID is required"):
+        with pytest.raises(
+            InvalidOrganizationDataError, match="Organization ID is required"
+        ):
             send_organization_invite(org_id="", email="test@example.com")
 
         # Test empty email
@@ -594,7 +658,9 @@ class TestOrganizationWorkflows:
             # Verify creation
             assert create_result["name"] == unique_organization_name
             assert create_result["description"] == original_description
-            assert create_result["billing_primary_email"] == original_billing_primary_email
+            assert (
+                create_result["billing_primary_email"] == original_billing_primary_email
+            )
 
             # Step 2: Get organization and verify
             get_result = get_organization(org_id)
@@ -606,16 +672,23 @@ class TestOrganizationWorkflows:
             updated_billing_primary_email = "updated@example.com"
 
             update_result = update_organization(
-                org_id=org_id, description=updated_description, billing_primary_email=updated_billing_primary_email
+                org_id=org_id,
+                description=updated_description,
+                billing_primary_email=updated_billing_primary_email,
             )
 
             assert update_result["description"] == updated_description
-            assert update_result["billing_primary_email"] == updated_billing_primary_email
+            assert (
+                update_result["billing_primary_email"] == updated_billing_primary_email
+            )
 
             # Step 4: Verify update by getting organization again
             updated_get_result = get_organization(org_id)
             assert updated_get_result["description"] == updated_description
-            assert updated_get_result["billing_primary_email"] == updated_billing_primary_email
+            assert (
+                updated_get_result["billing_primary_email"]
+                == updated_billing_primary_email
+            )
 
         finally:
             # Step 5: Delete organization
@@ -640,7 +713,9 @@ class TestOrganizationWorkflows:
 
         try:
             # Add user as member
-            add_result = add_user_to_organization(org_id=org_id, user_email=test_user_email, is_admin=False)
+            add_result = add_user_to_organization(
+                org_id=org_id, user_email=test_user_email, is_admin=False
+            )
             user_relation_id = add_result["id"]
 
             # Verify user was added
@@ -658,7 +733,9 @@ class TestOrganizationWorkflows:
             # Clean up organization
             delete_organization(org_id)
 
-    def test_organization_invite_workflow(self, unique_organization_name, unique_invite_email):
+    def test_organization_invite_workflow(
+        self, unique_organization_name, unique_invite_email
+    ):
         """Test complete organization invitation workflow"""
         # Create organization
         create_result = create_organization(
@@ -668,19 +745,25 @@ class TestOrganizationWorkflows:
 
         try:
             # Send invite
-            invite_result = send_organization_invite(org_id=org_id, email=unique_invite_email, is_admin=False)
+            invite_result = send_organization_invite(
+                org_id=org_id, email=unique_invite_email, is_admin=False
+            )
             invite_id = invite_result["id"]
 
             # Verify invite in list
             invites_result = list_organization_invites(org_id)
-            assert any(invite["id"] == invite_id for invite in invites_result["results"])
+            assert any(
+                invite["id"] == invite_id for invite in invites_result["results"]
+            )
 
             # Cancel invite
             delete_organization_invite(invite_id)
 
             # Verify invite was cancelled
             invites_result_after = list_organization_invites(org_id)
-            assert not any(invite["id"] == invite_id for invite in invites_result_after["results"])
+            assert not any(
+                invite["id"] == invite_id for invite in invites_result_after["results"]
+            )
 
         finally:
             # Clean up organization

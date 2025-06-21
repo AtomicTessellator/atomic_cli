@@ -11,16 +11,17 @@ To run: uv run pytest tests/integration/test_vibes.py -v -m integration
 """
 
 import os
-import pytest
 import time
+
+import pytest
 from dotenv import load_dotenv
 
 from atomict.auth import authenticate
 from atomict.simulation.vibes import (
-    create_vibes_simulation,
-    get_vibes_simulation,
-    delete_vibes_simulation,
     associate_file_with_vibes_simulation,
+    create_vibes_simulation,
+    delete_vibes_simulation,
+    get_vibes_simulation,
     get_vibes_simulation_files,
 )
 

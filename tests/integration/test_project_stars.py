@@ -10,6 +10,7 @@ To run: PYTHONPATH=/path/to/atomic_cli uv run pytest tests/integration/test_proj
 """
 
 import os
+
 import pytest
 from dotenv import load_dotenv
 

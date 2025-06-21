@@ -10,18 +10,19 @@ To run: uv run pytest tests/integration/test_project_operations.py -v -m integra
 """
 
 import os
-import pytest
 import uuid
+
+import pytest
 from dotenv import load_dotenv
 
 from atomict.auth import authenticate
 from atomict.project.project import (
     create_project,
     delete_project,
-    project_exists,
-    get_project_by_name,
     get_project,
+    get_project_by_name,
     list_projects,
+    project_exists,
     update_project,
 )
 
@@ -87,7 +88,9 @@ class TestProjectCRUDOperations:
         assert "created_at" in result
         assert "updated_at" in result
 
-    def test_create_project_with_full_parameters(self, unique_project_name, cleanup_projects):
+    def test_create_project_with_full_parameters(
+        self, unique_project_name, cleanup_projects
+    ):
         """Test creating a project with all parameters"""
         description = "Integration test project with full parameters"
         thumbnail_smiles = "CCO"  # Simple ethanol SMILES
@@ -95,7 +98,7 @@ class TestProjectCRUDOperations:
         result = create_project(
             name=unique_project_name,
             description=description,
-            thumbnail_smiles=thumbnail_smiles
+            thumbnail_smiles=thumbnail_smiles,
         )
 
         # Track for cleanup
@@ -110,8 +113,7 @@ class TestProjectCRUDOperations:
         """Test retrieving a project by ID"""
         # Create project first
         create_result = create_project(
-            name=unique_project_name,
-            description="Test project for get operation"
+            name=unique_project_name, description="Test project for get operation"
         )
         project_id = create_result["id"]
         cleanup_projects.append(project_id)
@@ -128,8 +130,7 @@ class TestProjectCRUDOperations:
         """Test updating a project with partial field updates"""
         # Create project first
         create_result = create_project(
-            name=unique_project_name,
-            description="Original description"
+            name=unique_project_name, description="Original description"
         )
         project_id = create_result["id"]
         cleanup_projects.append(project_id)
@@ -137,8 +138,7 @@ class TestProjectCRUDOperations:
         # Update only the description
         new_description = "Updated description"
         update_result = update_project(
-            project_id=project_id,
-            description=new_description
+            project_id=project_id, description=new_description
         )
 
         # Verify update
@@ -166,7 +166,7 @@ class TestProjectCRUDOperations:
             project_id=project_id,
             name=new_name,
             description=new_description,
-            thumbnail_smiles=new_thumbnail_smiles
+            thumbnail_smiles=new_thumbnail_smiles,
         )
 
         # Verify all updates
@@ -210,11 +210,10 @@ class TestProjectCRUDOperations:
     def test_get_project_by_name(self, unique_project_name, cleanup_projects):
         """Test retrieving a project by name"""
         description = "Test project for get by name"
-        
+
         # Create project first
         create_result = create_project(
-            name=unique_project_name,
-            description=description
+            name=unique_project_name, description=description
         )
         cleanup_projects.append(create_result["id"])
 
@@ -249,7 +248,7 @@ class TestProjectListOperations:
         # Create a project with the search term
         create_result = create_project(
             name=project_name,
-            description=f"Project for testing search functionality with {search_term}"
+            description=f"Project for testing search functionality with {search_term}",
         )
         cleanup_projects.append(create_result["id"])
 
@@ -283,22 +282,20 @@ class TestProjectListOperations:
         """Test project listing with custom filters"""
         # Create a project to test filtering
         create_result = create_project(
-            name=unique_project_name,
-            description="Filterable test project"
+            name=unique_project_name, description="Filterable test project"
         )
         cleanup_projects.append(create_result["id"])
 
         # Test filtering by name (exact match if supported)
         name_filter_result = list_projects(name=unique_project_name)
         if name_filter_result["count"] > 0:
-            assert any(p["name"] == unique_project_name for p in name_filter_result["results"])
+            assert any(
+                p["name"] == unique_project_name for p in name_filter_result["results"]
+            )
 
     def test_list_projects_combined_parameters(self):
         """Test project listing with multiple parameters combined"""
-        result = list_projects(
-            search="test",
-            ordering="-created_at"
-        )
+        result = list_projects(search="test", ordering="-created_at")
 
         assert "results" in result
         assert "count" in result
@@ -317,7 +314,7 @@ class TestProjectWorkflows:
         create_result = create_project(
             name=unique_project_name,
             description=original_description,
-            thumbnail_smiles=original_smiles
+            thumbnail_smiles=original_smiles,
         )
         project_id = create_result["id"]
 
@@ -335,13 +332,13 @@ class TestProjectWorkflows:
             # Step 3: Update project
             updated_description = "Updated project description"
             updated_smiles = "CC"  # Ethane
-            
+
             update_result = update_project(
                 project_id=project_id,
                 description=updated_description,
-                thumbnail_smiles=updated_smiles
+                thumbnail_smiles=updated_smiles,
             )
-            
+
             assert update_result["description_html"] == updated_description
             assert update_result["thumbnail_smiles"] == updated_smiles
 
@@ -370,41 +367,37 @@ class TestProjectWorkflows:
     def test_project_search_workflow(self, cleanup_projects):
         """Test project search and retrieval workflow"""
         search_identifier = f"workflow-search-{uuid.uuid4().hex[:6]}"
-        
+
         # Create multiple projects with common identifier
         project_names = [
             f"{search_identifier}-alpha",
-            f"{search_identifier}-beta", 
-            f"{search_identifier}-gamma"
+            f"{search_identifier}-beta",
+            f"{search_identifier}-gamma",
         ]
-        
+
         created_ids = []
         try:
             # Create test projects
             for name in project_names:
                 result = create_project(
-                    name=name,
-                    description=f"Search workflow test project: {name}"
+                    name=name, description=f"Search workflow test project: {name}"
                 )
                 created_ids.append(result["id"])
                 cleanup_projects.append(result["id"])
 
             # Search for projects with the common identifier
             search_result = list_projects(search=search_identifier)
-            
+
             # Verify all created projects are found
             found_names = [p["name"] for p in search_result["results"]]
             for name in project_names:
                 assert name in found_names
 
             # Test ordering of search results
-            ordered_result = list_projects(
-                search=search_identifier,
-                ordering="name"
-            )
+            ordered_result = list_projects(search=search_identifier, ordering="name")
             ordered_names = [p["name"] for p in ordered_result["results"]]
             expected_order = sorted(project_names)
-            
+
             # Check that our projects appear in the expected order
             for i, expected_name in enumerate(expected_order):
                 assert expected_name in ordered_names
@@ -421,31 +414,28 @@ class TestProjectValidationAndErrorHandling:
     def test_get_nonexistent_project(self):
         """Test getting a project that doesn't exist"""
         non_existent_id = f"non-existent-{uuid.uuid4()}"
-        
+
         with pytest.raises(Exception):
             get_project(non_existent_id)
 
     def test_update_nonexistent_project(self):
         """Test updating a project that doesn't exist"""
         non_existent_id = f"non-existent-{uuid.uuid4()}"
-        
+
         with pytest.raises(Exception):
-            update_project(
-                project_id=non_existent_id,
-                name="Updated Name"
-            )
+            update_project(project_id=non_existent_id, name="Updated Name")
 
     def test_delete_nonexistent_project(self):
         """Test deleting a project that doesn't exist"""
         non_existent_id = f"non-existent-{uuid.uuid4()}"
-        
+
         with pytest.raises(Exception):
             delete_project(non_existent_id)
 
     def test_get_project_by_nonexistent_name(self):
         """Test getting a project by name that doesn't exist"""
         non_existent_name = f"non-existent-name-{uuid.uuid4().hex[:8]}"
-        
+
         with pytest.raises(Exception):
             get_project_by_name(non_existent_name)
 
@@ -460,7 +450,7 @@ class TestProjectValidationAndErrorHandling:
         try:
             second_result = create_project(name=unique_project_name)
             cleanup_projects.append(second_result["id"])
-            
+
             # If duplicates are allowed, both should have different IDs
             assert first_result["id"] != second_result["id"]
         except Exception:
