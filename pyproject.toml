@@ -83,6 +83,9 @@ enable_error_code = ["union-attr"]
 strict_concatenate = true
 
 [tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')"
+]
 filterwarnings = [
     "ignore::DeprecationWarning:ase.atom",
     "ignore:.*__array__ implementation doesn't accept a copy keyword.*:DeprecationWarning"
