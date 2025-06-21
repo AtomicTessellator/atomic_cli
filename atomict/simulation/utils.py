@@ -10,27 +10,28 @@ except ImportError:
 import logging
 import os
 
-from atomict.io.msgpack import load_msgpack_trajectory
 from atomict.io.fhiaims import read_aims_output
+from atomict.io.msgpack import load_msgpack_trajectory
 from atomict.io.utils import human_filesize
-from atomict.simulation.mlrelax import get_mlrelax, get_mlrelax_files
 from atomict.simulation.fhi_aims import get_simulation as fhi_get_simulation
 from atomict.simulation.fhi_aims import get_simulation_files as fhi_get_simulation_files
+from atomict.simulation.mlrelax import get_mlrelax, get_mlrelax_files
 from atomict.user.files import download_file
 from atomict.user.workspace import download_workspace
 
 
 def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
-
     """
     Fetch the relaxed geometry from the simulation
         sim can be any of these: FHIAimsSimulation, MLRelaxation, UserUpload
-    
+
         returns: Atoms object
     """
 
     if sim["starting_structure"]:
-        previous_simulation = fhi_get_simulation(sim["starting_structure"]["id"], include_ht=True)
+        previous_simulation = fhi_get_simulation(
+            sim["starting_structure"]["id"], include_ht=True
+        )
         logging.info(f"Previous simulation: {previous_simulation['id']}")
         files = fhi_get_simulation_files(previous_simulation["id"])
 
@@ -52,8 +53,10 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
         return atoms[-1]
 
     elif sim["starting_structure_mlrelax"]:
-        
-        previous_mlrelax = get_mlrelax(sim["starting_structure_mlrelax"]["id"], include_ht=True)
+
+        previous_mlrelax = get_mlrelax(
+            sim["starting_structure_mlrelax"]["id"], include_ht=True
+        )
         logging.info(f"Previous MLRelaxation: {previous_mlrelax['id']}")
         files = get_mlrelax_files(previous_mlrelax["id"])
 
@@ -76,18 +79,23 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
             atoms, _ = load_msgpack_trajectory(atraj_file)
         else:
             atoms = read(traj_file)
-        
+
         if isinstance(atoms, list):
             return atoms[-1]
         else:
             return atoms
 
     elif sim["starting_structure_userupload"]:
-        logging.info(f"Previous UserUpload: {sim['starting_structure_userupload']['uuid']}")
+        logging.info(
+            f"Previous UserUpload: {sim['starting_structure_userupload']['uuid']}"
+        )
 
         extension = sim["starting_structure_userupload"]["orig_name"].split(".")[-1]
 
-        download_file(sim["starting_structure_userupload"]["uuid"], workbench_dir + f"/relaxed.{extension}")
+        download_file(
+            sim["starting_structure_userupload"]["uuid"],
+            workbench_dir + f"/relaxed.{extension}",
+        )
         atoms = read(workbench_dir + f"/relaxed.{extension}")
 
         if isinstance(atoms, list):

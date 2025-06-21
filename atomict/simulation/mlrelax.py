@@ -1,5 +1,10 @@
 from atomict.api import get, post
-from atomict.simulation.models import MODEL_ORB_D3_V2, MODEL_MATTERSIM_1_0_0_5M, MODEL_ORB_V3_CONSERVATIVE, MODEL_ESEN_30M_OAM
+from atomict.simulation.models import (
+    MODEL_ESEN_30M_OAM,
+    MODEL_MATTERSIM_1_0_0_5M,
+    MODEL_ORB_D3_V2,
+    MODEL_ORB_V3_CONSERVATIVE,
+)
 
 COMPUTATION_TYPE_RELAXATION = 0
 COMPUTATION_TYPE_SINGLE_POINT = 1
@@ -14,12 +19,12 @@ def get_mlrelax(id: str, **params):
         **params: Additional GET parameters to pass to the API
     """
     # Build query string from parameters
-    query_string = '&'.join(f"{k}={v}" for k, v in params.items())
+    query_string = "&".join(f"{k}={v}" for k, v in params.items())
     base_url = f"api/mlrelax/{id}/"
-    
+
     # Add query string if we have parameters
     url = f"{base_url}?{query_string}" if query_string else base_url
-    
+
     result = get(url)
     return result
 

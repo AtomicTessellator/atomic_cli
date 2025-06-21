@@ -1,6 +1,5 @@
-from atomict.api import get, post, patch, delete
+from atomict.api import delete, get, patch, post
 from atomict.exceptions import APIValidationError
-
 
 # Structure type to API field mapping
 STRUCTURE_FIELD_MAP = {

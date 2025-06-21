@@ -9,7 +9,7 @@ def get_simulation(simulation_id: str):
 
 def post_reaction(ct_reaction: dict):
 
-    for json_prop in ['input_data', 'reactants', 'products']:
+    for json_prop in ["input_data", "reactants", "products"]:
 
         if isinstance(ct_reaction[json_prop], dict):
             ct_reaction[json_prop] = json.dumps(ct_reaction[json_prop])
@@ -19,7 +19,9 @@ def post_reaction(ct_reaction: dict):
 
 def post_species(ct_species: dict):
 
-    for json_prop in ["input_data", ]:
+    for json_prop in [
+        "input_data",
+    ]:
 
         if isinstance(ct_species[json_prop], dict):
             ct_species[json_prop] = json.dumps(ct_species[json_prop])

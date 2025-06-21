@@ -1,4 +1,4 @@
-from atomict.api import get, post, delete
+from atomict.api import delete, get, post
 
 
 def get_md_simulation(simulation_id: str):
