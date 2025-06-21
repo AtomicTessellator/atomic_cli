@@ -23,4 +23,6 @@ def environment_check(required_env_keys: List[str] = []):
     auth_creds = [os.environ.get("AT_USER"), os.environ.get("AT_PASS")]
     if None in auth_creds:
         if os.environ.get("AT_TOKEN") in ["", None]:
-            raise ValueError("No authentication credentials found, please set AT_USER and AT_PASS or AT_TOKEN")
+            raise ValueError(
+                "No authentication credentials found, please set AT_USER and AT_PASS or AT_TOKEN"
+            )

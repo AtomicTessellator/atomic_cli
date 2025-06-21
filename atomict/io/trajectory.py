@@ -1,12 +1,21 @@
 """Trajectory implementation using msgpack storage"""
-import os
+
 import contextlib
 import io
+import os
 
-__all__ = ['Trajectory']
+__all__ = ["Trajectory"]
 
 
-def Trajectory(filename, mode='r', atoms=None, properties=None, master=None, comm=None, flush_interval=1):
+def Trajectory(
+    filename,
+    mode="r",
+    atoms=None,
+    properties=None,
+    master=None,
+    comm=None,
+    flush_interval=1,
+):
     """A Trajectory can be created in read, write or append mode.
 
     Parameters:
@@ -45,21 +54,31 @@ def Trajectory(filename, mode='r', atoms=None, properties=None, master=None, com
     if comm is None:
         try:
             from ase.parallel import world
+
             comm = world
         except ImportError:
             comm = _DummyComm()
-            
-    if mode == 'r':
+
+    if mode == "r":
         return TrajectoryReader(filename)
-    return TrajectoryWriter(filename, mode, atoms, properties, master=master, comm=comm, flush_interval=flush_interval)
+    return TrajectoryWriter(
+        filename,
+        mode,
+        atoms,
+        properties,
+        master=master,
+        comm=comm,
+        flush_interval=flush_interval,
+    )
 
 
 class _DummyComm:
     """Dummy communicator for when ASE is not installed."""
+
     @property
     def rank(self):
         return 0
-        
+
     def sum_scalar(self, value):
         return value
 
@@ -67,7 +86,16 @@ class _DummyComm:
 class TrajectoryWriter:
     """Writes Atoms objects to a .mpk file using msgpack."""
 
-    def __init__(self, filename, mode='w', atoms=None, properties=None, master=None, comm=None, flush_interval=1):
+    def __init__(
+        self,
+        filename,
+        mode="w",
+        atoms=None,
+        properties=None,
+        master=None,
+        comm=None,
+        flush_interval=1,
+    ):
         """A Trajectory writer, in write or append mode.
 
         Parameters:
@@ -103,18 +131,21 @@ class TrajectoryWriter:
             import msgpack
             import msgpack_numpy as m
         except ImportError:
-            raise ImportError("You need to install with `pip install atomict[tools]` to use msgpack I/O")
-        
+            raise ImportError(
+                "You need to install with `pip install atomict[tools]` to use msgpack I/O"
+            )
+
         # Enable numpy array serialization
         m.patch()
-        
+
         if comm is None:
             try:
                 from ase.parallel import world
+
                 comm = world
             except ImportError:
                 comm = _DummyComm()
-        
+
         if master is None:
             master = comm.rank == 0
 
@@ -126,25 +157,22 @@ class TrajectoryWriter:
         self.comm = comm
         self.description = {}
         self.flush_interval = max(1, flush_interval)  # Ensure at least 1
-        
+
         # Track if this is first write to ensure it's always flushed
         self._is_first_write = True
         self._frames = []
         self._frames_since_last_flush = 0
         self._total_frames_added = 0  # Track total frames added for flush interval
-        
+
         # Get ASE version if available
         try:
             from ase import __version__ as ase_version
         except ImportError:
             ase_version = "not_installed"
-            
+
         # Store metadata in separate dict to ensure it's preserved
-        self._metadata = {
-            "description": {},
-            "ase_version": ase_version
-        }
-        
+        self._metadata = {"description": {}, "ase_version": ase_version}
+
         self._open(filename, mode)
 
     def __enter__(self):
@@ -159,10 +187,10 @@ class TrajectoryWriter:
         self._metadata["description"].update(description)
 
     def _open(self, filename, mode):
-        if mode not in 'aw':
+        if mode not in "aw":
             raise ValueError('mode must be "w" or "a".')
-            
-        if mode == 'a' and os.path.exists(self.filename) and self.master:
+
+        if mode == "a" and os.path.exists(self.filename) and self.master:
             # Load existing data in append mode
             with TrajectoryReader(self.filename) as reader:
                 self._frames = [atoms for atoms in reader]
@@ -196,53 +224,60 @@ class TrajectoryWriter:
     def _write_atoms(self, atoms, **kwargs):
         if not self.master:
             return
-            
+
         # Apply calculator properties if provided
-        if kwargs and hasattr(atoms, 'calc'):
+        if kwargs and hasattr(atoms, "calc"):
             try:
                 from ase.calculators.singlepoint import SinglePointCalculator
+
                 # Create a SinglePointCalculator with the provided properties
                 calc = SinglePointCalculator(atoms, **kwargs)
                 atoms.calc = calc
             except ImportError:
                 # If ASE not available, store properties directly in atoms.info
                 for key, value in kwargs.items():
-                    atoms.info[f'_calc_{key}'] = value
-        
+                    atoms.info[f"_calc_{key}"] = value
+
         # IMPORTANT: Make a deep copy to preserve calculator data
         atoms_copy = atoms.copy()
-        
+
         # CRITICAL: If there's a calculator, make sure we preserve its data in atoms_copy.info
-        if hasattr(atoms, 'calc') and atoms.calc is not None:
+        if hasattr(atoms, "calc") and atoms.calc is not None:
             # Store calculator name
-            atoms_copy.info['_calc_name'] = atoms.calc.__class__.__name__
-            
+            atoms_copy.info["_calc_name"] = atoms.calc.__class__.__name__
+
             # Try to preserve all calculator results in atoms_copy.info
-            if hasattr(atoms.calc, 'results'):
+            if hasattr(atoms.calc, "results"):
                 for key, value in atoms.calc.results.items():
-                    atoms_copy.info[f'_calc_{key}'] = value
+                    atoms_copy.info[f"_calc_{key}"] = value
 
                 # Make sure energy, forces, and stress are included if available
                 try:
-                    if 'energy' not in atoms.calc.results and hasattr(atoms.calc, 'get_potential_energy'):
+                    if "energy" not in atoms.calc.results and hasattr(
+                        atoms.calc, "get_potential_energy"
+                    ):
                         energy = atoms.calc.get_potential_energy(atoms)
-                        atoms_copy.info['_calc_energy'] = energy
-                    
-                    if 'forces' not in atoms.calc.results and hasattr(atoms.calc, 'get_forces'):
+                        atoms_copy.info["_calc_energy"] = energy
+
+                    if "forces" not in atoms.calc.results and hasattr(
+                        atoms.calc, "get_forces"
+                    ):
                         forces = atoms.calc.get_forces(atoms)
-                        atoms_copy.info['_calc_forces'] = forces
-                    
-                    if 'stress' not in atoms.calc.results and hasattr(atoms.calc, 'get_stress'):
+                        atoms_copy.info["_calc_forces"] = forces
+
+                    if "stress" not in atoms.calc.results and hasattr(
+                        atoms.calc, "get_stress"
+                    ):
                         stress = atoms.calc.get_stress(atoms)
-                        atoms_copy.info['_calc_stress'] = stress
+                        atoms_copy.info["_calc_stress"] = stress
                 except:
                     pass
-        
+
         # Save the copy
         self._frames.append(atoms_copy)
         self._frames_since_last_flush += 1
         self._total_frames_added += 1
-        
+
         # Save to disk if:
         # 1. First write (always flush first frame)
         # 2. We've accumulated enough frames based on flush interval
@@ -255,9 +290,9 @@ class TrajectoryWriter:
         """Save all frames to the file."""
         if not self.master or not self._frames:
             return
-            
+
         from .msgpack import save_msgpack_trajectory
-        
+
         # Save with metadata - directly use msgpack functions
         save_msgpack_trajectory(self._frames, self.filename, metadata=self._metadata)
 
@@ -289,7 +324,7 @@ class TrajectoryReader:
         self._frames = None
         self.description = None
         self.ase_version = None
-        
+
         self._open(filename)
 
     def __enter__(self):
@@ -300,22 +335,22 @@ class TrajectoryReader:
 
     def _open(self, filename):
         from .msgpack import load_msgpack_trajectory
-        
+
         # Load trajectory with metadata - directly use msgpack functions
         atoms_list, metadata = load_msgpack_trajectory(filename)
-        
+
         self._frames = atoms_list
-        
+
         # Extract description and version from metadata
-        if metadata and 'description' in metadata:
-            self.description = metadata['description']
+        if metadata and "description" in metadata:
+            self.description = metadata["description"]
         else:
             self.description = {}
-            
-        if metadata and 'ase_version' in metadata:
-            self.ase_version = metadata['ase_version']
+
+        if metadata and "ase_version" in metadata:
+            self.ase_version = metadata["ase_version"]
         else:
-            self.ase_version = 'unknown'
+            self.ase_version = "unknown"
 
     def close(self):
         """Close the trajectory file."""
@@ -325,28 +360,29 @@ class TrajectoryReader:
     def __getitem__(self, i=-1):
         if isinstance(i, slice):
             return SlicedTrajectory(self, i)
-        
-        # Get a copy of the frame 
+
+        # Get a copy of the frame
         atoms = self._frames[i].copy()
-        
+
         # Explicitly restore calculator if calc data exists in atoms.info
-        if any(key.startswith('_calc_') for key in atoms.info):
+        if any(key.startswith("_calc_") for key in atoms.info):
             try:
                 from ase.calculators.singlepoint import SinglePointCalculator
+
                 calc = SinglePointCalculator(atoms)
-                
+
                 # Collect all calc data from info
                 for key, value in atoms.info.items():
-                    if key.startswith('_calc_') and key != '_calc_name':
+                    if key.startswith("_calc_") and key != "_calc_name":
                         prop_name = key[6:]  # Remove '_calc_' prefix
                         calc.results[prop_name] = value
-                
+
                 # Only set calculator if we have results
                 if calc.results:
                     atoms.calc = calc
             except ImportError:
                 pass
-        
+
         return atoms
 
     def __len__(self):
@@ -372,7 +408,7 @@ class SlicedTrajectory:
             traj = SlicedTrajectory(self.trajectory, slice(0, None))
             traj.map = self.map[i]
             return traj
-        
+
         # Use the trajectory's __getitem__ method to get calculator-restored atoms
         return self.trajectory[self.map[i]]
 
@@ -383,7 +419,7 @@ class SlicedTrajectory:
 def read_traj(fd, index):
     """Read msgpack trajectory for ase.io.read()."""
     trj = TrajectoryReader(fd)
-    
+
     for i in range(*index.indices(len(trj))):
         yield trj[i]
 
@@ -400,11 +436,14 @@ def defer_compression(fd):
     except ImportError:
         # Simple fallback check for compression
         def is_compressed(filename):
-            if hasattr(filename, 'name'):
+            if hasattr(filename, "name"):
                 filename = filename.name
-            return (filename.endswith('.gz') or filename.endswith('.bz2') or 
-                    filename.endswith('.xz'))
-                
+            return (
+                filename.endswith(".gz")
+                or filename.endswith(".bz2")
+                or filename.endswith(".xz")
+            )
+
     if is_compressed(fd):
         with io.BytesIO() as bytes_io:
             try:
@@ -423,14 +462,14 @@ def write_traj(fd, images):
     try:
         from ase.atoms import Atoms
     except ImportError:
-        # Just do a type check 
+        # Just do a type check
         Atoms = None
-    
+
     if Atoms is not None and isinstance(images, Atoms):
         images = [images]
     elif not isinstance(images, list):
         images = [images]
-        
+
     with defer_compression(fd) as fd_uncompressed:
         trj = TrajectoryWriter(fd_uncompressed)
         for atoms in images:

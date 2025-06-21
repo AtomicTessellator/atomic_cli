@@ -1,4 +1,3 @@
-
 import typing
 
 from tenacity import _utils
@@ -29,8 +28,8 @@ def before_log(
         if retry_state.attempt_number > 1:
             logger.log(
                 log_level,
-            f"Starting call to '{fn_name}', "
-            f"this is the {_utils.to_ordinal(retry_state.attempt_number)} time calling it.",
-        )
+                f"Starting call to '{fn_name}', "
+                f"this is the {_utils.to_ordinal(retry_state.attempt_number)} time calling it.",
+            )
 
     return log_it

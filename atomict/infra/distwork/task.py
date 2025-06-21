@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, List, Any, Iterator, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
 from atomict.api import get, patch
 from atomict.exceptions import UserTaskAbortException
@@ -33,11 +33,11 @@ def except_on_user_abort(task_uuid: str) -> None:
 
 
 def update_task_status(
-    task_uuid: str, 
-    status: Optional[TaskStatus] = None, 
-    error_msg: Optional[str] = None, 
-    percent: Optional[int] = None, 
-    progress_indeterminate: Optional[bool] = None
+    task_uuid: str,
+    status: Optional[TaskStatus] = None,
+    error_msg: Optional[str] = None,
+    percent: Optional[int] = None,
+    progress_indeterminate: Optional[bool] = None,
 ) -> Any:
     """Update task status and progress information."""
     payload = {}
@@ -61,10 +61,10 @@ def update_task_status(
 def cancel_task(task_uuid: str) -> Any:
     """
     Cancel a running task by setting user_aborted_flag.
-    
+
     Args:
         task_uuid: UUID of the task to cancel
-        
+
     Returns:
         Updated task dictionary
     """
@@ -75,10 +75,10 @@ def cancel_task(task_uuid: str) -> Any:
 def get_task_status_history(task_uuid: str) -> Any:
     """
     Get status history for a specific task.
-    
+
     Args:
         task_uuid: UUID of the task
-        
+
     Returns:
         List of status history entries
     """
@@ -91,13 +91,13 @@ def get_task_status_history(task_uuid: str) -> Any:
 def tail_task_logs(task_uuid: str) -> Any:
     """
     Get logs for a specific task.
-    
+
     Note: This is an alias for get_task_logs from the k8s module for convenience.
     For streaming logs, use the CLI or implement streaming in the client.
-    
+
     Args:
         task_uuid: UUID of the task
-        
+
     Returns:
         Dictionary containing task logs
     """

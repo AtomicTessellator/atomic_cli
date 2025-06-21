@@ -3,10 +3,10 @@ from atomict.api import delete, get, post
 
 def create_project_star(project_id: str) -> dict:
     """Star a project for the current user.
-    
+
     Args:
         project_id: ID of the project to star
-        
+
     Returns:
         dict: Created star record
     """
@@ -22,10 +22,10 @@ def create_project_star(project_id: str) -> dict:
 
 def delete_project_star(star_id: str) -> dict:
     """Unstar a project by removing the star record.
-    
+
     Args:
         star_id: ID of the star record to delete
-        
+
     Returns:
         dict: Response from deletion
     """
@@ -35,7 +35,7 @@ def delete_project_star(star_id: str) -> dict:
 
 def list_project_stars() -> dict:
     """List all starred projects for the current user.
-    
+
     Returns:
         dict: List of star records
     """
@@ -45,10 +45,10 @@ def list_project_stars() -> dict:
 
 def get_project_star(star_id: str) -> dict:
     """Get a single star record by ID.
-    
+
     Args:
         star_id: ID of the star record to retrieve
-        
+
     Returns:
         dict: Star record details
     """

@@ -1,17 +1,17 @@
 import os
-from typing import Any, Dict, List, Optional, Union  
+from typing import Any, Dict, List, Optional, Union
 
-from atomict.api import get, post, delete, patch
+from atomict.api import delete, get, patch, post
 
 
-def upload_single_file(full_path: str, file_name: str, project_uuid: Optional[str] = None):
+def upload_single_file(
+    full_path: str, file_name: str, project_uuid: Optional[str] = None
+):
 
-    payload = {
-        'users_name': file_name
-    }
+    payload = {"users_name": file_name}
 
     if project_uuid:
-        payload['project_uuid'] = project_uuid
+        payload["project_uuid"] = project_uuid
 
     with open(full_path, "rb") as f:
         result = post("user/file_upload/", files={file_name: f}, payload=payload)
@@ -35,13 +35,13 @@ def download_file(user_upload_uuid: str, destination_path: str):
 
 def delete_user_upload(upload_uuid: str) -> bool:
     """Delete a user upload by UUID.
-    
+
     Args:
         upload_uuid: UUID of the upload to delete
-        
+
     Returns:
         True if deletion was successful
-        
+
     Raises:
         APIValidationError: If the upload doesn't exist or user lacks permission
     """
@@ -54,17 +54,17 @@ def get_user_uploads(
     search: Optional[str] = None,
     ordering: Optional[str] = None,
     limit: Optional[int] = None,
-    offset: Optional[int] = None
+    offset: Optional[int] = None,
 ) -> Any:
     """List user uploads with filtering options.
-    
+
     Args:
         user_id: Filter by specific user ID
         search: Search term for file names/descriptions
         ordering: Field to order results by (e.g., "-uploaded", "orig_name")
         limit: Maximum number of results to return
         offset: Number of results to skip
-        
+
     Returns:
         Dictionary containing upload list and pagination info
     """
@@ -80,40 +80,40 @@ def get_user_uploads(
         query_parts.append(f"limit={limit}")
     if offset:
         query_parts.append(f"offset={offset}")
-    
+
     path = "api/user-upload/"
     if query_parts:
         path += "?" + "&".join(query_parts)
-    
+
     result = get(path)
     return result if result is not None else {}
 
 
 def get_user_upload(upload_uuid: str, include_content: bool = False) -> Any:
     """Get user upload details, optionally with file content.
-    
+
     Args:
         upload_uuid: UUID of the upload to retrieve
         include_content: Whether to include base64-encoded file content
-        
+
     Returns:
         Dictionary containing upload details and optionally file content
     """
     path = f"api/user-upload/{upload_uuid}/"
     if include_content:
         path += "?include_content=true"
-    
+
     result = get(path)
     return result if result is not None else {}
 
 
 def update_user_upload(upload_uuid: str, **updates) -> Any:
     """Update user upload metadata.
-    
+
     Args:
         upload_uuid: UUID of the upload to update
         **updates: Fields to update (e.g., users_description, users_name)
-        
+
     Returns:
         Updated upload details
     """
@@ -121,15 +121,14 @@ def update_user_upload(upload_uuid: str, **updates) -> Any:
 
 
 def upload_multiple_files(
-    file_paths: List[str], 
-    project_uuid: Optional[str] = None
+    file_paths: List[str], project_uuid: Optional[str] = None
 ) -> List[Dict]:
     """Bulk upload multiple files.
-    
+
     Args:
         file_paths: List of file paths to upload
         project_uuid: Optional project to associate uploads with
-        
+
     Returns:
         List of upload results
     """
@@ -141,22 +140,22 @@ def upload_multiple_files(
             results.append({"file": file_path, "success": True, "result": result})
         except Exception as e:
             results.append({"file": file_path, "success": False, "error": str(e)})
-    
+
     return results
 
 
 def get_file_upload_filter(
     file_types: Optional[List[str]] = None,
     project_uuid: Optional[str] = None,
-    **filters
+    **filters,
 ) -> Any:
     """Get filtered list of file uploads with advanced filtering.
-    
+
     Args:
         file_types: List of file types to filter by (e.g., ["xyz", "cif"])
         project_uuid: Filter by project UUID
         **filters: Additional filter parameters
-        
+
     Returns:
         Filtered upload results
     """
@@ -166,5 +165,5 @@ def get_file_upload_filter(
     if project_uuid:
         params["project_uuid"] = project_uuid
     params.update(filters)
-    
+
     return post("user/file_upload_filter/", payload=params)

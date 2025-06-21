@@ -1,4 +1,5 @@
 from typing import Optional
+
 from atomict.api import delete, get, patch, post
 
 
@@ -7,16 +8,16 @@ def create_project_note(
 ):
     """
     Create a project note.
-    
+
     Note: Backend automatically sets show_description=True when content is not empty,
     so show_description=False only works for notes with empty content.
-    
+
     Args:
         project_id: The UUID of the project
         title: The title of the note
         content: The HTML content of the note
         show_description: Whether to show description (limited by backend logic)
-        
+
     Returns:
         dict: Created note data from API
     """
@@ -52,31 +53,31 @@ def list_project_notes(project_id: Optional[str] = None):
 
 
 def update_project_note(
-    note_id: str, 
-    title: Optional[str] = None, 
-    content: Optional[str] = None, 
-    show_description: Optional[bool] = None
+    note_id: str,
+    title: Optional[str] = None,
+    content: Optional[str] = None,
+    show_description: Optional[bool] = None,
 ):
     """
     Update a project note.
-    
+
     Note: Backend automatically sets show_description=True when content is not empty,
     so show_description=False only works for notes with empty content.
-    
+
     Args:
         note_id: The UUID of the note to update
         title: Optional new title for the note
         content: Optional new HTML content for the note
         show_description: Optional flag for whether to show description (limited by backend logic)
-        
+
     Returns:
         dict: Updated note data from API
-        
+
     Raises:
         APIValidationError: If note_id is invalid or validation fails
     """
     payload = {}
-    
+
     # Backend requires either title or content to be non-empty
     # If updating only show_description, we need to include current values
     if title is None and content is None and show_description is not None:
@@ -87,7 +88,7 @@ def update_project_note(
                 payload["title"] = current_note["title"]
             if current_note.get("content_html"):
                 payload["content_html"] = current_note["content_html"]
-    
+
     if title is not None:
         payload["title"] = title
     if content is not None:

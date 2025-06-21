@@ -135,9 +135,15 @@ def update_organization(org_id: str, **kwargs: Any) -> Any:
         )
 
     # Filter valid fields - support new field names and backward compatibility
-    valid_fields = {"name", "description", "billing_primary_email", "chem_primary_email", "billing_emails"}
+    valid_fields = {
+        "name",
+        "description",
+        "billing_primary_email",
+        "chem_primary_email",
+        "billing_emails",
+    }
     payload = {}
-    
+
     for k, v in kwargs.items():
         if k in valid_fields:
             if k == "billing_emails" and v:

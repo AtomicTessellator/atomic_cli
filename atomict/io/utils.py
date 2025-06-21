@@ -1,5 +1,3 @@
-
-
 def human_filesize(size):
     """
     Convert a file size in bytes to a human readable format
