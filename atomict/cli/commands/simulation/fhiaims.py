@@ -44,7 +44,9 @@ def get(
         # Format single simulation output
         console.print(f"ID: {simulation['id']}")
         console.print(f"Name: {simulation.get('name', 'N/A')}")
-        console.print(f"Finite diff displacement: {simulation.get('finite_diff_displacement', 'N/A')}")
+        console.print(
+            f"Finite diff displacement: {simulation.get('finite_diff_displacement', 'N/A')}"
+        )
         console.print(f"Created: {format_datetime(simulation['created_at'])}")
         if simulation.get("task"):
             status = get_status_string(simulation["task"].get("status"))

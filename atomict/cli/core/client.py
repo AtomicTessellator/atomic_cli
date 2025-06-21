@@ -34,15 +34,15 @@ def handle_connection_errors(func):
 
 
 class APIClient:
-    def __init__(self, config: Config = None, base_url: str = "https://api.atomictessellator.com"):
+    def __init__(
+        self, config: Config = None, base_url: str = "https://api.atomictessellator.com"
+    ):
         self.base_url = os.getenv("AT_SERVER", base_url)
-        
+
         try:
             parsed_url = urlparse(self.base_url)
-            if not all([parsed_url.scheme in ('http', 'https'), parsed_url.netloc]):
-                console.print(
-                    f"[red]Invalid URL format: {self.base_url}[/red]"
-                )
+            if not all([parsed_url.scheme in ("http", "https"), parsed_url.netloc]):
+                console.print(f"[red]Invalid URL format: {self.base_url}[/red]")
                 console.print(
                     "[yellow]AT_SERVER URL must start with http:// or https:// and include a valid domain.[/yellow]"
                 )
@@ -50,7 +50,7 @@ class APIClient:
         except Exception as e:
             console.print(f"[red]URL validation error: {str(e)}[/red]")
             sys.exit(1)
-            
+
         self.params = {"limit": 20}
         self.client = httpx.Client(base_url=self.base_url, timeout=30.0)
         self.username = None
@@ -160,11 +160,19 @@ class APIClient:
         """Make PATCH request"""
         response = self.client.patch(path, json=data)
         return self._handle_response(response)
-    
+
     @handle_connection_errors
-    def auth(self, username: Union[str, None] = None, password: Union[str, None] = None) -> None:
-        """ Login via username and password """
-        return self.post("api-auth/", {"username": username or self.username, "password": password or self.password})
+    def auth(
+        self, username: Union[str, None] = None, password: Union[str, None] = None
+    ) -> None:
+        """Login via username and password"""
+        return self.post(
+            "api-auth/",
+            {
+                "username": username or self.username,
+                "password": password or self.password,
+            },
+        )
 
     @handle_connection_errors
     def paginate(
@@ -201,7 +209,7 @@ def get_client() -> APIClient:
 
     if client._token:
         return client
-    
+
     config.ensure_auth()
     client.set_auth(config.username, config.password)
     response = client.auth()

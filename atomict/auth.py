@@ -15,12 +15,12 @@ def authenticate(username: str, password: str) -> str:
 
 def resolve_token() -> str:
     """
-        Resolve the token from the environment or authenticate.
+    Resolve the token from the environment or authenticate.
 
-        Order of presedence:
-        - Environment variable
-        - Store
-        - Authenticate
+    Order of presedence:
+    - Environment variable
+    - Store
+    - Authenticate
 
 
     """

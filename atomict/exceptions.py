@@ -1,5 +1,3 @@
-
-
 class APIValidationError(Exception):
     pass
 

@@ -19,7 +19,7 @@ STATUS_MAP = {
     "completed": 3,
     "error": 4,
     "paused": 5,
-    "aborted": 6
+    "aborted": 6,
 }
 
 
@@ -54,7 +54,10 @@ def cancel(id: str):
 )
 @click.option(
     "--status",
-    type=click.Choice(["draft", "ready", "running", "completed", "error", "paused", "aborted"], case_sensitive=False),
+    type=click.Choice(
+        ["draft", "ready", "running", "completed", "error", "paused", "aborted"],
+        case_sensitive=False,
+    ),
     help="Filter by status",
 )
 @click.option("--all", "fetch_all", is_flag=True, help="Fetch all results")
@@ -169,8 +172,7 @@ def get_status_history(task_id: str, json_output: bool = False):
 @task_group.command(hidden=True)
 @click.argument("id")
 @click.argument(
-    "status",
-    type=click.Choice(list(STATUS_MAP.keys()), case_sensitive=False)
+    "status", type=click.Choice(list(STATUS_MAP.keys()), case_sensitive=False)
 )
 def update_status(id: str, status: str):
     """Update a task's status (Development only)"""

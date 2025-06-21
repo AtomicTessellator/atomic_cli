@@ -19,7 +19,7 @@ class Config:
         self.load_config()
 
     def load_config(self):
-        """Load config from file. """
+        """Load config from file."""
         if CONFIG_FILE.exists():
             try:
                 with open(CONFIG_FILE) as f:

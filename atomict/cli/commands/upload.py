@@ -54,7 +54,12 @@ def upload_group():
 @click.option("--type", "file_type", help="Filter by file type")
 @click.option("--json-output", is_flag=True, help="Output in JSON format")
 @click.option("--all", "fetch_all", is_flag=True, help="Fetch all results")
-def get(limit: Optional[int], file_type: Optional[str], json_output: bool = False, fetch_all: bool = False):
+def get(
+    limit: Optional[int],
+    file_type: Optional[str],
+    json_output: bool = False,
+    fetch_all: bool = False,
+):
     """Get uploaded files"""
     params = {}
     if limit:
@@ -63,7 +68,7 @@ def get(limit: Optional[int], file_type: Optional[str], json_output: bool = Fals
         params["type"] = file_type
 
     client = get_client()
-    
+
     if fetch_all:
         results = client.get_all("/api/user-upload/", params)
     else:

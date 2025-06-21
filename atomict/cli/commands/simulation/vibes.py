@@ -45,14 +45,22 @@ def get(
         console.print(f"Name: {simulation.get('name', 'N/A')}")
         console.print(f"Created: {format_datetime(simulation['created_at'])}")
         console.print(f"Updated: {format_datetime(simulation['updated_at'])}")
-        console.print(f"Calculator Parameters: {simulation.get('calculator_parameters', {})}")
-        console.print(f"Calculator K-points: {simulation.get('calculator_kpoints', {})}")
-        console.print(f"Calculator Basis Set: {simulation.get('calculator_basis_set', {})}")
+        console.print(
+            f"Calculator Parameters: {simulation.get('calculator_parameters', {})}"
+        )
+        console.print(
+            f"Calculator K-points: {simulation.get('calculator_kpoints', {})}"
+        )
+        console.print(
+            f"Calculator Basis Set: {simulation.get('calculator_basis_set', {})}"
+        )
         if simulation.get("task"):
             status = get_status_string(simulation["task"].get("status"))
             console.print(f"Status: {status}")
         if simulation.get("starting_structure"):
-            console.print(f"Starting Structure ID: {simulation['starting_structure']['id']}")
+            console.print(
+                f"Starting Structure ID: {simulation['starting_structure']['id']}"
+            )
     else:
         params = {}
         if search:
@@ -80,10 +88,20 @@ def get(
         columns = [
             ("ID", "id", None),
             ("Name", "name", None),
-            ("Status", "task", lambda x: get_status_string(x.get("status") if isinstance(x, dict) else None)),
+            (
+                "Status",
+                "task",
+                lambda x: get_status_string(
+                    x.get("status") if isinstance(x, dict) else None
+                ),
+            ),
             ("Created", "created_at", format_datetime),
             ("Updated", "updated_at", format_datetime),
-            ("Starting Structure", "starting_structure", lambda x: x.get("id") if isinstance(x, dict) else None),
+            (
+                "Starting Structure",
+                "starting_structure",
+                lambda x: x.get("id") if isinstance(x, dict) else None,
+            ),
         ]
 
         items, footer_string = get_pagination_info(results)
@@ -134,7 +152,7 @@ def create(
     """Create a new VIBES simulation"""
     client = get_client()
     data = {}
-    
+
     if name:
         data["name"] = name
     if description:

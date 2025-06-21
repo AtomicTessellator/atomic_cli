@@ -13,19 +13,19 @@ from atomict.cli.commands.helpers import format_datetime, get_status_string
 from atomict.cli.core.client import get_client
 from atomict.cli.core.utils import get_pagination_info
 from atomict.organization.client import (
-    list_organizations, 
-    get_organization, 
-    create_organization, 
-    update_organization, 
-    delete_organization,
-    list_organization_users,
     add_user_to_organization,
-    remove_user_from_organization,
-    list_organization_invites,
-    send_organization_invite,
+    create_organization,
+    delete_organization,
     delete_organization_invite,
     get_active_organization,
+    get_organization,
+    list_organization_invites,
+    list_organization_users,
+    list_organizations,
+    remove_user_from_organization,
+    send_organization_invite,
     set_active_organization,
+    update_organization,
 )
 
 console = Console()
@@ -67,13 +67,13 @@ def get(
         console.print(f"Name: {result.get('name', 'N/A')}")
         console.print(f"Description: {result.get('description', 'N/A')}")
         # Organization model doesn't have created_at/updated_at timestamps
-        
+
         # Show billing emails - handle both old and new formats
         if result.get("billing_primary_email"):
             console.print(f"Billing Primary Email: {result['billing_primary_email']}")
         if result.get("chem_primary_email"):
             console.print(f"Chemistry Primary Email: {result['chem_primary_email']}")
-        
+
         # Backward compatibility for billing_emails
         if result.get("billing_emails"):
             console.print(f"Billing Emails: {', '.join(result['billing_emails'])}")
@@ -111,7 +111,9 @@ def get(
                 click.echo(
                     f"[red]Invalid filter format: {f}. Use field=value[/red]", err=True
                 )
-                raise click.ClickException(f"Invalid filter format: {f}. Use field=value")
+                raise click.ClickException(
+                    f"Invalid filter format: {f}. Use field=value"
+                )
 
         results = list_organizations(**params)
 
@@ -153,7 +155,7 @@ def create(
     json_output: bool = False,
 ):
     """Create a new organization"""
-    
+
     # Prepare parameters for the organization client function
     kwargs: Dict[str, Any] = {"name": name}
     if description:
@@ -162,7 +164,9 @@ def create(
         # Use the first email as the primary billing email
         email_list = [email.strip() for email in billing_emails.split(",")]
         if email_list:
-            kwargs["billing_emails"] = email_list  # This will be converted to billing_primary_email in the function
+            kwargs["billing_emails"] = (
+                email_list  # This will be converted to billing_primary_email in the function
+            )
 
     result = create_organization(**kwargs)
 
@@ -188,7 +192,7 @@ def update(
     json_output: bool = False,
 ):
     """Update an organization"""
-    
+
     kwargs: Dict[str, Any] = {}
     if name:
         kwargs["name"] = name

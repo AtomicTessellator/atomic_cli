@@ -4,12 +4,14 @@ import click
 from rich.console import Console
 
 from ..core.client import APIClient
-from ..core.config import Config, CONFIG_FILE
+from ..core.config import CONFIG_FILE, Config
 
 
-@click.command(name="login",
-               help=f"""Log in to your account and store an authentication token to {CONFIG_FILE}.
-                       Previous tokens will be overwritten.""")
+@click.command(
+    name="login",
+    help=f"""Log in to your account and store an authentication token to {CONFIG_FILE}.
+                       Previous tokens will be overwritten.""",
+)
 @click.option("--username", prompt=True)
 @click.option("--password", prompt=True, hide_input=True)
 def _login(username: str, password: str):
@@ -18,7 +20,7 @@ def _login(username: str, password: str):
     token = response.get("token")
     redirect = response.get("redirect")
 
-    if redirect in ['terms', 'verify_email']:
+    if redirect in ["terms", "verify_email"]:
         Console().print(
             f"[yellow]Terms and account verification need to be accepted. Please use a browser to login: {client.base_url}/login[/yellow]"
         )

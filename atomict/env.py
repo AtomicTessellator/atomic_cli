@@ -9,13 +9,13 @@ def store(key, value):
     cfg_path = get_config_path("config.json")
 
     if os.path.exists(cfg_path):
-        with open(get_config_path("config.json"), 'r') as f:
+        with open(get_config_path("config.json"), "r") as f:
             config = json.load(f)
             config[key] = value
     else:
         config = {key: value}
 
-    with open(get_config_path("config.json"), 'w') as f:
+    with open(get_config_path("config.json"), "w") as f:
         json.dump(config, f)
 
 

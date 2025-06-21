@@ -48,7 +48,9 @@ def get(
         console.print(Panel(f"[bold]K-point Simulation Details[/bold]"))
         console.print(f"ID: {simulation['id']}")
         if simulation.get("exploration"):
-            console.print(f"Exploration: {simulation['exploration'].get('name', 'N/A')}")
+            console.print(
+                f"Exploration: {simulation['exploration'].get('name', 'N/A')}"
+            )
             status = get_status_string(simulation["exploration"].get("status"))
             console.print(f"Status: {status}")
         console.print(f"K-points: {simulation.get('k_points', [])}")
@@ -85,11 +87,7 @@ def get(
 
         columns = [
             ("ID", "id", None),
-            (
-                "Exploration Name",
-                "exploration",
-                None
-            ),
+            ("Exploration Name", "exploration", None),
             (
                 "Simulation Name",
                 "simulation",
