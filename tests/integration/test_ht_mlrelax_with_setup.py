@@ -78,48 +78,47 @@ def test_structure_type():
 
 
 @pytest.fixture(scope="session")
-def ht_sqs_exploration_for_mlrelax(test_project_id, test_structure_id, test_structure_type):
+def ht_sqs_exploration_for_mlrelax(
+    test_project_id, test_structure_id, test_structure_type
+):
     """Create an HT SQS exploration specifically for testing HT MLRelax"""
-    
+
     # Create HT SQS exploration
     ht_sqs_result = create_ht_sqs_exploration(
         project_id=test_project_id,
         name="HT SQS for MLRelax Integration Test",
         target_concentrations=[
             {"element": "Al", "weight": 0.7},
-            {"element": "Ni", "weight": 0.3}
+            {"element": "Ni", "weight": 0.3},
         ],
-        generated_permutations=[
-            {"Al": 0.8, "Ni": 0.2},
-            {"Al": 0.6, "Ni": 0.4}
-        ],
+        generated_permutations=[{"Al": 0.8, "Ni": 0.2}, {"Al": 0.6, "Ni": 0.4}],
         structure_id=test_structure_id,
         structure_type=test_structure_type,
         num_structures_per_permutation=1,
-        description="Created for HT MLRelax integration testing"
+        description="Created for HT MLRelax integration testing",
     )
-    
+
     print(f"Created HT SQS exploration: {ht_sqs_result}")
-    
+
     # Find the created exploration by listing and matching the name
     from atomict.simulation.ht_sqs import list_ht_sqs_explorations
-    
+
     list_result = list_ht_sqs_explorations(project_id=test_project_id, limit=50)
     ht_sqs_exploration = None
-    
+
     for exp in list_result["results"]:
         if exp["name"] == "HT SQS for MLRelax Integration Test":
             ht_sqs_exploration = exp
             break
-    
+
     if not ht_sqs_exploration:
         pytest.fail("Could not find created HT SQS exploration")
-    
+
     ht_sqs_id = ht_sqs_exploration["id"]
     print(f"Found HT SQS exploration ID: {ht_sqs_id}")
-    
+
     yield ht_sqs_id
-    
+
     # Cleanup - delete the HT SQS exploration
     try:
         delete_ht_sqs_exploration(ht_sqs_id)
@@ -192,7 +191,7 @@ class TestHTMLRelaxIntegrationWithSetup:
             )
 
             print(f"Model {model_name} result: {result}")
-            
+
             assert "message" in result
             assert "relaxation" in result["message"].lower()
 
@@ -250,7 +249,7 @@ class TestHTMLRelaxIntegrationWithSetup:
         )
 
         print(f"Children count: {len(detail_with_children.get('children', []))}")
-        
+
         if detail_with_children.get("children"):
             child = detail_with_children["children"][0]
             print(f"First child: {child}")
@@ -303,17 +302,17 @@ class TestHTMLRelaxIntegrationWithSetup:
 
         # Test basic listing
         list_result = list_ht_mlrelax_explorations(project_id=test_project_id, limit=10)
-        
+
         assert "results" in list_result
         assert isinstance(list_result["results"], list)
-        
+
         print(f"Listed {len(list_result['results'])} explorations")
 
         # Test pagination
         paginated_result = list_ht_mlrelax_explorations(
             project_id=test_project_id, limit=5, offset=0
         )
-        
+
         assert "results" in paginated_result
         assert len(paginated_result["results"]) <= 5
 
@@ -321,8 +320,8 @@ class TestHTMLRelaxIntegrationWithSetup:
         if list_result["results"]:
             exploration = list_result["results"][0]
             expected_fields = ["id", "name", "model", "source_ht_sqs_exploration"]
-            
+
             for field in expected_fields:
                 assert field in exploration, f"Missing field: {field}"
-                
+
             print(f"Sample exploration structure: {exploration}")

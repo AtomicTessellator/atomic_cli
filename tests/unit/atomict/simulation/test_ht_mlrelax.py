@@ -19,9 +19,7 @@ class TestHTMLRelaxExploration:
     def test_create_ht_mlrelax_exploration_success(self):
         """Test successful HT ML Relaxation exploration creation"""
         with patch("atomict.simulation.ht_mlrelax.post") as mock_post:
-            mock_post.return_value = {
-                "message": "Created 5 relaxations successfully"
-            }
+            mock_post.return_value = {"message": "Created 5 relaxations successfully"}
 
             result = create_ht_mlrelax_exploration(
                 project_id="test-project",
@@ -45,9 +43,7 @@ class TestHTMLRelaxExploration:
     def test_create_ht_mlrelax_exploration_with_custom_model(self):
         """Test HT ML Relaxation exploration creation with custom model"""
         with patch("atomict.simulation.ht_mlrelax.post") as mock_post:
-            mock_post.return_value = {
-                "message": "Created 3 relaxations successfully"
-            }
+            mock_post.return_value = {"message": "Created 3 relaxations successfully"}
 
             result = create_ht_mlrelax_exploration(
                 project_id="test-project",
@@ -73,9 +69,7 @@ class TestHTMLRelaxExploration:
     def test_create_ht_mlrelax_exploration_with_all_params(self):
         """Test HT ML Relaxation exploration creation with all parameters"""
         with patch("atomict.simulation.ht_mlrelax.post") as mock_post:
-            mock_post.return_value = {
-                "message": "Created 2 relaxations successfully"
-            }
+            mock_post.return_value = {"message": "Created 2 relaxations successfully"}
 
             result = create_ht_mlrelax_exploration(
                 project_id="test-project",
@@ -227,9 +221,7 @@ class TestHTMLRelaxExploration:
     def test_update_ht_mlrelax_exploration_invalid_model(self):
         """Test update with invalid model"""
         with pytest.raises(ValueError, match="Invalid model 'invalid_model'"):
-            update_ht_mlrelax_exploration(
-                exploration_id="123", model="invalid_model"
-            )
+            update_ht_mlrelax_exploration(exploration_id="123", model="invalid_model")
 
     def test_update_ht_mlrelax_exploration_with_extra_kwargs(self):
         """Test update with extra parameters"""
@@ -265,7 +257,9 @@ class TestHTMLRelaxExploration:
             result = launch_ht_mlrelax_exploration("123")
 
             assert result == {"message": "Launched successfully"}
-            mock_patch.assert_called_once_with("api/ht-mlrelax/123/", {"action": "LAUNCH"})
+            mock_patch.assert_called_once_with(
+                "api/ht-mlrelax/123/", {"action": "LAUNCH"}
+            )
 
     def test_launch_ht_mlrelax_exploration_with_cluster(self):
         """Test launching HT ML Relaxation exploration with cluster"""
@@ -303,7 +297,7 @@ class TestHTMLRelaxExploration:
         }
 
         assert ML_MODELS == expected_models
-        
+
         # Test all models are valid integers
         for model_name, model_code in ML_MODELS.items():
             assert isinstance(model_name, str)

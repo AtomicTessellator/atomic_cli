@@ -264,7 +264,7 @@ class TestHTMLRelaxExplorationLaunchIntegration:
         result = list_ht_mlrelax_explorations(project_id=test_project_id, limit=20)
 
         assert "results" in result
-        
+
         # Look for explorations in DRAFT status that could be launched
         draft_explorations = []
         for exp in result["results"]:
@@ -335,7 +335,9 @@ class TestHTMLRelaxModelValidationIntegration:
             assert isinstance(model_code, int)
             assert model_code >= 0
 
-    def test_model_parameter_validation(self, test_project_id, test_ht_sqs_exploration_id):
+    def test_model_parameter_validation(
+        self, test_project_id, test_ht_sqs_exploration_id
+    ):
         """Test model parameter validation with real API calls"""
 
         # Valid model should work
@@ -374,7 +376,7 @@ class TestHTMLRelaxAPIFieldMappingIntegration:
 
         # Test that we're using correct field names expected by the backend
         # The backend expects "project" not "project_id", etc.
-        
+
         try:
             result = create_ht_mlrelax_exploration(
                 project_id=test_project_id,
@@ -384,14 +386,17 @@ class TestHTMLRelaxAPIFieldMappingIntegration:
                 model="mattersim_1_0_0_5m",
                 description="Testing field mapping",
             )
-            
+
             # If we get here without API errors, our field mapping is correct
             assert "message" in result
-            
+
         except Exception as e:
             # Check if the error is related to field mapping
             error_msg = str(e).lower()
-            if any(field in error_msg for field in ["project_id", "source_ht_sqs_exploration_id"]):
+            if any(
+                field in error_msg
+                for field in ["project_id", "source_ht_sqs_exploration_id"]
+            ):
                 pytest.fail(f"Field mapping error detected: {e}")
             # Other errors (like missing data) are acceptable for this test
 
@@ -400,7 +405,7 @@ class TestHTMLRelaxAPIFieldMappingIntegration:
 
         # Test list response structure
         list_result = list_ht_mlrelax_explorations(project_id=test_project_id, limit=5)
-        
+
         assert isinstance(list_result, dict)
         assert "results" in list_result
         assert isinstance(list_result["results"], list)
@@ -409,12 +414,14 @@ class TestHTMLRelaxAPIFieldMappingIntegration:
         if list_result["results"]:
             exploration = list_result["results"][0]
             expected_fields = ["id", "name", "model", "source_ht_sqs_exploration"]
-            
+
             for field in expected_fields:
                 assert field in exploration, f"Missing expected field: {field}"
 
             # Test detailed get response
             detail_result = get_ht_mlrelax_exploration(exploration["id"])
-            
+
             for field in expected_fields:
-                assert field in detail_result, f"Missing expected field in detail: {field}"
+                assert (
+                    field in detail_result
+                ), f"Missing expected field in detail: {field}"

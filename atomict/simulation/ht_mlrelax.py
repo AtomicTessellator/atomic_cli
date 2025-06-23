@@ -29,7 +29,7 @@ def create_ht_mlrelax_exploration(
     Create a High Throughput ML Relaxation exploration
 
     This creates a batch of ML relaxation jobs from a completed HT SQS exploration.
-    Individual ML relaxation tasks are automatically created for each completed 
+    Individual ML relaxation tasks are automatically created for each completed
     SQS structure in the source exploration.
 
     Args:
@@ -80,7 +80,9 @@ def create_ht_mlrelax_exploration(
     return result
 
 
-def get_ht_mlrelax_exploration(exploration_id: str, include_children: bool = False, **params: Any) -> Dict[str, Any]:
+def get_ht_mlrelax_exploration(
+    exploration_id: str, include_children: bool = False, **params: Any
+) -> Dict[str, Any]:
     """
     Get High Throughput ML Relaxation exploration details
 
@@ -94,17 +96,17 @@ def get_ht_mlrelax_exploration(exploration_id: str, include_children: bool = Fal
     """
     # Start with any additional parameters
     query_params = params.copy()
-    
+
     if include_children:
         query_params["children"] = "true"
-    
+
     # Build query string
     query_string = "&".join(f"{k}={v}" for k, v in query_params.items())
     base_url = f"api/ht-mlrelax/{exploration_id}/"
-    
+
     # Add query string if we have parameters
     url = f"{base_url}?{query_string}" if query_string else base_url
-    
+
     result = get(url)
     return result
 

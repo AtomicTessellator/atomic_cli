@@ -39,7 +39,7 @@ class TestGetMDSimulation:
             "name": "test_md",
             "mode": 0,
             "temperature": 300.0,
-            "task": {"status": 0}
+            "task": {"status": 0},
         }
 
         result = get_md_simulation("md_123")
@@ -49,7 +49,7 @@ class TestGetMDSimulation:
             "name": "test_md",
             "mode": 0,
             "temperature": 300.0,
-            "task": {"status": 0}
+            "task": {"status": 0},
         }
         mock_get.assert_called_once_with("api/md/md_123/")
 
@@ -60,7 +60,7 @@ class TestGetMDSimulationFile:
         mock_get.return_value = {
             "id": "file_456",
             "md_id": "md_123",
-            "user_upload_id": "upload_789"
+            "user_upload_id": "upload_789",
         }
 
         result = get_md_simulation_file("file_456")
@@ -68,7 +68,7 @@ class TestGetMDSimulationFile:
         assert result == {
             "id": "file_456",
             "md_id": "md_123",
-            "user_upload_id": "upload_789"
+            "user_upload_id": "upload_789",
         }
         mock_get.assert_called_once_with("api/md-file/file_456/")
 
@@ -77,7 +77,7 @@ class TestCreateMDSimulation:
     def test_create_basic_md_simulation(self, mock_post):
         """Test creating a basic MD simulation with minimal parameters"""
         mock_post.return_value = {"id": "new_md_123", "mode": 0, "temperature": 300.0}
-        
+
         md_data = {
             "project": "proj_456",
             "source_geometry_id": "struct_789",
@@ -102,12 +102,12 @@ class TestCreateMDSimulation:
     def test_create_annealing_md_simulation(self, mock_post):
         """Test creating an annealing MD simulation"""
         mock_post.return_value = {
-            "id": "new_md_456", 
-            "mode": 1, 
+            "id": "new_md_456",
+            "mode": 1,
             "high_temperature": 800.0,
-            "low_temperature": 300.0
+            "low_temperature": 300.0,
         }
-        
+
         md_data = {
             "project": "proj_456",
             "source_geometry_id": "struct_789",
@@ -128,21 +128,21 @@ class TestCreateMDSimulation:
         result = create_md_simulation(md_data)
 
         assert result == {
-            "id": "new_md_456", 
-            "mode": 1, 
+            "id": "new_md_456",
+            "mode": 1,
             "high_temperature": 800.0,
-            "low_temperature": 300.0
+            "low_temperature": 300.0,
         }
         mock_post.assert_called_once_with("api/md/", md_data)
 
     def test_create_nvt_md_simulation(self, mock_post):
         """Test creating an NVT ensemble MD simulation"""
         mock_post.return_value = {
-            "id": "new_md_789", 
+            "id": "new_md_789",
             "ensemble_type": 1,
-            "thermostat_type": 3
+            "thermostat_type": 3,
         }
-        
+
         md_data = {
             "project": "proj_456",
             "source_geometry_id": "struct_789",
@@ -161,17 +161,13 @@ class TestCreateMDSimulation:
 
         result = create_md_simulation(md_data)
 
-        assert result == {
-            "id": "new_md_789", 
-            "ensemble_type": 1,
-            "thermostat_type": 3
-        }
+        assert result == {"id": "new_md_789", "ensemble_type": 1, "thermostat_type": 3}
         mock_post.assert_called_once_with("api/md/", md_data)
 
     def test_create_md_simulation_with_advanced_parameters(self, mock_post):
         """Test creating MD simulation with advanced parameter options"""
         mock_post.return_value = {"id": "new_md_advanced"}
-        
+
         md_data = {
             "project": "proj_456",
             "source_geometry_id": "struct_789",
@@ -184,7 +180,7 @@ class TestCreateMDSimulation:
             "calculator": 3,  # eSEN 30M OAM
             "ensemble_type": 0,
             "thermostat_type": 2,  # Bussi-Donadio-Parrinello
-            "barostat_type": 1,    # Parrinello-Rahman
+            "barostat_type": 1,  # Parrinello-Rahman
             "barostat_time_fs": 150.0,
             "thermostat_time_fs": 75.0,
             "friction": 0.005,
@@ -214,11 +210,11 @@ class TestCreateMDSimulationFile:
     def test_create_md_simulation_file(self, mock_post):
         """Test creating a MD simulation file"""
         mock_post.return_value = {"id": "new_file_123"}
-        
+
         file_data = {
             "md_id": "md_456",
             "user_upload_id": "upload_789",
-            "description": "Output trajectory file"
+            "description": "Output trajectory file",
         }
 
         result = create_md_simulation_file(file_data)
@@ -233,14 +229,12 @@ class TestAssociateUserUploadWithMDSimulation:
         mock_post.return_value = {"id": "association_123"}
 
         result = associate_user_upload_with_md_simulation(
-            user_upload_id="upload_456",
-            simulation_id="md_789"
+            user_upload_id="upload_456", simulation_id="md_789"
         )
 
         assert result == {"id": "association_123"}
         mock_post.assert_called_once_with(
-            "api/md-file/",
-            payload={"user_upload_id": "upload_456", "md_id": "md_789"}
+            "api/md-file/", payload={"user_upload_id": "upload_456", "md_id": "md_789"}
         )
 
 
@@ -279,8 +273,11 @@ class TestMDParameterValidation:
         ]
 
         for i, config in enumerate(thermostat_configs):
-            mock_post.return_value = {"id": f"md_{i}", "thermostat_type": config["thermostat_type"]}
-            
+            mock_post.return_value = {
+                "id": f"md_{i}",
+                "thermostat_type": config["thermostat_type"],
+            }
+
             md_data = {
                 "project": "proj_123",
                 "source_geometry_id": "struct_456",
@@ -294,7 +291,7 @@ class TestMDParameterValidation:
             }
 
             result = create_md_simulation(md_data)
-            
+
             assert result["thermostat_type"] == config["thermostat_type"]
             mock_post.assert_called_with("api/md/", md_data)
 
@@ -306,8 +303,11 @@ class TestMDParameterValidation:
         ]
 
         for i, config in enumerate(ensemble_configs):
-            mock_post.return_value = {"id": f"md_{i}", "ensemble_type": config["ensemble_type"]}
-            
+            mock_post.return_value = {
+                "id": f"md_{i}",
+                "ensemble_type": config["ensemble_type"],
+            }
+
             md_data = {
                 "project": "proj_123",
                 "source_geometry_id": "struct_456",
@@ -318,14 +318,14 @@ class TestMDParameterValidation:
                 "ensemble_type": config["ensemble_type"],
                 "thermostat_type": 0,
             }
-            
+
             # Only add barostat for NPT
             if config["ensemble_type"] == 0:
                 md_data["barostat_type"] = 0
                 md_data["barostat_time_fs"] = 100.0
 
             result = create_md_simulation(md_data)
-            
+
             assert result["ensemble_type"] == config["ensemble_type"]
             mock_post.assert_called_with("api/md/", md_data)
 
@@ -338,8 +338,11 @@ class TestMDParameterValidation:
         ]
 
         for i, config in enumerate(output_configs):
-            mock_post.return_value = {"id": f"md_{i}", "output_format": config["output_format"]}
-            
+            mock_post.return_value = {
+                "id": f"md_{i}",
+                "output_format": config["output_format"],
+            }
+
             md_data = {
                 "project": "proj_123",
                 "source_geometry_id": "struct_456",
@@ -355,7 +358,7 @@ class TestMDParameterValidation:
             }
 
             result = create_md_simulation(md_data)
-            
+
             assert result["output_format"] == config["output_format"]
             mock_post.assert_called_with("api/md/", md_data)
 
@@ -367,8 +370,11 @@ class TestMDParameterValidation:
         ]
 
         for i, config in enumerate(calculator_configs):
-            mock_post.return_value = {"id": f"md_{i}", "calculator": config["calculator"]}
-            
+            mock_post.return_value = {
+                "id": f"md_{i}",
+                "calculator": config["calculator"],
+            }
+
             md_data = {
                 "project": "proj_123",
                 "source_geometry_id": "struct_456",
@@ -383,6 +389,6 @@ class TestMDParameterValidation:
             }
 
             result = create_md_simulation(md_data)
-            
+
             assert result["calculator"] == config["calculator"]
             mock_post.assert_called_with("api/md/", md_data)
