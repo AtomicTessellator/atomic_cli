@@ -88,7 +88,11 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
         extension = sim["starting_structure_userupload"]["orig_name"].split(".")[-1]
 
         download_file(sim["starting_structure_userupload"]["uuid"], workbench_dir + f"/relaxed.{extension}")
-        atoms = read(workbench_dir + f"/relaxed.{extension}")
+        
+        if extension == "atraj":
+            atoms, _ = load_msgpack_trajectory(workbench_dir + f"/relaxed.{extension}")
+        else:
+            atoms = read(workbench_dir + f"/relaxed.{extension}")
 
         if isinstance(atoms, list):
             return atoms[-1]
