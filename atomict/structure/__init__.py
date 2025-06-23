@@ -11,7 +11,7 @@ from .search import (
 
 __all__ = [
     "create_supercell",
-    "create_conventional_cell", 
+    "create_conventional_cell",
     "search_structures",
     "search_structures_by_element",
     "create_discovery_query",

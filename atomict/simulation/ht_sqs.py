@@ -6,9 +6,9 @@ from atomict.api import delete, get, post
 def create_ht_sqs_exploration(
     project_id: str,
     name: str,
-    target_concentrations: List[Dict[str, Any]],
     generated_permutations: List[Dict[str, float]],
     structure_id: str,
+    target_concentrations: Optional[List[Dict[str, Any]]] = None,
     num_structures_per_permutation: int = 1,
     structure_type: str = "userupload",
     description: Optional[str] = None,
@@ -24,9 +24,9 @@ def create_ht_sqs_exploration(
     Args:
         project_id: str - The project ID
         name: str - Name of the HT SQS exploration
-        target_concentrations: list - List of {"element": str, "weight": float} dicts
         generated_permutations: list - List of concentration permutation dicts
         structure_id: str - ID of the structure to use as starting point
+        target_concentrations: list, optional - List of {"element": str, "weight": float} dicts (metadata only)
         num_structures_per_permutation: int - Number of SQS structures per permutation (default: 1)
         structure_type: str - Type of structure: "fhiaims", "mlrelax", or "userupload" (default: "userupload")
         description: str - Description of the exploration
@@ -47,26 +47,27 @@ def create_ht_sqs_exploration(
             f"structure_type must be one of {valid_structure_types}, got '{structure_type}'"
         )
 
-    # Validate target concentrations
-    if not target_concentrations:
-        raise ValueError("target_concentrations cannot be empty")
+    # Validate target concentrations (optional)
+    if target_concentrations is not None:
+        if not target_concentrations:
+            raise ValueError("target_concentrations cannot be empty if provided")
 
-    for conc in target_concentrations:
-        if not isinstance(conc, dict) or "element" not in conc or "weight" not in conc:
-            raise ValueError(
-                "Each target concentration must be a dict with 'element' and 'weight' keys"
-            )
-        if not 0 <= conc["weight"] <= 1.0:
-            raise ValueError(
-                f"Target concentration for {conc['element']} must be between 0 and 1"
-            )
+        for conc in target_concentrations:
+            if not isinstance(conc, dict) or "element" not in conc or "weight" not in conc:
+                raise ValueError(
+                    "Each target concentration must be a dict with 'element' and 'weight' keys"
+                )
+            if not 0 <= conc["weight"] <= 1.0:
+                raise ValueError(
+                    f"Target concentration for {conc['element']} must be between 0 and 1"
+                )
 
-    # Check sum equals 1.0
-    total_weight = sum(c["weight"] for c in target_concentrations)
-    if abs(total_weight - 1.0) > 1e-6:
-        raise ValueError(
-            f"Sum of target concentrations must equal 1.0 (got {total_weight})"
-        )
+        # Check sum equals 1.0
+        total_weight = sum(c["weight"] for c in target_concentrations)
+        if abs(total_weight - 1.0) > 1e-6:
+            raise ValueError(
+                f"Sum of target concentrations must equal 1.0 (got {total_weight})"
+            )
 
     # Validate generated_permutations
     if not generated_permutations:
@@ -102,7 +103,6 @@ def create_ht_sqs_exploration(
         "project": project_id,
         "name": name,
         "description": description,
-        "target_concentrations": target_concentrations,
         "generated_permutations": generated_permutations,
         "num_structures_per_permutation": num_structures_per_permutation,
         "auto_max_size": auto_max_size,
@@ -110,6 +110,10 @@ def create_ht_sqs_exploration(
         "atom_count_upper_limit": atom_count_upper_limit,
         "cluster_cutoffs": cluster_cutoffs,
     }
+
+    # Add target_concentrations only if provided
+    if target_concentrations is not None:
+        payload["target_concentrations"] = target_concentrations
 
     # Add structure reference
     payload[structure_field_map[structure_type]] = structure_id
