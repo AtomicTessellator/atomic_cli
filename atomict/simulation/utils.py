@@ -20,6 +20,26 @@ from atomict.user.files import download_file
 from atomict.user.workspace import download_workspace
 
 
+def fetch_source_geometry(sim: dict, workbench_dir: str) -> Atoms:
+    if sim["source_geometry"]:
+
+        extension = sim["source_geometry"]["orig_name"].split(".")[-1]
+
+        download_file(sim["source_geometry"]["uuid"], workbench_dir + f"/geometry.{extension}")
+        
+        if extension == "atraj":
+            atoms, _ = load_msgpack_trajectory(workbench_dir + f"/geometry.{extension}")
+        else:
+            atoms = read(workbench_dir + f"/geometry.{extension}")
+
+        if isinstance(atoms, list):
+            return atoms[-1]
+        else:
+            return atoms
+    else:
+        raise ValueError("No input geometry found")
+
+
 def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
 
     """
