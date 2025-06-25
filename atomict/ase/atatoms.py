@@ -78,21 +78,32 @@ class ATAtoms:
     and tracks diffs between Atoms states. An ATAtoms run is a collection of diffs.
     """
     
-    def __init__(self, atoms: Atoms, project_id: str, simulation_id: str, batch_size: int = 20, 
-                 sync_interval: float = 10.0, batch_diffs: bool = False, is_result: bool = False):
+    def __init__(self, 
+                 atoms: Atoms, 
+                 project_id: Optional[str] = '',
+                 simulation_id: Optional[str] = '', 
+                 batch_size: int = 20, 
+                 sync_interval: float = 10.0, 
+                 batch_diffs: bool = False, 
+                 is_result: bool = False):
         """
         atoms: ASE Atoms object to wrap
+        project_id: ID of the project to associate with the atoms (env var AT_PROJECT_ID)
+        simulation_id: ID of simulation the object is being used in (env var AT_SIMULATION_ID)
         batch_size: Number of diffs to accumulate before sending to server in a single request
         sync_interval: Maximum time in seconds between syncs to server
-        project_id: ID of the project to associate with the atoms
         batch_diffs: Whether to batch diffs
+        is_result: A (metadata) flag for indicating whether the object is the result of a simulation
         """
         if not isinstance(atoms, Atoms):
             raise TypeError(f"Expected ASE Atoms object, got {type(atoms).__name__}: {atoms}")
 
         self._atoms = atoms
-        self._project_id = project_id
-        self._simulation_id = simulation_id
+        self._project_id = project_id or os.environ.get('AT_PROJECT_ID')
+        self._simulation_id = simulation_id or os.environ.get('AT_SIMULATION_ID')
+        if not self._project_id or not self._simulation_id:
+            raise ATAtomsInitializationError("ATAtoms requires project_id and simulation_id to be passed or set via environment variables (AT_PROJECT_ID, AT_SIMULATION_ID)")
+
         self._object_id = str(uuid.uuid4())
         self._batch_size = batch_size
         self._sync_interval = sync_interval
