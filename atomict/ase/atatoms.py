@@ -78,8 +78,8 @@ class ATAtoms:
     and tracks diffs between Atoms states. An ATAtoms run is a collection of diffs.
     """
     
-    def __init__(self, atoms: Atoms, batch_size: int = 20, sync_interval: float = 10.0,
-                 project_id: Optional[str] = '', batch_diffs: bool = False, is_result: bool = False):
+    def __init__(self, atoms: Atoms, project_id: str, simulation_id: str, batch_size: int = 20, 
+                 sync_interval: float = 10.0, batch_diffs: bool = False, is_result: bool = False):
         """
         atoms: ASE Atoms object to wrap
         batch_size: Number of diffs to accumulate before sending to server in a single request
@@ -92,6 +92,7 @@ class ATAtoms:
 
         self._atoms = atoms
         self._project_id = project_id
+        self._simulation_id = simulation_id
         self._object_id = str(uuid.uuid4())
         self._batch_size = batch_size
         self._sync_interval = sync_interval
@@ -185,7 +186,8 @@ class ATAtoms:
                     'created_by': 'ATAtoms',
                     'initial_structure_id': self._structure_id,
                     'timestamp': datetime.datetime.now().isoformat(),
-                    'is_result': self._is_result
+                    'is_result': self._is_result,
+                    'simulation_id': self._simulation_id
                 })
             }
             response = post(
