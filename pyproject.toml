@@ -41,7 +41,7 @@ version = {attr = "atomict.__version__.__version__"}
 dependencies = {file = ["requirements.txt"]}
 
 [project.optional-dependencies]
-utils = ["ase==3.23.0", "spglib==2.5.0", "pymatgen==2025.3.10", "msgpack==1.1.0", "msgpack_numpy==0.4.8"]
+utils = ["ase>=3.23.0", "spglib==2.5.0", "pymatgen==2025.3.10", "msgpack==1.1.0", "msgpack_numpy==0.4.8"]
 
 dev = [
     "pytest~=8.0",
@@ -81,3 +81,9 @@ strict_optional = true
 # Python 3.10+ specific settings
 enable_error_code = ["union-attr"]
 strict_concatenate = true
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning:ase.atom",
+    "ignore:.*__array__ implementation doesn't accept a copy keyword.*:DeprecationWarning"
+]
