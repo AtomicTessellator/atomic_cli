@@ -21,7 +21,7 @@ from atomict.user.workspace import download_workspace
 
 
 def fetch_source_geometry(sim: dict, workbench_dir: str) -> Atoms:
-    if sim["source_geometry"]:
+    if sim.get("source_geometry"):
 
         extension = sim["source_geometry"]["orig_name"].split(".")[-1]
 
@@ -49,7 +49,7 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
         returns: Atoms object
     """
 
-    if sim["starting_structure"]:
+    if sim.get("starting_structure"):
         previous_simulation = fhi_get_simulation(sim["starting_structure"]["id"], include_ht=True)
         logging.info(f"Previous simulation: {previous_simulation['id']}")
         files = fhi_get_simulation_files(previous_simulation["id"])
@@ -71,7 +71,7 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
 
         return atoms[-1]
 
-    elif sim["starting_structure_mlrelax"]:
+    elif sim.get("starting_structure_mlrelax"):
         
         previous_mlrelax = get_mlrelax(sim["starting_structure_mlrelax"]["id"], include_ht=True)
         logging.info(f"Previous MLRelaxation: {previous_mlrelax['id']}")
@@ -102,7 +102,7 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
         else:
             return atoms
 
-    elif sim["starting_structure_userupload"]:
+    elif sim.get("starting_structure_userupload"):
         logging.info(f"Previous UserUpload: {sim['starting_structure_userupload']['uuid']}")
 
         extension = sim["starting_structure_userupload"]["orig_name"].split(".")[-1]
