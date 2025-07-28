@@ -7,7 +7,7 @@ import click
 from rich.console import Console
 
 from atomict.__version__ import __version__
-from atomict.cli.commands import login, user
+from atomict.cli.commands import login, token, user
 from atomict.cli.ext.custom_classes import DefaultCommandGroup
 
 try:
@@ -219,6 +219,7 @@ cli.add_command(soec.soecexploration_group)
 cli.add_command(traj.traj)
 cli.add_command(user.user_group)
 cli.add_command(login._login)
+cli.add_command(token._token)
 cli.add_command(vibes.vibes_group)
 
 
