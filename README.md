@@ -41,6 +41,10 @@ You can get help for each command with `tess <command> --help`. This will print 
 
 This will prompt you for your username and password.
 
+```$ tess token```
+
+This command prints out your current token.
+
 
 ## Get a list of available projects
 
