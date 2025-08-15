@@ -32,7 +32,7 @@ export AT_DEBUG=enabled
 
 ```$ tess```
 
-![Alt text](img/at.png?raw=true "at")
+![Alt text](img/tess.png?raw=true "tess")
 
 You can get help for each command with `tess <command> --help`. This will print the command-specific help and options.
 ## Log in and store authentication token
@@ -40,6 +40,10 @@ You can get help for each command with `tess <command> --help`. This will print 
 ```$ tess login```
 
 This will prompt you for your username and password.
+
+```$ tess token```
+
+This command prints out your current token.
 
 
 ## Get a list of available projects

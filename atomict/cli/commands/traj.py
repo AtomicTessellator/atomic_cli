@@ -2,14 +2,6 @@ import click
 from pathlib import Path
 
 
-try:
-    from ase.io import read, write
-    from ase.io.trajectory import TrajectoryWriter
-except ImportError:
-    click.echo("Error: ASE modules not found. Please install with 'pip install atomict[utils]'")
-    raise
-
-
 @click.group()
 def traj():
     """Operations on trajectory files."""
@@ -24,6 +16,13 @@ def subsample(file_path, step):
     
     The output will be saved as {original_filename}_subsampled_{step}.traj
     """
+    try:
+        from ase.io import read, write
+        from ase.io.trajectory import TrajectoryWriter
+    except ImportError:
+        click.echo("Error: ASE modules not found. Please install with 'pip install atomict[utils]'")
+        raise
+
     if step <= 0:
         click.echo("Error: Step must be a positive integer")
         return
