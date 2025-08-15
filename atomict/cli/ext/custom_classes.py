@@ -1,4 +1,5 @@
 import click
+from rich.console import Console
 
 
 class DefaultCommandGroup(click.Group):
@@ -32,3 +33,14 @@ class DefaultCommandGroup(click.Group):
             # command did not parse, assume it is the default command
             args.insert(0, self.default_command)
             return super(DefaultCommandGroup, self).resolve_command(ctx, args)
+
+    def get_help(self, ctx):
+        """Override help formatting to add additional resources section."""
+        help_text = super().get_help(ctx)
+        
+        # Add additional resources section with extra spacing
+        additional_resources = "\n\nAdditional Resources:\n"
+        additional_resources += "  To get help join the Atomic Tessellator discord community at this link:\n"
+        additional_resources += "  https://discord.com/invite/cpa7aZX97Y\n"
+        
+        return help_text + additional_resources

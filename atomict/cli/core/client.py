@@ -127,6 +127,9 @@ class APIClient:
                     "[red]Server error. Please try again later or contact support.[/red]"
                 )
 
+            console.print(
+                "[yellow]For help, join the Atomic Tessellator discord community: https://discord.com/invite/cpa7aZX97Y[/yellow]"
+            )
             logger.debug(f"Server error response: {error_data}")
             sys.exit(1)
 
