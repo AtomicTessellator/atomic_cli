@@ -128,7 +128,7 @@ class APIClient:
                 )
 
             console.print(
-                "[yellow]For help, join the Atomic Tessellator discord community: https://discord.com/invite/cpa7aZX97Y[/yellow]"
+                "[yellow]For help, join the Atomic Tessellator discord community: https://discord.com/invite/atomictessellator[/yellow]"
             )
             logger.debug(f"Server error response: {error_data}")
             sys.exit(1)
