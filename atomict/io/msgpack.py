@@ -211,7 +211,7 @@ def dict_to_atoms(data):
         from ase.constraints import dict2constraint
         from ase.calculators.singlepoint import SinglePointCalculator
     except ImportError:
-        raise ImportError("You need to install with `pip install atomict[tools]` to use msgpack I/O")
+        raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
     
     n_frames = data['n_frames']
     atoms_list = []
@@ -341,7 +341,7 @@ def load_msgpack(filename: str, strict_map_key: bool = True) -> Union['ase.Atoms
         import msgpack
         import msgpack_numpy as m
     except ImportError:
-        raise ImportError("You need to install with `pip install atomict[tools]` to use msgpack I/O")
+        raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
 
     # Enable numpy array deserialization
     m.patch()
@@ -365,7 +365,7 @@ def save_msgpack(atoms: Union['ase.Atoms', List['ase.Atoms']], filename: str):
         import msgpack_numpy as m
         from ase import Atoms
     except ImportError:
-        raise ImportError("You need to install with `pip install atomict[tools]` to use msgpack I/O")
+        raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
 
     # Enable numpy array serialization
     m.patch()
@@ -403,7 +403,7 @@ def save_msgpack_trajectory(atoms: Union['ase.Atoms', List['ase.Atoms']], filena
         import msgpack_numpy as m
         from ase import Atoms
     except ImportError:
-        raise ImportError("You need to install with `pip install atomict[tools]` to use msgpack I/O")
+        raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
 
     # Enable numpy array serialization
     m.patch()
@@ -453,7 +453,7 @@ def load_msgpack_trajectory(filename: str, strict_map_key: bool = True) -> Tuple
         import msgpack
         import msgpack_numpy as m
     except ImportError:
-        raise ImportError("You need to install with `pip install atomict[tools]` to use msgpack I/O")
+        raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
 
     # Enable numpy array deserialization
     m.patch()
