@@ -4,6 +4,11 @@ from atomict.api import get, patch
 from atomict.exceptions import UserTaskAbortException
 
 
+class SimulationAction(Enum):
+    SAVE_DRAFT = "DRAFT"
+    LAUNCH = "LAUNCH"
+
+
 class TaskStatus(Enum):
     DRAFT = 0
     READY = 1

@@ -3,11 +3,14 @@ import os
 from atomict.api import get, post
 
 
-def upload_single_file(full_path: str, file_name: str, project_id: str = None):
+def upload_single_file(full_path: str, file_name: str = None, project_id: str = None):
 
-    payload = {
-        'users_name': file_name
-    }
+    payload = {}
+
+    if file_name:
+        payload['users_name'] = file_name
+    else:
+        payload['users_name'] = os.path.basename(full_path)
 
     if project_id:
         payload['project_id'] = project_id
