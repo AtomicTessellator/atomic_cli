@@ -103,7 +103,7 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
             return atoms
 
     elif sim.get("starting_structure_userupload"):
-        logging.info(f"Previous UserUpload: {sim['starting_structure_userupload']['uuid']}")
+        logging.info(f"Previous UserUpload: {sim['starting_structure_userupload']['id']}")
 
         extension = sim["starting_structure_userupload"]["orig_name"].split(".")[-1]
 
