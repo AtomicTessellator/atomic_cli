@@ -40,7 +40,7 @@ def download_workspace(workspace_files, target_directory: str):
         )
 
         download_file(
-            sim_file["user_upload"]["uuid"],
+            sim_file["user_upload"]["id"],
             f"{target_directory}/{sim_file['user_upload']['users_name']}",
         )
 

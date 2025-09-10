@@ -1,5 +1,6 @@
 from atomict.api import get, post
-from atomict.simulation.models import MODEL_ORB_D3_V2, MODEL_MATTERSIM_1_0_0_5M, MODEL_ORB_V3_CONSERVATIVE, MODEL_ESEN_30M_OAM
+from atomict.infra.distwork.task import SimulationAction
+from atomict.simulation.models import MODEL_ORB_V3_CONSERVATIVE, MODEL_ESEN_30M_OAM
 
 COMPUTATION_TYPE_RELAXATION = 0
 COMPUTATION_TYPE_SINGLE_POINT = 1
@@ -38,37 +39,35 @@ def associate_user_upload_with_mlrelaxation(user_upload_id: str, mlrelax_id: str
 def create_mlrelaxation(
     project_id: str,
     source_geometry_id: str,
-    action: str,
+    action: SimulationAction,
     name: str = None,
     description: str = None,
     computation_type: int = COMPUTATION_TYPE_RELAXATION,
     f_max: float = None,
-    model: int = MODEL_ORB_D3_V2,
+    model: int = MODEL_ESEN_30M_OAM,
     extra_simulation_kwargs: dict = None,
 ):
     """
     Create a MLRelaxation
     """
 
-    if action not in ["DRAFT", "LAUNCH"]:
-        raise ValueError("Action must be 'DRAFT' or 'LAUNCH'")
+    if action not in [SimulationAction.SAVE_DRAFT, SimulationAction.LAUNCH]:
+        raise ValueError("Action must be 'SimulationAction.SAVE_DRAFT' or 'SimulationAction.LAUNCH'")
 
     if computation_type not in [
         COMPUTATION_TYPE_RELAXATION,
         COMPUTATION_TYPE_SINGLE_POINT,
     ]:
         raise ValueError(
-            "Invalid computation type. Please use COMPUTATION_TYPE_RELAXATION (0) or COMPUTATION_TYPE_SINGLE_POINT (1)."
+            "Invalid computation type. Please use atomict.simulation.mlrelax.COMPUTATION_TYPE_RELAXATION or atomict.simulation.mlrelax.COMPUTATION_TYPE_SINGLE_POINT."
         )
 
     if model not in [
-        MODEL_ORB_D3_V2,
-        MODEL_MATTERSIM_1_0_0_5M,
         MODEL_ORB_V3_CONSERVATIVE,
         MODEL_ESEN_30M_OAM,
     ]:
         raise ValueError(
-            "Invalid model. Please use MODEL_ORB_D3_V2 (0), MODEL_MATTERSIM_1_0_0_5M (1), MODEL_ORB_V3_CONSERVATIVE (2), or MODEL_ESEN_30M_OAM (3)."
+            "Invalid model. Please use atomict.simulation.models.MODEL_ORB_V3_CONSERVATIVE, or atomict.simulation.models.MODEL_ESEN_30M_OAM."
         )
 
     payload = {
