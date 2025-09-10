@@ -3,22 +3,25 @@ import os
 from atomict.api import get, post
 
 
-def upload_single_file(full_path: str, file_name: str, project_uuid: str = None):
+def upload_single_file(full_path: str, file_name: str = None, project_id: str = None):
 
-    payload = {
-        'users_name': file_name
-    }
+    payload = {}
 
-    if project_uuid:
-        payload['project_uuid'] = project_uuid
+    if file_name:
+        payload['users_name'] = file_name
+    else:
+        payload['users_name'] = os.path.basename(full_path)
+
+    if project_id:
+        payload['project_id'] = project_id
 
     with open(full_path, "rb") as f:
         result = post("user/file_upload/", files={file_name: f}, payload=payload)
         return result
 
 
-def download_file(user_upload_uuid: str, destination_path: str):
-    content = get(f"user/file_upload_get/{user_upload_uuid}/")
+def download_file(user_upload_id: str, destination_path: str):
+    content = get(f"user/file_upload_get/{user_upload_id}/")
 
     # Write the content to the destination path
     # if there's a directory path in the destination path, create the directory

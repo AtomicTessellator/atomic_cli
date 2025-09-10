@@ -356,7 +356,7 @@ def get_analysis(
 
 @kpoint_group.command()
 @click.argument("analysis")
-@click.option("--exploration", required=True, help="Exploration UUID")
+@click.option("--exploration", required=True, help="Exploration ID")
 def create_analysis(exploration: str, analysis: str):
     """Create a new K-point analysis. Takes JSON analysis data as main argument."""
     client = get_client()

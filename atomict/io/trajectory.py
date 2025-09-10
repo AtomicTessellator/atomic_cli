@@ -103,7 +103,7 @@ class TrajectoryWriter:
             import msgpack
             import msgpack_numpy as m
         except ImportError:
-            raise ImportError("You need to install with `pip install atomict[tools]` to use msgpack I/O")
+            raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
         
         # Enable numpy array serialization
         m.patch()

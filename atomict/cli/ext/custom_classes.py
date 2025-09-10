@@ -41,6 +41,6 @@ class DefaultCommandGroup(click.Group):
         # Add additional resources section with extra spacing
         additional_resources = "\n\nAdditional Resources:\n"
         additional_resources += "  To get help join the Atomic Tessellator discord community at this link:\n"
-        additional_resources += "  https://discord.com/invite/cpa7aZX97Y\n"
+        additional_resources += "  https://discord.com/invite/atomictessellator\n"
         
         return help_text + additional_resources

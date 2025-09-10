@@ -1,12 +1,11 @@
 from atomict.api import delete, get, post
 
 
-def create_project(name: str, description: str = None, thumbnail_smiles: str = None) -> dict:
+def create_project(name: str, description: str = None) -> dict:
 
     payload = {
         "name": name,
         "description_html": description,
-        "thumbnail_smiles": thumbnail_smiles,
     }
 
     response = post(
