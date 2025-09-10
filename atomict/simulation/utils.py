@@ -25,7 +25,7 @@ def fetch_source_geometry(sim: dict, workbench_dir: str) -> Atoms:
 
         extension = sim["source_geometry"]["orig_name"].split(".")[-1]
 
-        download_file(sim["source_geometry"]["uuid"], workbench_dir + f"/geometry.{extension}")
+        download_file(sim["source_geometry"]["id"], workbench_dir + f"/geometry.{extension}")
         
         if extension == "atraj":
             atoms, _ = load_msgpack_trajectory(workbench_dir + f"/geometry.{extension}")
@@ -107,7 +107,7 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
 
         extension = sim["starting_structure_userupload"]["orig_name"].split(".")[-1]
 
-        download_file(sim["starting_structure_userupload"]["uuid"], workbench_dir + f"/geometry.{extension}")
+        download_file(sim["starting_structure_userupload"]["id"], workbench_dir + f"/geometry.{extension}")
         
         if extension == "atraj":
             atoms, _ = load_msgpack_trajectory(workbench_dir + f"/geometry.{extension}")

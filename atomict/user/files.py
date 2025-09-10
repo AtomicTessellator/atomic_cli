@@ -20,8 +20,8 @@ def upload_single_file(full_path: str, file_name: str = None, project_id: str = 
         return result
 
 
-def download_file(user_upload_uuid: str, destination_path: str):
-    content = get(f"user/file_upload_get/{user_upload_uuid}/")
+def download_file(user_upload_id: str, destination_path: str):
+    content = get(f"user/file_upload_get/{user_upload_id}/")
 
     # Write the content to the destination path
     # if there's a directory path in the destination path, create the directory
