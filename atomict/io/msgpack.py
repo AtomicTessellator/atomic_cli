@@ -1,4 +1,6 @@
-from typing import Union, List, Dict, Any, Tuple
+from typing import Union, List, Dict, Tuple
+from atomict.io.mpv1 import save_mpv1, load_mpv1
+from atomict.io.mpv2 import save_mpv2, load_mpv2
 
 
 def atoms_to_dict(atoms_list, selective=False):
@@ -398,40 +400,17 @@ def save_msgpack_trajectory(atoms: Union['ase.Atoms', List['ase.Atoms']], filena
     metadata : dict, optional
         Additional metadata to store with the trajectory
     """
-    try:
-        import msgpack
-        import msgpack_numpy as m
-        from ase import Atoms
-    except ImportError:
-        raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
 
-    # Enable numpy array serialization
-    m.patch()
-    
-    # Single atoms case - convert to list
-    if isinstance(atoms, Atoms):
-        atoms_list = [atoms]
+    if filename.endswith('.atraj'):
+        save_mpv1(atoms, filename, metadata)
+    elif filename.endswith('.tess'):
+        save_mpv2(atoms, filename, metadata)
     else:
-        atoms_list = atoms
-    
-    # Create container for the trajectory data
-    traj_data = {
-        'format_version': 1,  # Version for future compatibility
-        'metadata': metadata or {},
-    }
-    
-    # Extract properties to dictionary - no selective mode for trajectories
-    atoms_data = atoms_to_dict(atoms_list, selective=False)
-    
-    # Add atoms data to the trajectory container
-    traj_data['atoms_data'] = atoms_data
-    
-    # Pack and save
-    with open(filename, 'wb') as f:
-        msgpack.pack(traj_data, f, use_bin_type=True)
+        extn = filename.split('.')[-1]
+        raise ValueError(f"Unsupported file extension: {extn}")
 
 
-def load_msgpack_trajectory(filename: str, strict_map_key: bool = True) -> Tuple[List['ase.Atoms'], Dict]:
+def load_msgpack_trajectory(filename: str) -> Tuple[List['ase.Atoms'], Dict]:
     """Load atoms from a msgpack trajectory file with metadata.
     
     Parameters:
@@ -449,51 +428,10 @@ def load_msgpack_trajectory(filename: str, strict_map_key: bool = True) -> Tuple
     metadata : dict
         The metadata stored with the trajectory
     """
-    try:
-        import msgpack
-        import msgpack_numpy as m
-    except ImportError:
-        raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
-
-    # Enable numpy array deserialization
-    m.patch()
-    
-    # Load data
-    with open(filename, 'rb') as f:
-        traj_data = msgpack.unpack(f, raw=False, strict_map_key=strict_map_key)
-    
-    # Check if this is a new-style trajectory with format_version
-    if isinstance(traj_data, dict) and 'format_version' in traj_data:
-        metadata = traj_data.get('metadata', {})
-        atoms_data = traj_data.get('atoms_data', {})
+    if filename.endswith('.atraj'):
+        return load_mpv1(filename)
+    elif filename.endswith('.tess'):
+        return load_mpv2(filename)
     else:
-        # Legacy format - just raw atoms data
-        metadata = {}
-        atoms_data = traj_data
-    
-    # Ensure that calculated properties are transferred to the calculator in dict_to_atoms
-    if 'calc_results' not in atoms_data and hasattr(atoms_data, 'get') and atoms_data.get('forces') is not None:
-        # If we have forces in the data but no calc_results, create calc_results entries
-        calc_data_list = []
-        n_frames = atoms_data.get('n_frames', 0)
-        
-        for i in range(n_frames):
-            calc_data = {'name': 'SinglePointCalculator'}
-            if 'forces' in atoms_data and i < len(atoms_data['forces']):
-                calc_data['forces'] = atoms_data['forces'][i]
-            if 'stress' in atoms_data and i < len(atoms_data['stress']):
-                calc_data['stress'] = atoms_data['stress'][i]
-            if 'energy' in atoms_data and i < len(atoms_data['energy']):
-                calc_data['energy'] = atoms_data['energy'][i]
-            calc_data_list.append(calc_data)
-        
-        atoms_data['calc_results'] = calc_data_list
-    
-    # Convert to atoms objects
-    atoms_list = dict_to_atoms(atoms_data)
-    
-    # Make sure atoms_list is always a list
-    if not isinstance(atoms_list, list):
-        atoms_list = [atoms_list]
-    
-    return atoms_list, metadata
+        extn = filename.split('.')[-1]
+        raise ValueError(f"Unsupported file extension: {extn}")
