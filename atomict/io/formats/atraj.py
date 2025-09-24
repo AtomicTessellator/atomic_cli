@@ -1,7 +1,7 @@
 from typing import Union, List, Dict
 
 
-def save_mpv1(atoms: Union['ase.Atoms', List['ase.Atoms']], filename: str, metadata: Dict = None):
+def write_atraj(atoms: Union['ase.Atoms', List['ase.Atoms']], filename: str, metadata: Dict = None):
     """Save atoms to a mpv1 file."""
 
     from atomict.io.msgpack import atoms_to_dict
@@ -38,7 +38,8 @@ def save_mpv1(atoms: Union['ase.Atoms', List['ase.Atoms']], filename: str, metad
     with open(filename, 'wb') as f:
         msgpack.pack(traj_data, f, use_bin_type=True)
 
-def load_mpv1(filename: str) -> Union['ase.Atoms', List['ase.Atoms']]:
+
+def read_atraj(filename: str) -> Union['ase.Atoms', List['ase.Atoms']]:
 
     """Load atoms from a mpv1 file."""
     from atomict.io.msgpack import dict_to_atoms
