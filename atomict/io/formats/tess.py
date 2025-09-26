@@ -31,6 +31,7 @@ def write_tess(
         import msgpack_numpy as m
         from ase import Atoms
         import zlib
+        import lz4.block
     except ImportError:
         raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
 
@@ -43,7 +44,7 @@ def write_tess(
         frames_list = list(atoms)
 
     compression_mode = (compression or 'none').lower()
-    if compression_mode not in {'none', 'zlib'}:
+    if compression_mode not in {'none', 'zlib', 'lz4'}:
         raise ValueError(
             f"Unsupported compression mode '{compression_mode}' for tess format"
         )
@@ -56,37 +57,60 @@ def write_tess(
         unique_symbols_set.update(a.get_chemical_symbols())
     unique_symbols = sorted(list(unique_symbols_set))
 
-    # Write frames
-    frame_offsets: List[Tuple[int, int]] = []
-    uncompressed_lengths: List[int] = []
     with open(filename, 'wb') as f:
-        if compression_mode == 'zlib':
+        frame_offsets: List[Tuple[int, int]] = []
+        uncompressed_lengths: List[int] = []
+        if compression_mode == 'zlib' or compression_mode == 'lz4':
             worker_count = _max_workers(len(frames_list))
+            num_tasks = worker_count * 4
+            group_size = max(1, (len(frames_list) + num_tasks - 1) // num_tasks)
+            groups = [frames_list[i:i + group_size] for i in range(0, len(frames_list), group_size)]
 
-            def _pack_and_compress(frame_dict: Dict) -> Tuple[bytes, int]:
-                packed = msgpack.packb(frame_dict, use_bin_type=True)
-                return zlib.compress(packed, compression_level), len(packed)
+            def _process_group(group: List['Atoms']) -> Tuple[bytes, List[int], List[int]]:
+                group_compressed = []
+                group_ulens = []
+                for atom_frame in group:
+                    frame_dict = atoms_to_dict([atom_frame])
+                    packed = msgpack.packb(frame_dict, use_bin_type=True)
+                    if compression_mode == 'zlib':
+                        compressed = zlib.compress(packed, compression_level)
+                    else:  # lz4
+                        compressed = lz4.block.compress(packed, store_size=True)
+                    group_compressed.append(compressed)
+                    group_ulens.append(len(packed))
+                group_data = b''.join(group_compressed)
+                group_lengths = [len(c) for c in group_compressed]
+                return group_data, group_ulens, group_lengths
+
+            initial = f.tell()
+            current = initial
 
             with ThreadPoolExecutor(max_workers=worker_count) as executor:
-                chunk_size = _chunk_size(worker_count)
-                for start_index in range(0, len(frames_list), chunk_size):
-                    frame_chunk = frames_list[start_index:start_index + chunk_size]
-                    dict_chunk = [atoms_to_dict([atom_frame]) for atom_frame in frame_chunk]
-                    for compressed_bytes, original_length in executor.map(
-                        _pack_and_compress, dict_chunk
-                    ):
-                        uncompressed_lengths.append(original_length)
-                        start = f.tell()
-                        f.write(compressed_bytes)
-                        frame_offsets.append((start, len(compressed_bytes)))
+                for group_data, group_ulens, group_lengths in executor.map(_process_group, groups):
+                    f.write(group_data)
+                    for l, u in zip(group_lengths, group_ulens):
+                        frame_offsets.append((current, l))
+                        uncompressed_lengths.append(u)
+                        current += l
+
         else:
+            compressed_list: List[bytes] = []
             for atom_frame in frames_list:
                 frame_dict = atoms_to_dict([atom_frame])
-                frame_bytes = msgpack.packb(frame_dict, use_bin_type=True)
-                start = f.tell()
-                f.write(frame_bytes)
-                frame_offsets.append((start, len(frame_bytes)))
-        
+                packed = msgpack.packb(frame_dict, use_bin_type=True)
+                compressed_list.append(packed)
+
+            # Compute offsets
+            initial = f.tell()
+            current = initial
+            for cb in compressed_list:
+                l = len(cb)
+                frame_offsets.append((current, l))
+                current += l
+
+            # Write all frames
+            f.write(b''.join(compressed_list))
+
         # Write header
         header_dict: Dict[str, object] = {
             'format_version': 3 if compression_mode != 'none' else 2,
@@ -98,13 +122,14 @@ def write_tess(
         if compression_mode != 'none':
             header_dict['compression'] = {
                 'type': compression_mode,
-                'level': compression_level,
             }
+            if compression_mode == 'zlib':
+                header_dict['compression']['level'] = compression_level
             header_dict['frame_uncompressed_lengths'] = uncompressed_lengths
         header_bytes = msgpack.packb(header_dict, use_bin_type=True)
         header_start = f.tell()
         f.write(header_bytes)
-        
+
         # Write header offset
         f.write(header_start.to_bytes(8, 'little'))
 
@@ -117,6 +142,7 @@ def read_tess(filename: str) -> Tuple[List['Atoms'], Dict]:
         from atomict.io.atoms import dict_to_atoms
         import mmap
         import zlib
+        import lz4.block
     except ImportError:
         raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
 
@@ -150,7 +176,7 @@ def read_tess(filename: str) -> Tuple[List['Atoms'], Dict]:
             else:
                 compression_type = 'none'
             compression_type = (compression_type or 'none').lower()
-            if compression_type not in {'none', 'zlib'}:
+            if compression_type not in {'none', 'zlib', 'lz4'}:
                 raise ValueError(f"Unsupported compression type '{compression_type}' in tess file")
 
             metadata = header.get('metadata', {})
@@ -168,6 +194,26 @@ def read_tess(filename: str) -> Tuple[List['Atoms'], Dict]:
                     start, length = offset
                     compressed = mm[start:start + length]
                     return zlib.decompress(compressed)
+
+                worker_count = _max_workers(num_frames)
+                chunk_size = _chunk_size(worker_count)
+
+                with ThreadPoolExecutor(max_workers=worker_count) as executor:
+                    for chunk_start in range(0, num_frames, chunk_size):
+                        offset_chunk = frame_offsets[chunk_start:chunk_start + chunk_size]
+                        for i, frame_bytes in enumerate(
+                            executor.map(_decompress, offset_chunk), start=chunk_start
+                        ):
+                            frame_dict = msgpack.unpackb(
+                                frame_bytes, raw=False, strict_map_key=False
+                            )
+                            atoms_list[i] = convert(frame_dict)[0]
+            elif compression_type == 'lz4' and num_frames:
+
+                def _decompress(offset: Tuple[int, int]) -> bytes:
+                    start, length = offset
+                    compressed = mm[start:start + length]
+                    return lz4.block.decompress(compressed)
 
                 worker_count = _max_workers(num_frames)
                 chunk_size = _chunk_size(worker_count)

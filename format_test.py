@@ -60,6 +60,7 @@ def benchmark_traj_same(src_traj_path: str, dst_traj_path: str):
 
 def benchmark_tess_same(src_tess_path: str, dst_tess_path: str):
     (atoms, metadata), load_s = time_call(load_msgpack_trajectory, src_tess_path)
+    print(f"Number of frames: {len(atoms)}")
     _, save_s = time_call(save_msgpack_trajectory, atoms, dst_tess_path, metadata)
     src_mb = get_file_size_mb(src_tess_path)
     dst_mb = get_file_size_mb(dst_tess_path)
