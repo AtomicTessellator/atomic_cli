@@ -209,82 +209,108 @@ def dict_to_atoms(data):
     """
     
     n_frames = data['n_frames']
-    atoms_list = []
-    
-    # Get unique symbols
+    atoms_list = [None] * n_frames  # type: ignore[assignment]
+
+    # Cache lookups outside loop for speed
     unique_symbols = data['unique_symbols']
+    unique_symbols_array = np.asarray(unique_symbols, dtype=object)
     symbols_map = data['symbols']
-    
-    # Loop through frames
+    positions = data['positions']
+    cells = data['cell']
+    pbc = data['pbc']
+    n_atoms_seq = data['n_atoms']
+
+    numbers_data = data.get('numbers')
+    has_numbers = numbers_data is not None
+
+    tags = data.get('tags')
+    masses = data.get('masses')
+    momenta = data.get('momenta')
+    initial_charges = data.get('initial_charges')
+    initial_magmoms = data.get('initial_magmoms')
+    top_mask = data.get('top_mask')
+    constraints = data.get('constraints')
+    ase_objtype = data.get('ase_objtype')
+    forces = data.get('forces')
+    stress = data.get('stress')
+    atom_infos = data.get('atom_infos')
+    custom_arrays = data.get('custom_arrays')
+    calc_results = data.get('calc_results')
+
     for i in range(n_frames):
-        # Get symbols for this frame - handle both old and new format
-        if isinstance(symbols_map[i], np.ndarray):
-            frame_symbols = [unique_symbols[idx] for idx in symbols_map[i]]
+        symbols_entry = symbols_map[i]
+        if isinstance(symbols_entry, np.ndarray):
+            symbols_idx = symbols_entry
         else:
-            # Legacy format - symbols were stored as a 2D array
-            idx = i * data['n_atoms'][i]
-            frame_symbols = [unique_symbols[symbols_map[idx + j]] for j in range(data['n_atoms'][i])]
-        
-        # Create atoms object with basic properties
-        atoms = Atoms(
-            symbols=frame_symbols,
-            positions=data['positions'][i],
-            cell=data['cell'][i],
-            pbc=data['pbc'][i],
-        )
+            start_idx = i * n_atoms_seq[i]
+            symbols_idx = symbols_map[start_idx:start_idx + n_atoms_seq[i]]
+
+        if has_numbers:
+            frame_numbers = numbers_data[i]
+            atoms = Atoms(
+                numbers=frame_numbers,
+                positions=positions[i],
+                cell=cells[i],
+                pbc=pbc[i],
+            )
+        else:
+            frame_symbols = unique_symbols_array[np.asarray(symbols_idx, dtype=int)]
+            atoms = Atoms(
+                symbols=frame_symbols.tolist(),
+                positions=positions[i],
+                cell=cells[i],
+                pbc=pbc[i],
+            )
         
         # Set optional properties if they exist
-        if 'tags' in data:
-            atoms.set_tags(data['tags'][i])
-        
-        if 'masses' in data:
-            atoms.set_masses(data['masses'][i])
-        
-        if 'momenta' in data:
-            atoms.set_momenta(data['momenta'][i])
-        
-        if 'initial_charges' in data:
-            atoms.set_initial_charges(data['initial_charges'][i])
-        
-        if 'initial_magmoms' in data:
-            atoms.set_initial_magnetic_moments(data['initial_magmoms'][i])
-        
-        if 'top_mask' in data and i < len(data['top_mask']) and data['top_mask'][i] is not None:
-            atoms.top_mask = np.array(data['top_mask'][i], dtype=bool)
+        if tags is not None:
+            atoms.set_tags(tags[i])
 
-        if 'numbers' in data:
-            atoms.set_atomic_numbers(data['numbers'][i])
+        if masses is not None:
+            atoms.set_masses(masses[i])
 
-        if 'constraints' in data and i < len(data['constraints']):
-            for c in data['constraints'][i]:
+        if momenta is not None:
+            atoms.set_momenta(momenta[i])
+
+        if initial_charges is not None:
+            atoms.set_initial_charges(initial_charges[i])
+
+        if initial_magmoms is not None:
+            atoms.set_initial_magnetic_moments(initial_magmoms[i])
+
+        if top_mask is not None and i < len(top_mask) and top_mask[i] is not None:
+            atoms.top_mask = np.asarray(top_mask[i], dtype=bool)
+
+        if constraints is not None and i < len(constraints):
+            for c in constraints[i]:
                 atoms.constraints.append(dict2constraint(c))
 
-        if 'ase_objtype' in data and i < len(data['ase_objtype']) and data['ase_objtype'][i] is not None:
-            atoms.ase_objtype = data['ase_objtype'][i]
+        if ase_objtype is not None and i < len(ase_objtype) and ase_objtype[i] is not None:
+            atoms.ase_objtype = ase_objtype[i]
 
-        if 'forces' in data and i < len(data['forces']):
-            atoms.arrays['forces'] = data['forces'][i]
+        if forces is not None and i < len(forces):
+            atoms.arrays['forces'] = forces[i]
 
-        if 'stress' in data and i < len(data['stress']):
-            atoms.stress = np.array(data['stress'][i], dtype=np.float64).copy()
+        if stress is not None and i < len(stress):
+            atoms.stress = np.array(stress[i], dtype=np.float64).copy()
         
         # Restore atom info
-        if 'atom_infos' in data and i < len(data['atom_infos']):
-            atoms.info.update(data['atom_infos'][i])
+        if atom_infos is not None and i < len(atom_infos):
+            atoms.info.update(atom_infos[i])
         
         # Restore custom arrays
-        if 'custom_arrays' in data:
-            for key, values in data['custom_arrays'].items():
+        if custom_arrays is not None:
+            for key, values in custom_arrays.items():
                 if i < len(values) and values[i] is not None:
                     atoms.arrays[key] = values[i]
         
         # Restore calculator if present
         calc_created = False
         calc_data = {}
-        
+
         # First try from calc_results (new format)
-        if 'calc_results' in data and i < len(data['calc_results']):
-            calc_data = data['calc_results'][i]
+        if calc_results is not None and i < len(calc_results):
+            calc_data = calc_results[i]
             
             if calc_data and len(calc_data) > 1:  # Only create calculator if there's data beyond just the name
                 # Initialize a SinglePointCalculator
@@ -315,6 +341,6 @@ def dict_to_atoms(data):
                     calc.results[key] = value
                 atoms.calc = calc
         
-        atoms_list.append(atoms)
+        atoms_list[i] = atoms
     
     return atoms_list

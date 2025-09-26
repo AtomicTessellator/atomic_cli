@@ -1,7 +1,10 @@
-from typing import Union, List, Dict
+from typing import Union, List, Dict, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ase import Atoms
 
 
-def write_tess(atoms: Union['ase.Atoms', List['ase.Atoms']], filename: str, metadata: Dict = None):
+def write_tess(atoms: Union['Atoms', List['Atoms']], filename: str, metadata: Dict = None):
 
     from atomict.io.msgpack import atoms_to_dict
 
@@ -52,12 +55,13 @@ def write_tess(atoms: Union['ase.Atoms', List['ase.Atoms']], filename: str, meta
         f.write(header_start.to_bytes(8, 'little'))
 
 
-def read_tess(filename: str) -> tuple[List['ase.Atoms'], Dict]:
+def read_tess(filename: str) -> tuple[List['Atoms'], Dict]:
 
     try:
         import msgpack
         import msgpack_numpy as m
         from atomict.io.atoms import dict_to_atoms
+        import mmap
     except ImportError:
         raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
 
@@ -65,26 +69,28 @@ def read_tess(filename: str) -> tuple[List['ase.Atoms'], Dict]:
     m.patch()
     
     with open(filename, 'rb') as f:
-        f.seek(0, 2)
-        file_size = f.tell()
-        f.seek(file_size - 8)
-        header_start = int.from_bytes(f.read(8), 'little')
-        f.seek(header_start)
-        header_bytes = f.read(file_size - header_start - 8)
-        header = msgpack.unpackb(header_bytes, raw=False, strict_map_key=False)
-        
-        if header['format_version'] != 2:
-            raise ValueError("Invalid format version")
-        
-        metadata = header['metadata']
-        frame_offsets = header['frame_offsets']
-        
-        atoms_list = []
-        for start, length in frame_offsets:
-            f.seek(start)
-            frame_bytes = f.read(length)
-            frame_dict = msgpack.unpackb(frame_bytes, raw=False, strict_map_key=False)
-            atoms = dict_to_atoms(frame_dict)
-            atoms_list.append(atoms[0])
+        mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+        try:
+            file_size = mm.size()
+            header_start = int.from_bytes(mm[file_size - 8:file_size], 'little')
+            header_bytes = mm[header_start:file_size - 8]
+            header = msgpack.unpackb(header_bytes, raw=False, strict_map_key=False)
+
+            if header['format_version'] != 2:
+                raise ValueError("Invalid format version")
+
+            metadata = header['metadata']
+            frame_offsets = header['frame_offsets']
+
+            atoms_list: List['Atoms'] = []
+            unpackb = msgpack.unpackb
+            convert = dict_to_atoms
+
+            for i, (start, length) in enumerate(frame_offsets):
+                frame_bytes = mm[start:start + length]
+                frame_dict = unpackb(frame_bytes, raw=False, strict_map_key=False)
+                atoms_list.append(convert(frame_dict)[0])
+        finally:
+            mm.close()
     
     return atoms_list, metadata
