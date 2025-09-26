@@ -1,3 +1,9 @@
+import numpy as np
+from ase import Atoms
+from ase.constraints import dict2constraint
+from ase.calculators.singlepoint import SinglePointCalculator
+
+
 def atoms_to_dict(atoms_list, selective=False):
     """Extract all properties from ASE Atoms objects into a standardized dictionary.
     
@@ -13,7 +19,6 @@ def atoms_to_dict(atoms_list, selective=False):
     Dict
         Dictionary with all extracted properties
     """
-    import numpy as np
     
     # Create data structure with common properties
     data = {
@@ -202,13 +207,6 @@ def dict_to_atoms(data):
     List[Atoms]
         List of ASE Atoms objects
     """
-    try:
-        import numpy as np
-        from ase import Atoms
-        from ase.constraints import dict2constraint
-        from ase.calculators.singlepoint import SinglePointCalculator
-    except ImportError:
-        raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
     
     n_frames = data['n_frames']
     atoms_list = []

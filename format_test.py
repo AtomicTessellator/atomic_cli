@@ -1,9 +1,9 @@
 from atomict.io.msgpack import save_msgpack_trajectory, load_msgpack_trajectory
+from atomict.io.formats.traj import read_traj, write_traj
 from datetime import datetime
 import os
 import time
-
-FILENAME = "equilibration.atraj"
+import sys
 
 
 def get_file_size_mb(path: str) -> float:
@@ -18,8 +18,8 @@ def time_call(func, *args, **kwargs):
 
 
 def ensure_companion_source(base_atraj_path: str, base_tess_path: str) -> None:
-    # Ensure we have a tess source to read from when starting with only an atraj input
-    if not os.path.exists(base_tess_path):
+    # Retained for compatibility in case callers rely on generating a tess source
+    if not os.path.exists(base_tess_path) and os.path.exists(base_atraj_path):
         atoms, metadata = load_msgpack_trajectory(base_atraj_path)
         save_msgpack_trajectory(atoms, base_tess_path, metadata)
 
@@ -40,6 +40,41 @@ def benchmark_conversion(src_path: str, dst_path: str):
         'src_mb': src_mb,
         'dst_mb': dst_mb,
     }
+
+def benchmark_traj_same(src_traj_path: str, dst_traj_path: str):
+    (atoms, metadata), load_s = time_call(read_traj, src_traj_path)
+    _, save_s = time_call(write_traj, atoms, dst_traj_path, metadata)
+    src_mb = get_file_size_mb(src_traj_path)
+    dst_mb = get_file_size_mb(dst_traj_path)
+    total_s = load_s + save_s
+    return {
+        'case': 'traj→traj',
+        'src': os.path.basename(src_traj_path),
+        'dst': os.path.basename(dst_traj_path),
+        'load_s': load_s,
+        'save_s': save_s,
+        'total_s': total_s,
+        'src_mb': src_mb,
+        'dst_mb': dst_mb,
+    }
+
+def benchmark_tess_same(src_tess_path: str, dst_tess_path: str):
+    (atoms, metadata), load_s = time_call(load_msgpack_trajectory, src_tess_path)
+    _, save_s = time_call(save_msgpack_trajectory, atoms, dst_tess_path, metadata)
+    src_mb = get_file_size_mb(src_tess_path)
+    dst_mb = get_file_size_mb(dst_tess_path)
+    total_s = load_s + save_s
+    return {
+        'case': 'tess→tess',
+        'src': os.path.basename(src_tess_path),
+        'dst': os.path.basename(dst_tess_path),
+        'load_s': load_s,
+        'save_s': save_s,
+        'total_s': total_s,
+        'src_mb': src_mb,
+        'dst_mb': dst_mb,
+    }
+
 
 
 def print_report(rows):
@@ -77,32 +112,34 @@ def print_report(rows):
 
 
 def main():
-    base_path = os.path.abspath(FILENAME)
+    # Accept optional base name on CLI: e.g. `python format_test.py 800K`
+    arg = sys.argv[1] if len(sys.argv) > 1 else FILENAME
+
+    base_path = os.path.abspath(arg)
     base_dir = os.path.dirname(base_path)
-    stem, src_ext = os.path.splitext(os.path.basename(base_path))
+    stem, ext = os.path.splitext(os.path.basename(base_path))
 
-    base_atraj = base_path if src_ext == '.atraj' else os.path.join(base_dir, f"{stem}.atraj")
-    base_tess = os.path.join(base_dir, f"{stem}.tess")
+    # If user provided a stem without extension, keep it; otherwise remove extension from stem
+    if ext:
+        base_stem = stem
+    else:
+        base_stem = os.path.basename(base_path)
 
-    if src_ext == '.atraj' and not os.path.exists(base_atraj):
-        raise FileNotFoundError(base_atraj)
+    traj_path = os.path.join(base_dir, f"{base_stem}.traj")
+    tess_path = os.path.join(base_dir, f"{base_stem}.tess")
 
-    # Make sure we have both source types available
-    ensure_companion_source(base_atraj, base_tess)
+    if not os.path.exists(traj_path):
+        raise FileNotFoundError(traj_path)
+    if not os.path.exists(tess_path):
+        raise FileNotFoundError(tess_path)
 
-    # Destination filenames for each conversion
-    out_atraj_from_atraj = os.path.join(base_dir, f"{stem}.from_atraj.to_atraj.atraj")
-    out_tess_from_atraj = os.path.join(base_dir, f"{stem}.from_atraj.to_tess.tess")
-    out_atraj_from_tess = os.path.join(base_dir, f"{stem}.from_tess.to_atraj.atraj")
-    out_tess_from_tess = os.path.join(base_dir, f"{stem}.from_tess.to_tess.tess")
+    out_traj_from_traj = os.path.join(base_dir, f"{base_stem}.from_traj.to_traj.traj")
+    out_tess_from_tess = os.path.join(base_dir, f"{base_stem}.from_tess.to_tess.tess")
 
     results = []
-    results.append(benchmark_conversion(base_atraj, out_atraj_from_atraj))
-    results.append(benchmark_conversion(base_atraj, out_tess_from_atraj))
-    results.append(benchmark_conversion(base_tess, out_atraj_from_tess))
-    results.append(benchmark_conversion(base_tess, out_tess_from_tess))
+    # results.append(benchmark_traj_same(traj_path, out_traj_from_traj))
+    results.append(benchmark_tess_same(tess_path, out_tess_from_tess))
 
-    # Include a brief run timestamp header
     print(f"Benchmark run: {datetime.now().isoformat(timespec='seconds')}")
     print_report(results)
 

@@ -30,7 +30,7 @@ def write_tess(atoms: Union['ase.Atoms', List['ase.Atoms']], filename: str, meta
     frame_offsets = []
     with open(filename, 'wb') as f:
         for atom_frame in frames_list:
-            frame_dict = atoms_to_dict([atom_frame], selective=False)
+            frame_dict = atoms_to_dict([atom_frame])
             frame_bytes = msgpack.packb(frame_dict, use_bin_type=True)
             start = f.tell()
             f.write(frame_bytes)
@@ -71,7 +71,7 @@ def read_tess(filename: str) -> tuple[List['ase.Atoms'], Dict]:
         header_start = int.from_bytes(f.read(8), 'little')
         f.seek(header_start)
         header_bytes = f.read(file_size - header_start - 8)
-        header = msgpack.unpackb(header_bytes, raw=False)
+        header = msgpack.unpackb(header_bytes, raw=False, strict_map_key=False)
         
         if header['format_version'] != 2:
             raise ValueError("Invalid format version")
@@ -83,7 +83,7 @@ def read_tess(filename: str) -> tuple[List['ase.Atoms'], Dict]:
         for start, length in frame_offsets:
             f.seek(start)
             frame_bytes = f.read(length)
-            frame_dict = msgpack.unpackb(frame_bytes, raw=False)
+            frame_dict = msgpack.unpackb(frame_bytes, raw=False, strict_map_key=False)
             atoms = dict_to_atoms(frame_dict)
             atoms_list.append(atoms[0])
     
