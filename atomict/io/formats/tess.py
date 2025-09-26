@@ -1,7 +1,16 @@
+import os
+from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ase import Atoms
+
+
+def _max_workers(task_count: int) -> int:
+    if task_count <= 1:
+        return 1
+    cpu_total = os.cpu_count() or 1
+    return max(1, min(task_count, cpu_total))
 
 
 def write_tess(
@@ -9,7 +18,7 @@ def write_tess(
     filename: str,
     metadata: Optional[Dict] = None,
     compression: Optional[str] = 'zlib',
-    compression_level: int = 3,
+    compression_level: int = 1,
 ) -> None:
 
     from atomict.io.msgpack import atoms_to_dict
@@ -48,15 +57,28 @@ def write_tess(
     frame_offsets: List[Tuple[int, int]] = []
     uncompressed_lengths: List[int] = []
     with open(filename, 'wb') as f:
-        for atom_frame in frames_list:
-            frame_dict = atoms_to_dict([atom_frame])
-            frame_bytes = msgpack.packb(frame_dict, use_bin_type=True)
-            if compression_mode == 'zlib':
-                uncompressed_lengths.append(len(frame_bytes))
-                frame_bytes = zlib.compress(frame_bytes, compression_level)
-            start = f.tell()
-            f.write(frame_bytes)
-            frame_offsets.append((start, len(frame_bytes)))
+        if compression_mode == 'zlib':
+            frame_dicts = [atoms_to_dict([atom_frame]) for atom_frame in frames_list]
+
+            def _pack_and_compress(frame_dict: Dict) -> Tuple[bytes, int]:
+                packed = msgpack.packb(frame_dict, use_bin_type=True)
+                return zlib.compress(packed, compression_level), len(packed)
+
+            with ThreadPoolExecutor(max_workers=_max_workers(len(frame_dicts))) as executor:
+                results = list(executor.map(_pack_and_compress, frame_dicts))
+
+            for compressed_bytes, original_length in results:
+                uncompressed_lengths.append(original_length)
+                start = f.tell()
+                f.write(compressed_bytes)
+                frame_offsets.append((start, len(compressed_bytes)))
+        else:
+            for atom_frame in frames_list:
+                frame_dict = atoms_to_dict([atom_frame])
+                frame_bytes = msgpack.packb(frame_dict, use_bin_type=True)
+                start = f.tell()
+                f.write(frame_bytes)
+                frame_offsets.append((start, len(frame_bytes)))
         
         # Write header
         header_dict: Dict[str, object] = {
@@ -93,7 +115,7 @@ def read_tess(filename: str) -> Tuple[List['Atoms'], Dict]:
 
     # Enable numpy array deserialization
     m.patch()
-    
+
     with open(filename, 'rb') as f:
         # Use mmap with larger read-ahead hint
         mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
@@ -127,20 +149,34 @@ def read_tess(filename: str) -> Tuple[List['Atoms'], Dict]:
             metadata = header.get('metadata', {})
             frame_offsets = [tuple(offset) for offset in header['frame_offsets']]
             num_frames = len(frame_offsets)
+            uncompressed_lengths = header.get('frame_uncompressed_lengths', [])
 
             # Pre-allocate the result list
             atoms_list = [None] * num_frames
             convert = dict_to_atoms
             
             # Process frames with minimal overhead
-            for i, (start, length) in enumerate(frame_offsets):
-                frame_slice = mm[start:start + length]
-                if compression_type == 'zlib':
-                    frame_slice = zlib.decompress(frame_slice)
-                frame_dict = msgpack.unpackb(
-                    frame_slice, raw=False, strict_map_key=False
-                )
-                atoms_list[i] = convert(frame_dict)[0]
+            if compression_type == 'zlib' and num_frames:
+                def _decompress(offset: Tuple[int, int]) -> bytes:
+                    start, length = offset
+                    compressed = mm[start:start + length]
+                    return zlib.decompress(compressed)
+
+                with ThreadPoolExecutor(max_workers=_max_workers(num_frames)) as executor:
+                    decompressed_frames = list(executor.map(_decompress, frame_offsets))
+
+                for i, frame_bytes in enumerate(decompressed_frames):
+                    frame_dict = msgpack.unpackb(
+                        frame_bytes, raw=False, strict_map_key=False
+                    )
+                    atoms_list[i] = convert(frame_dict)[0]
+            else:
+                for i, (start, length) in enumerate(frame_offsets):
+                    frame_slice = mm[start:start + length]
+                    frame_dict = msgpack.unpackb(
+                        frame_slice, raw=False, strict_map_key=False
+                    )
+                    atoms_list[i] = convert(frame_dict)[0]
         finally:
             mm.close()
     
