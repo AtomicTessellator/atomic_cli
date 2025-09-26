@@ -23,7 +23,7 @@ def temp_dir():
 @pytest.fixture
 def empty_trajectory(temp_dir):
     """Create an empty trajectory file path."""
-    return os.path.join(temp_dir, "test_trajectory.mpk")
+    return os.path.join(temp_dir, "test_trajectory.tess")
 
 
 @pytest.fixture
@@ -137,13 +137,13 @@ def test_trajectory_multiple_frames(atoms_list, empty_trajectory):
 def test_trajectory_flush_interval(water, temp_dir):
     """Test that flush_interval correctly controls write frequency."""
     # First, test that the first frame is always written regardless of flush_interval
-    file1 = os.path.join(temp_dir, "test_first_frame.mpk")
+    file1 = os.path.join(temp_dir, "test_first_frame.tess")
     traj1 = Trajectory(file1, 'w', flush_interval=100)  # Very high interval
     traj1.write(water)
     assert os.path.exists(file1), "First frame should always be written immediately"
     
     # Now test the actual flush interval behavior with a new file
-    file2 = os.path.join(temp_dir, "test_interval.mpk")
+    file2 = os.path.join(temp_dir, "test_interval.tess")
     traj2 = Trajectory(file2, 'w', flush_interval=3)
     
     # First frame is always written
@@ -323,7 +323,7 @@ def test_drop_in_replacement(water, temp_dir):
     """Test that our Trajectory is a drop-in replacement for ASE's Trajectory."""
     # Define file paths
     ase_path = os.path.join(temp_dir, "ase_traj.traj")
-    our_path = os.path.join(temp_dir, "our_traj.mpk")
+    our_path = os.path.join(temp_dir, "our_traj.tess")
     
     # Write the same data with both implementations
     with ASETrajectory(ase_path, 'w') as ase_traj:
@@ -516,7 +516,7 @@ def test_interrupted_write_recovery(water, temp_dir):
     import os.path
     
     # Path for the test
-    filename = os.path.join(temp_dir, "interrupted.mpk")
+    filename = os.path.join(temp_dir, "interrupted.tess")
     
     # First, write a single frame
     with Trajectory(filename, 'w') as traj:

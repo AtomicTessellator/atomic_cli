@@ -61,8 +61,7 @@ def cli(ctx, verbose: bool):
 @cli.command(default_command=True)
 @click.argument("input_file", required=True)
 @click.argument("output_file", required=True)
-@click.option("--strict-map-keys", is_flag=True, default=False, help="Enable strict map keys in msgpack files (sets strict_map_key=True)")
-def convert(input_file, output_file, strict_map_keys):
+def convert(input_file, output_file):
     """Convert between atomic structure file formats using ASE
 
     Supports all formats that ASE can read/write, with special handling for .atm and .atraj files.
@@ -71,8 +70,6 @@ def convert(input_file, output_file, strict_map_keys):
       tess input.xyz output.atm
       tess input.traj output.atraj
       
-    Options:
-      --strict-map-keys  Enable strict map keys in msgpack files (default: False)
     """ 
     try:
         import os.path
@@ -104,29 +101,35 @@ def convert(input_file, output_file, strict_map_keys):
             return
 
         msgpack_formats = ["atm"]
-        traj_msgpack_formats = ["atraj"]
+        traj_msgpack_formats = ["atraj", "tess"]
         
-        if input_ext not in RW_FORMATS and input_ext not in msgpack_formats and input_ext not in traj_msgpack_formats:
-            console.print(f"[red]Error: Format '{input_ext}' is not supported for reading.[/red]")
+        def _is_supported(ext: str) -> bool:
+            return (
+                ext in RW_FORMATS
+                or ext in msgpack_formats
+                or ext in traj_msgpack_formats
+            )
+        
+        def _print_supported_error(ext: str, action: str) -> None:
+            console.print(f"[red]Error: Format '{ext}' is not supported for {action}.[/red]")
             console.print("[yellow]Supported read/write formats include:[/yellow]")
             for i in range(0, len(RW_FORMATS), 5):
                 console.print("[yellow]  " + ", ".join(RW_FORMATS[i:i+5]) + "[/yellow]")
-            console.print("[yellow]Special formats: atm (msgpack), atraj (msgpack trajectory)[/yellow]")
+            console.print("[yellow]Special formats: atm (msgpack), atraj (msgpack trajectory), tess (msgpack trajectory)[/yellow]")
+        
+        if not _is_supported(input_ext):
+            _print_supported_error(input_ext, "reading")
             return
-            
-        if output_ext not in RW_FORMATS and output_ext not in msgpack_formats and output_ext not in traj_msgpack_formats:
-            console.print(f"[red]Error: Format '{output_ext}' is not supported for writing.[/red]")
-            console.print("[yellow]Supported read/write formats include:[/yellow]")
-            for i in range(0, len(RW_FORMATS), 5):
-                console.print("[yellow]  " + ", ".join(RW_FORMATS[i:i+5]) + "[/yellow]")
-            console.print("[yellow]Special formats: atm (msgpack), atraj (msgpack trajectory)[/yellow]")
+        
+        if not _is_supported(output_ext):
+            _print_supported_error(output_ext, "writing")
             return
 
         try:
             if input_ext in msgpack_formats:
-                atoms = load_msgpack(input_file, strict_map_key=strict_map_keys)
+                atoms = load_msgpack(input_file)
             elif input_ext in traj_msgpack_formats:
-                atoms, _ = load_msgpack_trajectory(input_file, strict_map_key=strict_map_keys)
+                atoms, _ = load_msgpack_trajectory(input_file)
             else:
                 atoms = read(input_file, index=":")
         except UnknownFileTypeError:
@@ -199,7 +202,7 @@ if type -q tess
 end
 """
     click.echo(f"# Shell completion for {shell}")
-    click.echo(completion_script.strip())
+    click.echo((completion_script or "").strip())
     click.echo(
         "# Don't forget to source your rc file! `source ~/.bashrc` or `source ~/.zshrc` ..."
     )
