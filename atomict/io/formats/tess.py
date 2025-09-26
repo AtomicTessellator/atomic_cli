@@ -69,8 +69,15 @@ def read_tess(filename: str) -> tuple[List['Atoms'], Dict]:
     m.patch()
     
     with open(filename, 'rb') as f:
+        # Use mmap with larger read-ahead hint
         mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
         try:
+            # Advise the kernel we'll read sequentially
+            if hasattr(mm, 'madvise'):
+                import mmap as mmap_module
+                if hasattr(mmap_module, 'MADV_SEQUENTIAL'):
+                    mm.madvise(mmap_module.MADV_SEQUENTIAL)
+            
             file_size = mm.size()
             header_start = int.from_bytes(mm[file_size - 8:file_size], 'little')
             header_bytes = mm[header_start:file_size - 8]
@@ -81,15 +88,21 @@ def read_tess(filename: str) -> tuple[List['Atoms'], Dict]:
 
             metadata = header['metadata']
             frame_offsets = header['frame_offsets']
+            num_frames = len(frame_offsets)
 
-            atoms_list: List['Atoms'] = []
-            unpackb = msgpack.unpackb
+            # Pre-allocate the result list
+            atoms_list = [None] * num_frames
             convert = dict_to_atoms
-
+            
+            # Create a reusable Unpacker for better performance
+            unpacker = msgpack.Unpacker(raw=False, strict_map_key=False)
+            
+            # Process frames with minimal overhead
             for i, (start, length) in enumerate(frame_offsets):
-                frame_bytes = mm[start:start + length]
-                frame_dict = unpackb(frame_bytes, raw=False, strict_map_key=False)
-                atoms_list.append(convert(frame_dict)[0])
+                # Direct slice without creating intermediate bytes object
+                unpacker.feed(mm[start:start + length])
+                frame_dict = next(unpacker)
+                atoms_list[i] = convert(frame_dict)[0]
         finally:
             mm.close()
     

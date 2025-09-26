@@ -246,17 +246,20 @@ def dict_to_atoms(data):
             symbols_idx = symbols_map[start_idx:start_idx + n_atoms_seq[i]]
 
         if has_numbers:
-            frame_numbers = numbers_data[i]
             atoms = Atoms(
-                numbers=frame_numbers,
+                numbers=numbers_data[i],
                 positions=positions[i],
                 cell=cells[i],
                 pbc=pbc[i],
             )
         else:
-            frame_symbols = unique_symbols_array[np.asarray(symbols_idx, dtype=int)]
+            # Avoid numpy conversion and tolist() for small arrays
+            if isinstance(symbols_idx, np.ndarray):
+                frame_symbols = [unique_symbols[idx] for idx in symbols_idx]
+            else:
+                frame_symbols = [unique_symbols[idx] for idx in symbols_idx]
             atoms = Atoms(
-                symbols=frame_symbols.tolist(),
+                symbols=frame_symbols,
                 positions=positions[i],
                 cell=cells[i],
                 pbc=pbc[i],
