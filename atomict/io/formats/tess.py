@@ -1,10 +1,16 @@
-from typing import Union, List, Dict, TYPE_CHECKING
+from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ase import Atoms
 
 
-def write_tess(atoms: Union['Atoms', List['Atoms']], filename: str, metadata: Dict = None):
+def write_tess(
+    atoms: Union['Atoms', List['Atoms']],
+    filename: str,
+    metadata: Optional[Dict] = None,
+    compression: Optional[str] = 'zlib',
+    compression_level: int = 3,
+) -> None:
 
     from atomict.io.msgpack import atoms_to_dict
 
@@ -12,6 +18,7 @@ def write_tess(atoms: Union['Atoms', List['Atoms']], filename: str, metadata: Di
         import msgpack
         import msgpack_numpy as m
         from ase import Atoms
+        import zlib
     except ImportError:
         raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
 
@@ -21,32 +28,50 @@ def write_tess(atoms: Union['Atoms', List['Atoms']], filename: str, metadata: Di
     if isinstance(atoms, Atoms):
         frames_list = [atoms]
     else:
-        frames_list = atoms
-    
+        frames_list = list(atoms)
+
+    compression_mode = (compression or 'none').lower()
+    if compression_mode not in {'none', 'zlib'}:
+        raise ValueError(
+            f"Unsupported compression mode '{compression_mode}' for tess format"
+        )
+    if compression_mode == 'zlib' and not (0 <= compression_level <= 9):
+        raise ValueError("compression_level must be between 0 and 9 for zlib compression")
+
     # Collect global unique_symbols
     unique_symbols_set = set()
     for a in frames_list:
         unique_symbols_set.update(a.get_chemical_symbols())
     unique_symbols = sorted(list(unique_symbols_set))
-    
+
     # Write frames
-    frame_offsets = []
+    frame_offsets: List[Tuple[int, int]] = []
+    uncompressed_lengths: List[int] = []
     with open(filename, 'wb') as f:
         for atom_frame in frames_list:
             frame_dict = atoms_to_dict([atom_frame])
             frame_bytes = msgpack.packb(frame_dict, use_bin_type=True)
+            if compression_mode == 'zlib':
+                uncompressed_lengths.append(len(frame_bytes))
+                frame_bytes = zlib.compress(frame_bytes, compression_level)
             start = f.tell()
             f.write(frame_bytes)
             frame_offsets.append((start, len(frame_bytes)))
         
         # Write header
-        header_dict = {
-            'format_version': 2,
-            'metadata': metadata or {},
+        header_dict: Dict[str, object] = {
+            'format_version': 3 if compression_mode != 'none' else 2,
+            'metadata': dict(metadata or {}),
             'unique_symbols': unique_symbols,
             'num_frames': len(frames_list),
-            'frame_offsets': frame_offsets
+            'frame_offsets': frame_offsets,
         }
+        if compression_mode != 'none':
+            header_dict['compression'] = {
+                'type': compression_mode,
+                'level': compression_level,
+            }
+            header_dict['frame_uncompressed_lengths'] = uncompressed_lengths
         header_bytes = msgpack.packb(header_dict, use_bin_type=True)
         header_start = f.tell()
         f.write(header_bytes)
@@ -55,13 +80,14 @@ def write_tess(atoms: Union['Atoms', List['Atoms']], filename: str, metadata: Di
         f.write(header_start.to_bytes(8, 'little'))
 
 
-def read_tess(filename: str) -> tuple[List['Atoms'], Dict]:
+def read_tess(filename: str) -> Tuple[List['Atoms'], Dict]:
 
     try:
         import msgpack
         import msgpack_numpy as m
         from atomict.io.atoms import dict_to_atoms
         import mmap
+        import zlib
     except ImportError:
         raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
 
@@ -83,25 +109,37 @@ def read_tess(filename: str) -> tuple[List['Atoms'], Dict]:
             header_bytes = mm[header_start:file_size - 8]
             header = msgpack.unpackb(header_bytes, raw=False, strict_map_key=False)
 
-            if header['format_version'] != 2:
+            format_version = header.get('format_version', 1)
+            if format_version not in {2, 3}:
                 raise ValueError("Invalid format version")
 
-            metadata = header['metadata']
-            frame_offsets = header['frame_offsets']
+            compression_info = header.get('compression')
+            if isinstance(compression_info, dict):
+                compression_type = compression_info.get('type', 'none')
+            elif isinstance(compression_info, str):
+                compression_type = compression_info
+            else:
+                compression_type = 'none'
+            compression_type = (compression_type or 'none').lower()
+            if compression_type not in {'none', 'zlib'}:
+                raise ValueError(f"Unsupported compression type '{compression_type}' in tess file")
+
+            metadata = header.get('metadata', {})
+            frame_offsets = [tuple(offset) for offset in header['frame_offsets']]
             num_frames = len(frame_offsets)
 
             # Pre-allocate the result list
             atoms_list = [None] * num_frames
             convert = dict_to_atoms
             
-            # Create a reusable Unpacker for better performance
-            unpacker = msgpack.Unpacker(raw=False, strict_map_key=False)
-            
             # Process frames with minimal overhead
             for i, (start, length) in enumerate(frame_offsets):
-                # Direct slice without creating intermediate bytes object
-                unpacker.feed(mm[start:start + length])
-                frame_dict = next(unpacker)
+                frame_slice = mm[start:start + length]
+                if compression_type == 'zlib':
+                    frame_slice = zlib.decompress(frame_slice)
+                frame_dict = msgpack.unpackb(
+                    frame_slice, raw=False, strict_map_key=False
+                )
                 atoms_list[i] = convert(frame_dict)[0]
         finally:
             mm.close()
