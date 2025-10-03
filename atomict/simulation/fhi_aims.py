@@ -1,24 +1,25 @@
 from atomict.api import delete, get, post
+from atomict.infra.distwork.task import SimulationAction
 
 
 def create_simulation(
     project_id: str,
     control_file: str,
     geometry_file: str,
-    action: str,
+    action: SimulationAction,
     name: str = None,
     description: str = None,
     extra_simulation_kwargs: dict = None,
 ) -> dict:
 
-    if action not in ["DRAFT", "LAUNCH"]:
-        raise ValueError("Action must be 'DRAFT' or 'LAUNCH'")
+    if action not in [SimulationAction.SAVE_DRAFT, SimulationAction.LAUNCH]:
+        raise ValueError("Action must be 'SimulationAction.SAVE_DRAFT' or 'SimulationAction.LAUNCH'")
 
     payload = {
         "project_id": project_id,
         "control_file": control_file,
         "geometry_file": geometry_file,
-        "action": action,
+        "action": action.value,
         "name": name,
         "description": description,
     }
