@@ -20,11 +20,9 @@ def write_tess(
     atoms: Union['Atoms', List['Atoms']],
     filename: str,
     metadata: Optional[Dict] = None,
-    compression: Optional[str] = 'zlib',
-    compression_level: int = 1,
+    compression: Optional[str] = 'none',
+    compression_level: int = 0,
 ) -> None:
-
-    from atomict.io.msgpack import atoms_to_dict
 
     try:
         import msgpack
@@ -32,6 +30,7 @@ def write_tess(
         from ase import Atoms
         import zlib
         import lz4.block
+        import numpy as np
     except ImportError:
         raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
 
@@ -56,68 +55,89 @@ def write_tess(
     for a in frames_list:
         unique_symbols_set.update(a.get_chemical_symbols())
     unique_symbols = sorted(list(unique_symbols_set))
+    unique_symbols_lookup = {s: i for i, s in enumerate(unique_symbols)}
 
-    with open(filename, 'wb') as f:
+    # Check if cell changes across frames
+    first_cell = np.array(frames_list[0].get_cell(), dtype=np.float32)
+    cell_changes = any(
+        not np.allclose(np.array(a.get_cell(), dtype=np.float32), first_cell, rtol=1e-6)
+        for a in frames_list[1:20]  # Sample first 20 frames
+    )
+    
+    # Pre-extract positions as float32 arrays for all frames
+    positions_list = [a.get_positions().astype(np.float32) for a in frames_list]
+    if cell_changes:
+        cells_list = [np.array(a.get_cell(), dtype=np.float32) for a in frames_list]
+    
+    # Optimized frame serialization - pack only essential per-frame data  
+    def _pack_frame(i: int) -> bytes:
+        # Only pack data that changes between frames
+        frame_dict = {'positions': positions_list[i]}
+        if cell_changes:
+            frame_dict['cell'] = cells_list[i]
+        return msgpack.packb(frame_dict, use_bin_type=True)
+
+    with open(filename, 'wb', buffering=1024*1024) as f:
         frame_offsets: List[Tuple[int, int]] = []
         uncompressed_lengths: List[int] = []
         if compression_mode == 'zlib' or compression_mode == 'lz4':
-            worker_count = _max_workers(len(frames_list))
-            num_tasks = worker_count * 4
-            group_size = max(1, (len(frames_list) + num_tasks - 1) // num_tasks)
-            groups = [frames_list[i:i + group_size] for i in range(0, len(frames_list), group_size)]
-
-            def _process_group(group: List['Atoms']) -> Tuple[bytes, List[int], List[int]]:
-                group_compressed = []
-                group_ulens = []
-                for atom_frame in group:
-                    frame_dict = atoms_to_dict([atom_frame])
-                    packed = msgpack.packb(frame_dict, use_bin_type=True)
-                    if compression_mode == 'zlib':
-                        compressed = zlib.compress(packed, compression_level)
-                    else:  # lz4
-                        compressed = lz4.block.compress(packed, store_size=True)
-                    group_compressed.append(compressed)
-                    group_ulens.append(len(packed))
-                group_data = b''.join(group_compressed)
-                group_lengths = [len(c) for c in group_compressed]
-                return group_data, group_ulens, group_lengths
+            # Pre-pack all frames (fast operation)
+            packed_frames = [_pack_frame(i) for i in range(len(frames_list))]
+            
+            worker_count = _max_workers(len(packed_frames))
+            
+            def _compress_frame(packed: bytes) -> bytes:
+                if compression_mode == 'zlib':
+                    return zlib.compress(packed, compression_level)
+                else:  # lz4
+                    return lz4.block.compress(packed, store_size=True)
 
             initial = f.tell()
             current = initial
 
             with ThreadPoolExecutor(max_workers=worker_count) as executor:
-                for group_data, group_ulens, group_lengths in executor.map(_process_group, groups):
-                    f.write(group_data)
-                    for l, u in zip(group_lengths, group_ulens):
-                        frame_offsets.append((current, l))
-                        uncompressed_lengths.append(u)
-                        current += l
+                compressed_frames = list(executor.map(_compress_frame, packed_frames))
+            
+            # Write all compressed frames
+            for packed, compressed in zip(packed_frames, compressed_frames):
+                f.write(compressed)
+                frame_offsets.append((current, len(compressed)))
+                uncompressed_lengths.append(len(packed))
+                current += len(compressed)
 
         else:
-            compressed_list: List[bytes] = []
-            for atom_frame in frames_list:
-                frame_dict = atoms_to_dict([atom_frame])
-                packed = msgpack.packb(frame_dict, use_bin_type=True)
-                compressed_list.append(packed)
-
-            # Compute offsets
+            # Write frames directly without intermediate buffer
             initial = f.tell()
             current = initial
-            for cb in compressed_list:
-                l = len(cb)
+            for i in range(len(frames_list)):
+                packed = _pack_frame(i)
+                l = len(packed)
+                f.write(packed)
                 frame_offsets.append((current, l))
                 current += l
 
-            # Write all frames
-            f.write(b''.join(compressed_list))
-
+        # Store static data in header (data that's the same for all frames)
+        first_frame = frames_list[0]
+        symbols = first_frame.get_chemical_symbols()
+        symbols_idx = np.array([unique_symbols_lookup[s] for s in symbols], dtype=np.uint16)
+        
         # Write header
         header_dict: Dict[str, object] = {
-            'format_version': 3 if compression_mode != 'none' else 2,
+            'format_version': 4,
             'metadata': dict(metadata or {}),
             'unique_symbols': unique_symbols,
             'num_frames': len(frames_list),
             'frame_offsets': frame_offsets,
+            # Static frame data stored once in header
+            'static_data': {
+                'n_atoms': len(first_frame),
+                'symbols': symbols_idx,
+                'numbers': first_frame.get_atomic_numbers(),
+                'masses': first_frame.get_masses(),
+                'pbc': first_frame.get_pbc(),
+                'cell': first_cell,
+                'cell_changes': cell_changes,
+            }
         }
         if compression_mode != 'none':
             header_dict['compression'] = {
@@ -140,6 +160,7 @@ def read_tess(filename: str) -> Tuple[List['Atoms'], Dict]:
         import msgpack
         import msgpack_numpy as m
         from atomict.io.atoms import dict_to_atoms
+        from ase import Atoms
         import mmap
         import zlib
         import lz4.block
@@ -165,7 +186,7 @@ def read_tess(filename: str) -> Tuple[List['Atoms'], Dict]:
             header = msgpack.unpackb(header_bytes, raw=False, strict_map_key=False)
 
             format_version = header.get('format_version', 1)
-            if format_version not in {2, 3}:
+            if format_version not in {2, 3, 4}:
                 raise ValueError("Invalid format version")
 
             compression_info = header.get('compression')
@@ -185,7 +206,29 @@ def read_tess(filename: str) -> Tuple[List['Atoms'], Dict]:
 
             # Pre-allocate the result list
             atoms_list = [None] * num_frames
-            convert = dict_to_atoms
+            
+            # Handle format version 4 with static data
+            if format_version == 4:
+                static_data = header.get('static_data', {})
+                unique_symbols = header['unique_symbols']
+                symbols_idx = static_data['symbols']
+                symbols = [unique_symbols[i] for i in symbols_idx]
+                numbers = static_data['numbers']
+                masses = static_data['masses']
+                pbc = static_data['pbc']
+                static_cell = static_data.get('cell')
+                cell_changes = static_data.get('cell_changes', True)
+                
+                # Create a template Atoms object to clone for efficiency
+                import numpy as np
+                template_atoms = Atoms(numbers=numbers, pbc=pbc)
+                template_atoms.set_masses(masses)
+                if static_cell is not None:
+                    template_atoms.set_cell(static_cell)
+            else:
+                convert = dict_to_atoms
+                static_data = None
+                cell_changes = True
             
             # Process frames with minimal overhead
             if compression_type == 'zlib' and num_frames:
@@ -207,7 +250,15 @@ def read_tess(filename: str) -> Tuple[List['Atoms'], Dict]:
                             frame_dict = msgpack.unpackb(
                                 frame_bytes, raw=False, strict_map_key=False
                             )
-                            atoms_list[i] = convert(frame_dict)[0]
+                            if format_version == 4:
+                                # Fast path for v4: clone template and update only changing data
+                                atoms = template_atoms.copy()
+                                atoms.set_positions(frame_dict['positions'])
+                                if cell_changes and 'cell' in frame_dict:
+                                    atoms.set_cell(frame_dict['cell'])
+                                atoms_list[i] = atoms
+                            else:
+                                atoms_list[i] = convert(frame_dict)[0]
             elif compression_type == 'lz4' and num_frames:
 
                 def _decompress(offset: Tuple[int, int]) -> bytes:
@@ -227,14 +278,28 @@ def read_tess(filename: str) -> Tuple[List['Atoms'], Dict]:
                             frame_dict = msgpack.unpackb(
                                 frame_bytes, raw=False, strict_map_key=False
                             )
-                            atoms_list[i] = convert(frame_dict)[0]
+                            if format_version == 4:
+                                atoms = template_atoms.copy()
+                                atoms.set_positions(frame_dict['positions'])
+                                if cell_changes and 'cell' in frame_dict:
+                                    atoms.set_cell(frame_dict['cell'])
+                                atoms_list[i] = atoms
+                            else:
+                                atoms_list[i] = convert(frame_dict)[0]
             else:
                 for i, (start, length) in enumerate(frame_offsets):
                     frame_slice = mm[start:start + length]
                     frame_dict = msgpack.unpackb(
                         frame_slice, raw=False, strict_map_key=False
                     )
-                    atoms_list[i] = convert(frame_dict)[0]
+                    if format_version == 4:
+                        atoms = template_atoms.copy()
+                        atoms.set_positions(frame_dict['positions'])
+                        if cell_changes and 'cell' in frame_dict:
+                            atoms.set_cell(frame_dict['cell'])
+                        atoms_list[i] = atoms
+                    else:
+                        atoms_list[i] = convert(frame_dict)[0]
         finally:
             mm.close()
     
