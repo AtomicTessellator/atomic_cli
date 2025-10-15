@@ -64,18 +64,18 @@ def _read_traj(in_path: str) -> Tuple[List['ase.Atoms'], dict, float]:
 
 
 def _write_tess(frames, out_path: str) -> float:
-    from atomict.io.msgpack import save_msgpack_trajectory
+    from atomict.io.formats.tess import write_tess
 
     start = time.perf_counter()
-    save_msgpack_trajectory(frames, out_path, metadata=None)
+    write_tess(frames, out_path, metadata=None)
     return time.perf_counter() - start
 
 
 def _read_tess(in_path: str) -> Tuple[List['ase.Atoms'], dict, float]:
-    from atomict.io.msgpack import load_msgpack_trajectory
+    from atomict.io.formats.tess import read_tess
 
     start = time.perf_counter()
-    atoms_list, metadata = load_msgpack_trajectory(in_path)
+    atoms_list, metadata = read_tess(in_path)
     return atoms_list, metadata, time.perf_counter() - start
 
 
