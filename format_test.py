@@ -114,7 +114,14 @@ def print_report(rows):
 
 def main():
     # Accept optional base name on CLI: e.g. `python format_test.py 800K`
-    arg = sys.argv[1] if len(sys.argv) > 1 else FILENAME
+    if len(sys.argv) > 1:
+        arg = sys.argv[1]
+    else:
+        print(
+            "Usage: python format_test.py <base name or path (with or without extension)>",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     base_path = os.path.abspath(arg)
     base_dir = os.path.dirname(base_path)
