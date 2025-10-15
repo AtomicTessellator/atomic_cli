@@ -71,11 +71,11 @@ def _write_tess(frames, out_path: str) -> float:
     return time.perf_counter() - start
 
 
-def _read_tess(in_path: str) -> Tuple[List['ase.Atoms'], dict, float]:
+def _read_tess(in_path: str, frames_indices=None) -> Tuple[List['ase.Atoms'], dict, float]:
     from atomict.io.formats.tess import read_tess
 
     start = time.perf_counter()
-    atoms_list, metadata = read_tess(in_path)
+    atoms_list, metadata = read_tess(in_path, frames_indices=frames_indices)
     return atoms_list, metadata, time.perf_counter() - start
 
 
@@ -121,8 +121,36 @@ def main():
     traj_atoms, traj_meta, traj_read_s = _read_traj(traj_path)
     tess_atoms, tess_meta, tess_read_s = _read_tess(tess_path)
 
+    # Test random frame loading (3 frames)
+    import random
+    import numpy as np
+    random.seed(42)
+    random_indices_3 = sorted(random.sample(range(nframes), 3))
+    print(f"\nTesting selective frame loading with 3 frames: {random_indices_3}")
+    tess_random_atoms_3, _, tess_random_read_s_3 = _read_tess(tess_path, frames_indices=random_indices_3)
+    
+    # Verify the loaded frames match the expected frames
+    print(f"Loaded {len(tess_random_atoms_3)} frames (expected 3)")
+    for i, idx in enumerate(random_indices_3):
+        if not np.allclose(tess_random_atoms_3[i].get_positions(), tess_atoms[idx].get_positions()):
+            raise ValueError(f"Frame {i} doesn't match expected frame {idx}")
+    print("✓ Selective frame loading (3 frames) successful!")
+    
+    # Test random frame loading (50 frames)
+    random.seed(42)
+    random_indices_50 = sorted(random.sample(range(nframes), 50))
+    print(f"\nTesting selective frame loading with 50 frames")
+    tess_random_atoms_50, _, tess_random_read_s_50 = _read_tess(tess_path, frames_indices=random_indices_50)
+    
+    # Verify the loaded frames match the expected frames
+    print(f"Loaded {len(tess_random_atoms_50)} frames (expected 50)")
+    for i, idx in enumerate(random_indices_50):
+        if not np.allclose(tess_random_atoms_50[i].get_positions(), tess_atoms[idx].get_positions()):
+            raise ValueError(f"Frame {i} doesn't match expected frame {idx}")
+    print("✓ Selective frame loading (50 frames) successful!")
+
     # Report
-    print(f"Supercell repeats: {repeat} -> atoms/frame={natoms}, frames={nframes}")
+    print(f"\nSupercell repeats: {repeat} -> atoms/frame={natoms}, frames={nframes}")
     header = (
         ("FORMAT", 8),
         ("WRITE(s)", 10),
@@ -137,18 +165,21 @@ def main():
     print(line)
     print(sep)
 
-    def row(fmt: str, w_s: float, r_s: float, size_mb: float):
+    def row(fmt: str, w_s: float, r_s: float, size_mb: float, frames_read=None):
+        frames_str = str(frames_read) if frames_read is not None else str(nframes)
         print(
             f"{fmt:<{header[0][1]}.{header[0][1]}}"
             f"{w_s:>{header[1][1]}.3f}"
             f"{r_s:>{header[2][1]}.3f}"
             f"{size_mb:>{header[3][1]}.2f}"
-            f"{nframes:>{header[4][1]}}"
+            f"{frames_str:>{header[4][1]}}"
             f"{natoms:>{header[5][1]}}"
         )
 
     row('traj', traj_write_s, traj_read_s, traj_mb)
     row('tess', tess_write_s, tess_read_s, tess_mb)
+    row('tess-3', 0.0, tess_random_read_s_3, tess_mb, frames_read=3)
+    row('tess-50', 0.0, tess_random_read_s_50, tess_mb, frames_read=50)
     print(sep)
 
 

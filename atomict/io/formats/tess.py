@@ -154,7 +154,7 @@ def write_tess(
         f.write(header_start.to_bytes(8, 'little'))
 
 
-def read_tess(filename: str) -> Tuple[List['Atoms'], Dict]:
+def read_tess(filename: str, frames_indices: Optional[List[int]] = None) -> Tuple[List['Atoms'], Dict]:
 
     try:
         import msgpack
@@ -204,8 +204,22 @@ def read_tess(filename: str) -> Tuple[List['Atoms'], Dict]:
             frame_offsets = [tuple(offset) for offset in header['frame_offsets']]
             num_frames = len(frame_offsets)
 
-            # Pre-allocate the result list
-            atoms_list = [None] * num_frames
+            # Determine which frames to load
+            if frames_indices is not None:
+                # Validate and normalize indices
+                frames_to_load = []
+                for idx in frames_indices:
+                    if idx < 0 or idx >= num_frames:
+                        raise IndexError(f"Frame index {idx} out of range [0, {num_frames})")
+                    frames_to_load.append(idx)
+                # Filter offsets to only requested frames
+                filtered_offsets = [(i, frame_offsets[i]) for i in frames_to_load]
+            else:
+                frames_to_load = list(range(num_frames))
+                filtered_offsets = [(i, offset) for i, offset in enumerate(frame_offsets)]
+
+            # Pre-allocate the result list based on requested frames
+            atoms_list = [None] * len(frames_to_load)
             
             # Handle format version 4 with static data
             if format_version == 4:
@@ -231,21 +245,21 @@ def read_tess(filename: str) -> Tuple[List['Atoms'], Dict]:
                 cell_changes = True
             
             # Process frames with minimal overhead
-            if compression_type == 'zlib' and num_frames:
+            if compression_type == 'zlib' and len(filtered_offsets) > 0:
 
-                def _decompress(offset: Tuple[int, int]) -> bytes:
-                    start, length = offset
+                def _decompress(idx_offset: Tuple[int, Tuple[int, int]]) -> Tuple[int, bytes]:
+                    orig_idx, (start, length) = idx_offset
                     compressed = mm[start:start + length]
-                    return zlib.decompress(compressed)
+                    return orig_idx, zlib.decompress(compressed)
 
-                worker_count = _max_workers(num_frames)
+                worker_count = _max_workers(len(filtered_offsets))
                 chunk_size = _chunk_size(worker_count)
 
                 with ThreadPoolExecutor(max_workers=worker_count) as executor:
-                    for chunk_start in range(0, num_frames, chunk_size):
-                        offset_chunk = frame_offsets[chunk_start:chunk_start + chunk_size]
-                        for i, frame_bytes in enumerate(
-                            executor.map(_decompress, offset_chunk), start=chunk_start
+                    for chunk_start in range(0, len(filtered_offsets), chunk_size):
+                        offset_chunk = filtered_offsets[chunk_start:chunk_start + chunk_size]
+                        for result_idx, (orig_idx, frame_bytes) in enumerate(
+                            executor.map(_decompress, offset_chunk), start=0
                         ):
                             frame_dict = msgpack.unpackb(
                                 frame_bytes, raw=False, strict_map_key=False
@@ -256,24 +270,24 @@ def read_tess(filename: str) -> Tuple[List['Atoms'], Dict]:
                                 atoms.set_positions(frame_dict['positions'])
                                 if cell_changes and 'cell' in frame_dict:
                                     atoms.set_cell(frame_dict['cell'])
-                                atoms_list[i] = atoms
+                                atoms_list[chunk_start + result_idx] = atoms
                             else:
-                                atoms_list[i] = convert(frame_dict)[0]
-            elif compression_type == 'lz4' and num_frames:
+                                atoms_list[chunk_start + result_idx] = convert(frame_dict)[0]
+            elif compression_type == 'lz4' and len(filtered_offsets) > 0:
 
-                def _decompress(offset: Tuple[int, int]) -> bytes:
-                    start, length = offset
+                def _decompress(idx_offset: Tuple[int, Tuple[int, int]]) -> Tuple[int, bytes]:
+                    orig_idx, (start, length) = idx_offset
                     compressed = mm[start:start + length]
-                    return lz4.block.decompress(compressed)
+                    return orig_idx, lz4.block.decompress(compressed)
 
-                worker_count = _max_workers(num_frames)
+                worker_count = _max_workers(len(filtered_offsets))
                 chunk_size = _chunk_size(worker_count)
 
                 with ThreadPoolExecutor(max_workers=worker_count) as executor:
-                    for chunk_start in range(0, num_frames, chunk_size):
-                        offset_chunk = frame_offsets[chunk_start:chunk_start + chunk_size]
-                        for i, frame_bytes in enumerate(
-                            executor.map(_decompress, offset_chunk), start=chunk_start
+                    for chunk_start in range(0, len(filtered_offsets), chunk_size):
+                        offset_chunk = filtered_offsets[chunk_start:chunk_start + chunk_size]
+                        for result_idx, (orig_idx, frame_bytes) in enumerate(
+                            executor.map(_decompress, offset_chunk), start=0
                         ):
                             frame_dict = msgpack.unpackb(
                                 frame_bytes, raw=False, strict_map_key=False
@@ -283,11 +297,11 @@ def read_tess(filename: str) -> Tuple[List['Atoms'], Dict]:
                                 atoms.set_positions(frame_dict['positions'])
                                 if cell_changes and 'cell' in frame_dict:
                                     atoms.set_cell(frame_dict['cell'])
-                                atoms_list[i] = atoms
+                                atoms_list[chunk_start + result_idx] = atoms
                             else:
-                                atoms_list[i] = convert(frame_dict)[0]
+                                atoms_list[chunk_start + result_idx] = convert(frame_dict)[0]
             else:
-                for i, (start, length) in enumerate(frame_offsets):
+                for result_idx, (orig_idx, (start, length)) in enumerate(filtered_offsets):
                     frame_slice = mm[start:start + length]
                     frame_dict = msgpack.unpackb(
                         frame_slice, raw=False, strict_map_key=False
@@ -297,9 +311,9 @@ def read_tess(filename: str) -> Tuple[List['Atoms'], Dict]:
                         atoms.set_positions(frame_dict['positions'])
                         if cell_changes and 'cell' in frame_dict:
                             atoms.set_cell(frame_dict['cell'])
-                        atoms_list[i] = atoms
+                        atoms_list[result_idx] = atoms
                     else:
-                        atoms_list[i] = convert(frame_dict)[0]
+                        atoms_list[result_idx] = convert(frame_dict)[0]
         finally:
             mm.close()
     
