@@ -2,18 +2,19 @@
 
 **Report Date:** 2025-10-16  
 **Project:** Atomic Tessellator CLI  
-**Total Vulnerabilities Found:** 4  
-**Total Vulnerabilities Fixed:** 4  
+**Total Vulnerabilities Found:** 5  
+**Total Unique Vulnerabilities:** 3 (2 duplicates)  
+**Total Vulnerabilities Fixed:** 5  
 **Status:** ✅ ALL RESOLVED
 
 ---
 
 ## Executive Summary
 
-Four HIGH-severity security vulnerabilities were identified and successfully remediated in the Atomic Tessellator CLI application. All vulnerabilities have been fixed, tested, and validated with comprehensive unit tests.
+Five HIGH-severity security vulnerabilities were identified (3 unique + 2 duplicates) and successfully remediated in the Atomic Tessellator CLI application. All vulnerabilities have been fixed, tested, and validated with comprehensive unit tests.
 
 **Overall Risk Reduction:**
-- **Before**: 4 HIGH vulnerabilities (CVSS 7.5-8.2)
+- **Before**: 3 unique HIGH vulnerabilities (CVSS 7.5-8.2)
 - **After**: All reduced to LOW risk (CVSS 2.0-2.3)
 - **Risk Reduction**: ~96% overall risk reduction
 
@@ -21,12 +22,13 @@ Four HIGH-severity security vulnerabilities were identified and successfully rem
 
 ## Vulnerability Status
 
-| ID | Title | Severity | Status | Fixed Date |
-|----|-------|----------|--------|------------|
-| vuln-0001 | Insecure Storage of Authentication Tokens in Plaintext | HIGH (7.8) | ✅ FIXED | 2025-10-16 |
-| vuln-0002 | Insecure Authentication Token Storage | HIGH (7.5) | ✅ FIXED | 2025-10-16 |
-| vuln-0003 | SSRF via Unvalidated Pagination URLs | HIGH (8.2) | ✅ FIXED | 2025-10-16 |
-| vuln-0004 | Local Path Traversal in File Operations | HIGH (7.5) | ✅ FIXED | 2025-10-16 |
+| ID | Title | Severity | Status | Fixed Date | Notes |
+|----|-------|----------|--------|------------|-------|
+| vuln-0001 | Insecure Storage of Authentication Tokens in Plaintext | HIGH (7.8) | ✅ FIXED | 2025-10-16 | |
+| vuln-0002 | Insecure Authentication Token Storage | HIGH (7.5) | ✅ FIXED | 2025-10-16 | Duplicate of vuln-0001 |
+| vuln-0003 | SSRF via Unvalidated Pagination URLs | HIGH (8.2) | ✅ FIXED | 2025-10-16 | |
+| vuln-0004 | Local Path Traversal in File Operations | HIGH (7.5) | ✅ FIXED | 2025-10-16 | |
+| vuln-0005 | Local Path Traversal in IO Modules | HIGH (7.5) | ✅ FIXED | 2025-10-16 | Duplicate of vuln-0004 |
 
 ---
 
@@ -125,7 +127,9 @@ Implemented comprehensive URL validation:
 
 ---
 
-## vuln-0004: Local Path Traversal in File Operations
+## vuln-0004 & vuln-0005: Local Path Traversal in File Operations
+
+**Note:** vuln-0005 is a duplicate of vuln-0004 (same issue, same fix)
 
 ### Problem
 Multiple file handling modules accepted user-controlled filenames without validation, allowing path traversal attacks. Attackers could:
@@ -187,6 +191,7 @@ Implemented comprehensive path validation system:
 
 ### Documentation
 - `Vuln/vuln-0004-FIXED.md` - Detailed closure report
+- `Vuln/vuln-0005-FIXED.md` - Duplicate closure report
 - `tests/unit/atomict/utils/test_path_security.py` - Test suite (40 tests)
 
 ---
@@ -202,7 +207,8 @@ Implemented comprehensive path validation system:
 6. `Vuln/vuln-0001-FIXED.md` - Vulnerability closure report
 7. `Vuln/vuln-0003-FIXED.md` - Vulnerability closure report
 8. `Vuln/vuln-0004-FIXED.md` - Vulnerability closure report
-9. `Vuln/SUMMARY.md` - This summary
+9. `Vuln/vuln-0005-FIXED.md` - Duplicate vulnerability closure report
+10. `Vuln/SUMMARY.md` - This summary
 
 ### Modified Files
 1. `requirements.txt` - Added `keyring` and `cryptography`
