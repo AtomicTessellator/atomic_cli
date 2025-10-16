@@ -66,6 +66,11 @@ class APIClient:
         """Set bearer token"""
         self._token = token
         self.client.headers["Authorization"] = f"Token {token}"
+    
+    def set_auth(self, username: str, password: str):
+        """Set authentication credentials"""
+        self.username = username
+        self.password = password
 
     def _handle_response(self, response: httpx.Response) -> Union[List, Dict[str, Any]]:
         """Handle API response and common status codes"""
