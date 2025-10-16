@@ -71,6 +71,50 @@ class APIClient:
         """Set authentication credentials"""
         self.username = username
         self.password = password
+    
+    def _sanitize_pagination_url(self, url: str) -> str:
+        """
+        Sanitize pagination URL to prevent SSRF attacks.
+        
+        Validates that absolute URLs match the base_url and converts them to relative paths.
+        Rejects URLs that point to different hosts to prevent SSRF.
+        
+        Args:
+            url: The pagination URL from the API response
+            
+        Returns:
+            A relative path safe to use with the client
+            
+        Raises:
+            ValueError: If the URL is absolute and doesn't match base_url
+        """
+        parsed = urlparse(url)
+        
+        # If it's already a relative path, return as-is
+        if not parsed.scheme:
+            return url
+        
+        # If it's an absolute URL, validate it matches our base_url
+        if parsed.scheme in ('http', 'https'):
+            # Check if URL starts with base_url
+            if not url.startswith(self.base_url):
+                logger.warning(f"Rejecting pagination URL that doesn't match base_url: {url}")
+                console.print(
+                    f"[yellow]Warning: Pagination URL doesn't match expected API endpoint[/yellow]"
+                )
+                raise ValueError(
+                    f"Invalid pagination URL: expected URL starting with {self.base_url}, got {url}"
+                )
+            
+            # Strip base_url to get relative path
+            # Use len() to avoid potential issues with multiple occurrences
+            relative_path = url[len(self.base_url):]
+            logger.debug(f"Converted absolute pagination URL to relative path: {relative_path}")
+            return relative_path
+        
+        # Reject any other schemes (file://, ftp://, etc.)
+        logger.error(f"Rejecting pagination URL with invalid scheme: {url}")
+        raise ValueError(f"Invalid URL scheme in pagination URL: {parsed.scheme}")
 
     def _handle_response(self, response: httpx.Response) -> Union[List, Dict[str, Any]]:
         """Handle API response and common status codes"""
@@ -190,9 +234,9 @@ class APIClient:
                 for result in response.get("results", []):
                     yield result
                 path = response.get("next")
-                # If there's a next page, convert full URL back to path
+                # If there's a next page, validate and convert full URL back to path
                 if path:
-                    path = path.replace(self.base_url, "")
+                    path = self._sanitize_pagination_url(path)
                 params = {}  # Clear params for subsequent requests
             else:
                 break
