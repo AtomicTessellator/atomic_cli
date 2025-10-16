@@ -12,6 +12,7 @@ except ImportError:
     )
 
 from atomict.io.fhiaims import read_aims_output
+from atomict.utils.path_security import ensure_safe_read_path, PathTraversalError
 
 
 def read_final_geometry(workspace_dir: str, simulation_id: str):
@@ -38,16 +39,24 @@ def fhi_to_ase(geometry_file):
     Handles both periodic and non-periodic systems.
     
     Args:
-        geometry_file (str): Path to FHI-aims geometry.in file
+        geometry_file (str): Path to FHI-aims geometry.in file (validated for security)
         
     Returns:
         ase.Atoms: ASE atoms object with appropriate periodicity
+        
+    Raises:
+        PathTraversalError: If the path contains traversal attempts
+        FileNotFoundError: If the file doesn't exist
     """
+    # Validate the file path for safe reading
+    safe_path = ensure_safe_read_path(geometry_file)
+    
     lattice_vectors = []
     positions = []
     symbols = []
     
-    with open(geometry_file, 'r') as f:
+    logging.debug(f"Reading FHI-aims geometry from: {safe_path}")
+    with open(safe_path, 'r') as f:
         for line in f:
             if line.startswith('lattice_vector'):
                 vec = [float(x) for x in line.split()[1:4]]

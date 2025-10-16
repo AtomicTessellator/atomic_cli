@@ -2,8 +2,13 @@
 import os
 import contextlib
 import io
+import logging
+
+from atomict.utils.path_security import validate_safe_path, PathTraversalError
 
 __all__ = ['Trajectory']
+
+logger = logging.getLogger(__name__)
 
 
 def Trajectory(filename, mode='r', atoms=None, properties=None, master=None, comm=None, flush_interval=1):
@@ -13,6 +18,7 @@ def Trajectory(filename, mode='r', atoms=None, properties=None, master=None, com
 
     filename: str
         The name of the file.  Traditionally ends in .traj, but .mpk is recommended for msgpack.
+        Path is validated to prevent directory traversal attacks.
     mode: str
         The mode.  'r' is read mode, the file should already exist, and
         no atoms argument should be specified.
@@ -41,7 +47,20 @@ def Trajectory(filename, mode='r', atoms=None, properties=None, master=None, com
         can significantly improve performance by reducing I/O operations.
 
     The atoms, properties and master arguments are ignored in read mode.
+    
+    Raises:
+        PathTraversalError: If the filename contains path traversal attempts
     """
+    # Validate the filename for security
+    # Note: We validate but don't restrict to a base directory here since
+    # trajectory files can be written/read from various locations
+    try:
+        validated_filename = validate_safe_path(filename)
+        logger.debug(f"Validated trajectory filename: {validated_filename}")
+    except PathTraversalError as e:
+        logger.error(f"Path traversal attempt detected in trajectory filename: {filename}")
+        raise
+    
     if comm is None:
         try:
             from ase.parallel import world
@@ -50,8 +69,8 @@ def Trajectory(filename, mode='r', atoms=None, properties=None, master=None, com
             comm = _DummyComm()
             
     if mode == 'r':
-        return TrajectoryReader(filename)
-    return TrajectoryWriter(filename, mode, atoms, properties, master=master, comm=comm, flush_interval=flush_interval)
+        return TrajectoryReader(validated_filename)
+    return TrajectoryWriter(validated_filename, mode, atoms, properties, master=master, comm=comm, flush_interval=flush_interval)
 
 
 class _DummyComm:
