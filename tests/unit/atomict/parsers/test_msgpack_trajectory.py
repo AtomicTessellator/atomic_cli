@@ -205,6 +205,24 @@ def test_trajectory_context_manager(water, empty_trajectory):
         assert traj[0].get_chemical_symbols() == water.get_chemical_symbols()
 
 
+def test_trajectory_calculator_data(water_with_calc, empty_trajectory):
+    """Test that calculator data is preserved."""
+    # Write atoms with calculator
+    with Trajectory(empty_trajectory, 'w') as traj:
+        traj.write(water_with_calc)
+    
+    # Read back and check calculator data
+    with Trajectory(empty_trajectory, 'r') as traj:
+        loaded_atoms = traj[0]
+        
+        # Check that it has a calculator
+        assert loaded_atoms.calc is not None
+        
+        # Check calculator properties
+        assert loaded_atoms.calc.get_potential_energy() == water_with_calc.calc.get_potential_energy()
+        assert np.allclose(loaded_atoms.calc.get_forces(), water_with_calc.calc.get_forces())
+
+
 def test_trajectory_constraints(constrained_water, empty_trajectory):
     """Test that constraints are preserved."""
     # Write atoms with constraints

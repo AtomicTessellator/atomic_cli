@@ -100,13 +100,11 @@ def convert(input_file, output_file):
             console.print(f"[red]Error: Input file '{input_file}' not found.[/red]")
             return
 
-        msgpack_formats = ["atm"]
         traj_msgpack_formats = ["atraj", "tess"]
         
         def _is_supported(ext: str) -> bool:
             return (
                 ext in RW_FORMATS
-                or ext in msgpack_formats
                 or ext in traj_msgpack_formats
             )
         
@@ -126,9 +124,7 @@ def convert(input_file, output_file):
             return
 
         try:
-            if input_ext in msgpack_formats:
-                atoms = load_msgpack(input_file)
-            elif input_ext in traj_msgpack_formats:
+            if input_ext in traj_msgpack_formats:
                 atoms, _ = load_msgpack_trajectory(input_file)
             else:
                 atoms = read(input_file, index=":")
@@ -143,10 +139,7 @@ def convert(input_file, output_file):
             return
         
         try:
-            if output_ext in msgpack_formats:
-                save_msgpack(atoms, output_file)
-                console.print(f"[green]Successfully converted {input_file} to {output_file} (MSGPACK format)[/green]")
-            elif output_ext in traj_msgpack_formats:
+            if output_ext in traj_msgpack_formats:
                 save_msgpack_trajectory(atoms, output_file)
                 console.print(f"[green]Successfully converted {input_file} to {output_file} (MSGPACK trajectory format)[/green]")
             else:
