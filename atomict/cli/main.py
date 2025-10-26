@@ -75,7 +75,8 @@ def convert(input_file, output_file):
         import os.path
         from ase.io import read, write
         from ase.io.formats import UnknownFileTypeError
-        from atomict.io.msgpack import save_msgpack, save_msgpack_trajectory, load_msgpack, load_msgpack_trajectory
+        from atomict.io.formats.atraj import read_atraj, write_atraj
+        from atomict.io.formats.tess import read_tess, write_tess
     except ImportError:
         console.print("[red]Error: ASE (Atomic Simulation Environment) is required for file conversion.[/red]")
         console.print("[yellow]Install it with: pip install ase[/yellow]")
@@ -124,8 +125,10 @@ def convert(input_file, output_file):
             return
 
         try:
-            if input_ext in traj_msgpack_formats:
-                atoms, _ = load_msgpack_trajectory(input_file)
+            if input_ext == "atraj":
+                atoms, _ = read_atraj(input_file)
+            elif input_ext == "tess":
+                atoms, _ = read_tess(input_file)
             else:
                 atoms = read(input_file, index=":")
         except UnknownFileTypeError:
@@ -139,12 +142,14 @@ def convert(input_file, output_file):
             return
         
         try:
-            if output_ext in traj_msgpack_formats:
-                save_msgpack_trajectory(atoms, output_file)
-                console.print(f"[green]Successfully converted {input_file} to {output_file} (MSGPACK trajectory format)[/green]")
+            if output_ext == "atraj":
+                write_atraj(atoms, output_file)
+            elif output_ext == "tess":
+                write_tess(atoms, output_file)
             else:
                 write(output_file, atoms)
-                console.print(f"[green]Successfully converted {input_file} to {output_file}[/green]")
+
+            console.print(f"[green]Successfully converted {input_file} to {output_file}[/green]")
 
         except UnknownFileTypeError:
             console.print(f"[red]Error: Unknown file type for output file '{output_file}'[/red]")

@@ -1,4 +1,8 @@
-from typing import Union, List, Dict
+from typing import Union, List, Dict, TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    import ase
 
 
 def write_atraj(atoms: Union['ase.Atoms', List['ase.Atoms']], filename: str, metadata: Dict = None):
