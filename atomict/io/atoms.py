@@ -1,4 +1,7 @@
-from typing import Union, List, Dict, Any, Tuple
+import numpy as np
+from ase import Atoms
+from ase.constraints import dict2constraint
+from ase.calculators.singlepoint import SinglePointCalculator
 
 
 def atoms_to_dict(atoms_list, selective=False):
@@ -16,7 +19,6 @@ def atoms_to_dict(atoms_list, selective=False):
     Dict
         Dictionary with all extracted properties
     """
-    import numpy as np
     
     # Create data structure with common properties
     data = {
@@ -205,91 +207,113 @@ def dict_to_atoms(data):
     List[Atoms]
         List of ASE Atoms objects
     """
-    try:
-        import numpy as np
-        from ase import Atoms
-        from ase.constraints import dict2constraint
-        from ase.calculators.singlepoint import SinglePointCalculator
-    except ImportError:
-        raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
     
     n_frames = data['n_frames']
-    atoms_list = []
-    
-    # Get unique symbols
+    atoms_list = [None] * n_frames  # type: ignore[assignment]
+
+    # Cache lookups outside loop for speed
     unique_symbols = data['unique_symbols']
+    unique_symbols_array = np.asarray(unique_symbols, dtype=object)
     symbols_map = data['symbols']
-    
-    # Loop through frames
+    positions = data['positions']
+    cells = data['cell']
+    pbc = data['pbc']
+    n_atoms_seq = data['n_atoms']
+
+    numbers_data = data.get('numbers')
+    has_numbers = numbers_data is not None
+
+    tags = data.get('tags')
+    masses = data.get('masses')
+    momenta = data.get('momenta')
+    initial_charges = data.get('initial_charges')
+    initial_magmoms = data.get('initial_magmoms')
+    top_mask = data.get('top_mask')
+    constraints = data.get('constraints')
+    ase_objtype = data.get('ase_objtype')
+    forces = data.get('forces')
+    stress = data.get('stress')
+    atom_infos = data.get('atom_infos')
+    custom_arrays = data.get('custom_arrays')
+    calc_results = data.get('calc_results')
+
     for i in range(n_frames):
-        # Get symbols for this frame - handle both old and new format
-        if isinstance(symbols_map[i], np.ndarray):
-            frame_symbols = [unique_symbols[idx] for idx in symbols_map[i]]
+        symbols_entry = symbols_map[i]
+        if isinstance(symbols_entry, np.ndarray):
+            symbols_idx = symbols_entry
         else:
-            # Legacy format - symbols were stored as a 2D array
-            idx = i * data['n_atoms'][i]
-            frame_symbols = [unique_symbols[symbols_map[idx + j]] for j in range(data['n_atoms'][i])]
-        
-        # Create atoms object with basic properties
-        atoms = Atoms(
-            symbols=frame_symbols,
-            positions=data['positions'][i],
-            cell=data['cell'][i],
-            pbc=data['pbc'][i],
-        )
+            start_idx = i * n_atoms_seq[i]
+            symbols_idx = symbols_map[start_idx:start_idx + n_atoms_seq[i]]
+
+        if has_numbers:
+            atoms = Atoms(
+                numbers=numbers_data[i],
+                positions=positions[i],
+                cell=cells[i],
+                pbc=pbc[i],
+            )
+        else:
+            # Avoid numpy conversion and tolist() for small arrays
+            if isinstance(symbols_idx, np.ndarray):
+                frame_symbols = [unique_symbols[idx] for idx in symbols_idx]
+            else:
+                frame_symbols = [unique_symbols[idx] for idx in symbols_idx]
+            atoms = Atoms(
+                symbols=frame_symbols,
+                positions=positions[i],
+                cell=cells[i],
+                pbc=pbc[i],
+            )
         
         # Set optional properties if they exist
-        if 'tags' in data:
-            atoms.set_tags(data['tags'][i])
-        
-        if 'masses' in data:
-            atoms.set_masses(data['masses'][i])
-        
-        if 'momenta' in data:
-            atoms.set_momenta(data['momenta'][i])
-        
-        if 'initial_charges' in data:
-            atoms.set_initial_charges(data['initial_charges'][i])
-        
-        if 'initial_magmoms' in data:
-            atoms.set_initial_magnetic_moments(data['initial_magmoms'][i])
-        
-        if 'top_mask' in data and i < len(data['top_mask']) and data['top_mask'][i] is not None:
-            atoms.top_mask = np.array(data['top_mask'][i], dtype=bool)
+        if tags is not None:
+            atoms.set_tags(tags[i])
 
-        if 'numbers' in data:
-            atoms.set_atomic_numbers(data['numbers'][i])
+        if masses is not None:
+            atoms.set_masses(masses[i])
 
-        if 'constraints' in data and i < len(data['constraints']):
-            for c in data['constraints'][i]:
+        if momenta is not None:
+            atoms.set_momenta(momenta[i])
+
+        if initial_charges is not None:
+            atoms.set_initial_charges(initial_charges[i])
+
+        if initial_magmoms is not None:
+            atoms.set_initial_magnetic_moments(initial_magmoms[i])
+
+        if top_mask is not None and i < len(top_mask) and top_mask[i] is not None:
+            atoms.top_mask = np.asarray(top_mask[i], dtype=bool)
+
+        if constraints is not None and i < len(constraints):
+            for c in constraints[i]:
                 atoms.constraints.append(dict2constraint(c))
 
-        if 'ase_objtype' in data and i < len(data['ase_objtype']) and data['ase_objtype'][i] is not None:
-            atoms.ase_objtype = data['ase_objtype'][i]
+        if ase_objtype is not None and i < len(ase_objtype) and ase_objtype[i] is not None:
+            atoms.ase_objtype = ase_objtype[i]
 
-        if 'forces' in data and i < len(data['forces']):
-            atoms.arrays['forces'] = data['forces'][i]
+        if forces is not None and i < len(forces):
+            atoms.arrays['forces'] = forces[i]
 
-        if 'stress' in data and i < len(data['stress']):
-            atoms.stress = np.array(data['stress'][i], dtype=np.float64).copy()
+        if stress is not None and i < len(stress):
+            atoms.stress = np.array(stress[i], dtype=np.float64).copy()
         
         # Restore atom info
-        if 'atom_infos' in data and i < len(data['atom_infos']):
-            atoms.info.update(data['atom_infos'][i])
+        if atom_infos is not None and i < len(atom_infos):
+            atoms.info.update(atom_infos[i])
         
         # Restore custom arrays
-        if 'custom_arrays' in data:
-            for key, values in data['custom_arrays'].items():
+        if custom_arrays is not None:
+            for key, values in custom_arrays.items():
                 if i < len(values) and values[i] is not None:
                     atoms.arrays[key] = values[i]
         
         # Restore calculator if present
         calc_created = False
         calc_data = {}
-        
+
         # First try from calc_results (new format)
-        if 'calc_results' in data and i < len(data['calc_results']):
-            calc_data = data['calc_results'][i]
+        if calc_results is not None and i < len(calc_results):
+            calc_data = calc_results[i]
             
             if calc_data and len(calc_data) > 1:  # Only create calculator if there's data beyond just the name
                 # Initialize a SinglePointCalculator
@@ -320,180 +344,6 @@ def dict_to_atoms(data):
                     calc.results[key] = value
                 atoms.calc = calc
         
-        atoms_list.append(atoms)
+        atoms_list[i] = atoms
     
     return atoms_list
-
-
-def load_msgpack(filename: str, strict_map_key: bool = True) -> Union['ase.Atoms', List['ase.Atoms']]:
-    """Load atoms from a msgpack file with high efficiency and speed.
-    
-    Parameters:
-    -----------
-    filename : str
-        The input filename
-    strict_map_key : bool, default=False
-        If True, only allow string keys in msgpack dictionaries
-        If False, allow integer and other keys in msgpack dictionaries
-    """
-
-    try:
-        import msgpack
-        import msgpack_numpy as m
-    except ImportError:
-        raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
-
-    # Enable numpy array deserialization
-    m.patch()
-    
-    # Load data
-    with open(filename, 'rb') as f:
-        data = msgpack.unpack(f, raw=False, strict_map_key=strict_map_key)
-    
-    # Convert to atoms objects
-    atoms_list = dict_to_atoms(data)
-    
-    # Return single atom or list based on input
-    return atoms_list[0] if data['n_frames'] == 1 else atoms_list
-
-
-def save_msgpack(atoms: Union['ase.Atoms', List['ase.Atoms']], filename: str):
-    """Save atoms to a msgpack file with high efficiency and speed."""
-
-    try:
-        import msgpack
-        import msgpack_numpy as m
-        from ase import Atoms
-    except ImportError:
-        raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
-
-    # Enable numpy array serialization
-    m.patch()
-    
-    # Single atoms case - convert to list
-    if isinstance(atoms, Atoms):
-        atoms_list = [atoms]
-    else:
-        atoms_list = atoms
-    
-    # Extract properties to dictionary - use selective mode for single atoms
-    # to avoid storing default properties
-    selective = len(atoms_list) == 1
-    data = atoms_to_dict(atoms_list, selective=selective)
-    
-    # Pack and save
-    with open(filename, 'wb') as f:
-        msgpack.pack(data, f, use_bin_type=True)
-
-
-def save_msgpack_trajectory(atoms: Union['ase.Atoms', List['ase.Atoms']], filename: str, metadata: Dict = None):
-    """Save atoms to a msgpack trajectory file with metadata.
-    
-    Parameters:
-    -----------
-    atoms : Atoms or list of Atoms
-        The atoms to save
-    filename : str
-        The output filename
-    metadata : dict, optional
-        Additional metadata to store with the trajectory
-    """
-    try:
-        import msgpack
-        import msgpack_numpy as m
-        from ase import Atoms
-    except ImportError:
-        raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
-
-    # Enable numpy array serialization
-    m.patch()
-    
-    # Single atoms case - convert to list
-    if isinstance(atoms, Atoms):
-        atoms_list = [atoms]
-    else:
-        atoms_list = atoms
-    
-    # Create container for the trajectory data
-    traj_data = {
-        'format_version': 1,  # Version for future compatibility
-        'metadata': metadata or {},
-    }
-    
-    # Extract properties to dictionary - no selective mode for trajectories
-    atoms_data = atoms_to_dict(atoms_list, selective=False)
-    
-    # Add atoms data to the trajectory container
-    traj_data['atoms_data'] = atoms_data
-    
-    # Pack and save
-    with open(filename, 'wb') as f:
-        msgpack.pack(traj_data, f, use_bin_type=True)
-
-
-def load_msgpack_trajectory(filename: str, strict_map_key: bool = True) -> Tuple[List['ase.Atoms'], Dict]:
-    """Load atoms from a msgpack trajectory file with metadata.
-    
-    Parameters:
-    -----------
-    filename : str
-        The input filename
-    strict_map_key : bool, default=False
-        If True, only allow string keys in msgpack dictionaries
-        If False, allow integer and other keys in msgpack dictionaries
-        
-    Returns:
-    --------
-    atoms_list : list of Atoms
-        The loaded atoms
-    metadata : dict
-        The metadata stored with the trajectory
-    """
-    try:
-        import msgpack
-        import msgpack_numpy as m
-    except ImportError:
-        raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
-
-    # Enable numpy array deserialization
-    m.patch()
-    
-    # Load data
-    with open(filename, 'rb') as f:
-        traj_data = msgpack.unpack(f, raw=False, strict_map_key=strict_map_key)
-    
-    # Check if this is a new-style trajectory with format_version
-    if isinstance(traj_data, dict) and 'format_version' in traj_data:
-        metadata = traj_data.get('metadata', {})
-        atoms_data = traj_data.get('atoms_data', {})
-    else:
-        # Legacy format - just raw atoms data
-        metadata = {}
-        atoms_data = traj_data
-    
-    # Ensure that calculated properties are transferred to the calculator in dict_to_atoms
-    if 'calc_results' not in atoms_data and hasattr(atoms_data, 'get') and atoms_data.get('forces') is not None:
-        # If we have forces in the data but no calc_results, create calc_results entries
-        calc_data_list = []
-        n_frames = atoms_data.get('n_frames', 0)
-        
-        for i in range(n_frames):
-            calc_data = {'name': 'SinglePointCalculator'}
-            if 'forces' in atoms_data and i < len(atoms_data['forces']):
-                calc_data['forces'] = atoms_data['forces'][i]
-            if 'stress' in atoms_data and i < len(atoms_data['stress']):
-                calc_data['stress'] = atoms_data['stress'][i]
-            if 'energy' in atoms_data and i < len(atoms_data['energy']):
-                calc_data['energy'] = atoms_data['energy'][i]
-            calc_data_list.append(calc_data)
-        
-        atoms_data['calc_results'] = calc_data_list
-    
-    # Convert to atoms objects
-    atoms_list = dict_to_atoms(atoms_data)
-    
-    # Make sure atoms_list is always a list
-    if not isinstance(atoms_list, list):
-        atoms_list = [atoms_list]
-    
-    return atoms_list, metadata

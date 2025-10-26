@@ -1,6 +1,8 @@
+from typing import Union
+
 from atomict.api import get, post
 from atomict.infra.distwork.task import SimulationAction
-from atomict.simulation.models import MODEL_ORB_V3_CONSERVATIVE, MODEL_ESEN_30M_OAM
+from atomict.simulation.models import MODEL_ORB_V3_CONSERVATIVE, MODEL_ESEN_30M_OAM, MODEL_UMA
 
 COMPUTATION_TYPE_RELAXATION = 0
 COMPUTATION_TYPE_SINGLE_POINT = 1
@@ -45,6 +47,7 @@ def create_mlrelaxation(
     computation_type: int = COMPUTATION_TYPE_RELAXATION,
     f_max: float = None,
     model: int = MODEL_ESEN_30M_OAM,
+    calculator: Union[int, None] = None,
     extra_simulation_kwargs: dict = None,
 ):
     """
@@ -62,13 +65,25 @@ def create_mlrelaxation(
             "Invalid computation type. Please use atomict.simulation.mlrelax.COMPUTATION_TYPE_RELAXATION or atomict.simulation.mlrelax.COMPUTATION_TYPE_SINGLE_POINT."
         )
 
-    if model not in [
-        MODEL_ORB_V3_CONSERVATIVE,
-        MODEL_ESEN_30M_OAM,
-    ]:
-        raise ValueError(
-            "Invalid model. Please use atomict.simulation.models.MODEL_ORB_V3_CONSERVATIVE, or atomict.simulation.models.MODEL_ESEN_30M_OAM."
-        )
+    # backwards compat
+    if calculator:
+        if calculator not in [
+            MODEL_ORB_V3_CONSERVATIVE,
+            MODEL_ESEN_30M_OAM,
+            MODEL_UMA
+        ]:
+            raise ValueError(
+                "Invalid model. Please use atomict.simulation.models.MODEL_ORB_V3_CONSERVATIVE, or atomict.simulation.models.MODEL_ESEN_30M_OAM, or atomict.simulation.models.MODEL_UMA."
+            )
+
+    else:
+        if model not in [
+            MODEL_ORB_V3_CONSERVATIVE,
+            MODEL_ESEN_30M_OAM,
+        ]:
+            raise ValueError(
+                "Invalid model. Please use atomict.simulation.models.MODEL_ORB_V3_CONSERVATIVE, or atomict.simulation.models.MODEL_ESEN_30M_OAM, or atomict.simulation.models.MODEL_UMA."
+            )
 
     payload = {
         "project": project_id,
@@ -78,8 +93,13 @@ def create_mlrelaxation(
         "description": description,
         "computation_type": computation_type,
         "f_max": f_max,
-        "model": model,
     }
+
+    # backwards compat
+    if calculator:
+        payload["calculator"] = calculator
+    else:
+        payload["model"] = model
 
     if extra_simulation_kwargs:
         payload.update(extra_simulation_kwargs)

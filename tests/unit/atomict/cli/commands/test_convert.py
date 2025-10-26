@@ -27,7 +27,7 @@ def temp_dir():
 @pytest.mark.parametrize("input_fixture,output_format", [
     ("Al.cif", "xyz"),
     ("Be.cif", "xyz"),
-    ("Al.cif", "atm"),
+    ("Al.cif", "tess"),
 ])
 def test_successful_conversion(runner, fixture_path, temp_dir, input_fixture, output_format):
     # Use real fixture files
