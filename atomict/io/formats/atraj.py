@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 def write_atraj(atoms: Union['ase.Atoms', List['ase.Atoms']], filename: str, metadata: Dict = None):
     """Save atoms to a mpv1 file."""
 
-    from atomict.io.msgpack import atoms_to_dict
+    from atomict.io.atoms import atoms_to_dict
 
     try:
         import msgpack
@@ -46,7 +46,7 @@ def write_atraj(atoms: Union['ase.Atoms', List['ase.Atoms']], filename: str, met
 def read_atraj(filename: str) -> Union['ase.Atoms', List['ase.Atoms']]:
 
     """Load atoms from a mpv1 file."""
-    from atomict.io.msgpack import dict_to_atoms
+    from atomict.io.atoms import dict_to_atoms
 
     try:
         import msgpack

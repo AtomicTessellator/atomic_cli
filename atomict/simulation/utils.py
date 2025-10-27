@@ -10,7 +10,8 @@ except ImportError:
 import logging
 import os
 
-from atomict.io.msgpack import load_msgpack_trajectory
+# from atomict.io.msgpack import load_msgpack_trajectory
+from atomict.io.formats.atraj import read_atraj
 from atomict.io.fhiaims import read_aims_output
 from atomict.io.utils import human_filesize
 from atomict.simulation.mlrelax import get_mlrelax, get_mlrelax_files
@@ -28,7 +29,7 @@ def fetch_source_geometry(sim: dict, workbench_dir: str) -> Atoms:
         download_file(sim["source_geometry"]["id"], workbench_dir + f"/geometry.{extension}")
         
         if extension == "atraj":
-            atoms, _ = load_msgpack_trajectory(workbench_dir + f"/geometry.{extension}")
+            atoms, _ = read_atraj(workbench_dir + f"/geometry.{extension}")
         else:
             atoms = read(workbench_dir + f"/geometry.{extension}")
 
@@ -93,7 +94,7 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
         atraj_file = os.path.join(mlrelax_dir, "relax.atraj")
 
         if os.path.exists(atraj_file):
-            atoms, _ = load_msgpack_trajectory(atraj_file)
+            atoms, _ = read_atraj(atraj_file)
         else:
             atoms = read(traj_file)
         
@@ -110,7 +111,7 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
         download_file(sim["starting_structure_userupload"]["id"], workbench_dir + f"/geometry.{extension}")
         
         if extension == "atraj":
-            atoms, _ = load_msgpack_trajectory(workbench_dir + f"/geometry.{extension}")
+            atoms, _ = read_atraj(workbench_dir + f"/geometry.{extension}")
         else:
             atoms = read(workbench_dir + f"/geometry.{extension}")
 
