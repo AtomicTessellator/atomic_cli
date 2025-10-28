@@ -75,11 +75,12 @@ def create_mlrelaxation(
         "f_max": f_max,
     }
 
-    # backwards compat
-    if calculator:
+    # backwards compat - accept 'model' param but always send 'calculator' to API
+    # (model field was renamed to calculator in the backend)
+    if calculator is not None:
         payload["calculator"] = calculator
     else:
-        payload["model"] = model
+        payload["calculator"] = model
 
     if extra_simulation_kwargs:
         payload.update(extra_simulation_kwargs)
