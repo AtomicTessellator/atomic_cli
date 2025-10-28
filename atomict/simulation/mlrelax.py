@@ -65,26 +65,6 @@ def create_mlrelaxation(
             "Invalid computation type. Please use atomict.simulation.mlrelax.COMPUTATION_TYPE_RELAXATION or atomict.simulation.mlrelax.COMPUTATION_TYPE_SINGLE_POINT."
         )
 
-    # backwards compat
-    if calculator:
-        if calculator not in [
-            MODEL_ORB_V3_CONSERVATIVE,
-            MODEL_ESEN_30M_OAM,
-            MODEL_UMA
-        ]:
-            raise ValueError(
-                "Invalid model. Please use atomict.simulation.models.MODEL_ORB_V3_CONSERVATIVE, or atomict.simulation.models.MODEL_ESEN_30M_OAM, or atomict.simulation.models.MODEL_UMA."
-            )
-
-    else:
-        if model not in [
-            MODEL_ORB_V3_CONSERVATIVE,
-            MODEL_ESEN_30M_OAM,
-        ]:
-            raise ValueError(
-                "Invalid model. Please use atomict.simulation.models.MODEL_ORB_V3_CONSERVATIVE, or atomict.simulation.models.MODEL_ESEN_30M_OAM, or atomict.simulation.models.MODEL_UMA."
-            )
-
     payload = {
         "project": project_id,
         "source_geometry_id": source_geometry_id,
