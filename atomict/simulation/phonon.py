@@ -64,9 +64,6 @@ def create_phonon_run(project_id: str, source_geometry_id: str, action: str, nam
         name: str - The name of the Phonon Run
     """
 
-    if model not in [MODEL_ORB_D3_V2, MODEL_MATTERSIM_1_0_0_5M, MODEL_ORB_V3_CONSERVATIVE, MODEL_ESEN_30M_OAM]:
-        raise ValueError(f"Invalid model: {model}")
-
     if action not in ["LAUNCH", "DRAFT"]:
         raise ValueError(f"Invalid action: {action} (must be 'LAUNCH' or 'DRAFT')")
     
