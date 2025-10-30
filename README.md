@@ -84,3 +84,4 @@ Tab completion is available. Run the hidden command:
 ```tess completion```
 
 This will print out the instructions for enabling tab completion for your shell.
+
