@@ -19,7 +19,7 @@ def write_traj(atoms: Union['ase.Atoms', List['ase.Atoms']], filename: str, meta
         from ase.io.trajectory import TrajectoryWriter
         from ase import Atoms
     except ImportError:
-        raise ImportError("You need to install ASE to use trajectory I/O")
+        raise ImportError("You need to install with `pip install atomict[utils]` to use the newer formats")
     
     # Single atoms case - convert to list
     if isinstance(atoms, Atoms):
@@ -46,7 +46,7 @@ def read_traj(filename: str) -> tuple[List['ase.Atoms'], Dict]:
     try:
         from ase.io.trajectory import TrajectoryReader
     except ImportError:
-        raise ImportError("You need to install ASE to use trajectory I/O")
+        raise ImportError("You need to install with `pip install atomict[utils]` to use the newer formats")
     
     atoms_list = []
     metadata = {}

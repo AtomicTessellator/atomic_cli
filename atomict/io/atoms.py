@@ -1,10 +1,11 @@
+from typing import List
 import numpy as np
 from ase import Atoms
 from ase.constraints import dict2constraint
 from ase.calculators.singlepoint import SinglePointCalculator
 
 
-def atoms_to_dict(atoms_list, selective=False):
+def atoms_to_dict(atoms_list: List[Atoms], selective: bool = False):
     """Extract all properties from ASE Atoms objects into a standardized dictionary.
     
     Parameters:

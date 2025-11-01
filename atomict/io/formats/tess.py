@@ -31,7 +31,7 @@ def write_tess(
         import lz4.block
         import numpy as np
     except ImportError:
-        raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
+        raise ImportError("You need to install with `pip install atomict[utils]` to use the newer formats")
 
     # Enable numpy array serialization
     m.patch()
@@ -164,7 +164,7 @@ def read_tess(filename: str, frames_indices: Optional[List[int]] = None) -> Tupl
         import zlib
         import lz4.block
     except ImportError:
-        raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
+        raise ImportError("You need to install with `pip install atomict[utils]` to use the newer formats")
 
     # Enable numpy array deserialization
     m.patch()
