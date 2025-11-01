@@ -15,7 +15,7 @@ def write_atraj(atoms: Union['ase.Atoms', List['ase.Atoms']], filename: str, met
         import msgpack_numpy as m
         from ase import Atoms
     except ImportError:
-        raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
+        raise ImportError("You need to install with `pip install atomict[utils]` to use the newer formats")
 
     # Enable numpy array serialization
     m.patch()
@@ -52,7 +52,7 @@ def read_atraj(filename: str) -> Union['ase.Atoms', List['ase.Atoms']]:
         import msgpack
         import msgpack_numpy as m
     except ImportError:
-        raise ImportError("You need to install with `pip install atomict[utils]` to use msgpack I/O")
+        raise ImportError("You need to install with `pip install atomict[utils]` to use the newer formats")
 
     # Enable numpy array deserialization
     m.patch()
