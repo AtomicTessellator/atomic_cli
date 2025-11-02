@@ -1,5 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING
+from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from ase import Atoms
@@ -67,14 +67,106 @@ def write_tess(
     positions_list = [a.get_positions().astype(np.float32) for a in frames_list]
     if cell_changes:
         cells_list = [np.array(a.get_cell(), dtype=np.float32) for a in frames_list]
+
+    # Ensure constant atom count and species across frames for tess format
+    first_numbers = np.asarray(frames_list[0].get_atomic_numbers())
+    for a in frames_list[1:]:
+        if len(a) != len(frames_list[0]) or not np.array_equal(np.asarray(a.get_atomic_numbers()), first_numbers):
+            raise ValueError("tess format requires constant atom count and species across frames")
+
+    # Determine static vs per-frame ASE arrays
+    first_tags = np.asarray(frames_list[0].get_tags())
+    tags_static = all(np.array_equal(np.asarray(a.get_tags()), first_tags) for a in frames_list)
+
+    first_init_charges = np.asarray(frames_list[0].get_initial_charges())
+    init_charges_static = all(np.array_equal(np.asarray(a.get_initial_charges()), first_init_charges) for a in frames_list)
+
+    first_init_magmoms = np.asarray(frames_list[0].get_initial_magnetic_moments())
+    init_magmoms_static = all(np.array_equal(np.asarray(a.get_initial_magnetic_moments()), first_init_magmoms) for a in frames_list)
+
+    # Per-frame dynamic arrays/props presence checks
+    has_any_momenta = any(np.any(np.abs(a.get_momenta()) > 1e-10) for a in frames_list)
+    has_any_forces = any('forces' in a.arrays for a in frames_list)
+    has_any_stress = any(hasattr(a, 'stress') and getattr(a, 'stress') is not None for a in frames_list)
+
+    # Helper to extract calculator results per frame (aligned with atoms_to_dict)
+    def _calc_results_for(a):
+        calc_data = {}
+        calc_found = False
+        if hasattr(a, 'calc') and a.calc is not None:
+            calc_found = True
+            calc_data['name'] = a.calc.__class__.__name__
+            for prop in ['energy', 'free_energy', 'forces', 'stress', 'dipole', 'charges', 'magmom', 'magmoms']:
+                try:
+                    if hasattr(a.calc, 'results') and prop in a.calc.results:
+                        calc_data[prop] = a.calc.results[prop]
+                    else:
+                        value = a.calc.get_property(prop, a)
+                        if value is not None:
+                            calc_data[prop] = value
+                except Exception:
+                    pass
+        if not calc_found and hasattr(a, 'info'):
+            calc_name = a.info.get('_calc_name')
+            if calc_name:
+                calc_data['name'] = calc_name
+                for key, value in a.info.items():
+                    if key.startswith('_calc_') and key != '_calc_name':
+                        calc_data[key[6:]] = value
+        return calc_data if len(calc_data) > 0 else None
+
+    has_any_calc = any(_calc_results_for(a) is not None for a in frames_list)
+
+    # Helper to serialize info dict values (to_dict/todict if available)
+    def _serialize_info(info: Dict) -> Dict:
+        out = {}
+        for k, v in (info or {}).items():
+            if hasattr(v, 'to_dict') and callable(v.to_dict):
+                out[k] = v.to_dict()
+            elif hasattr(v, 'todict') and callable(v.todict):
+                out[k] = v.todict()
+            else:
+                out[k] = v
+        return out
     
     # Optimized frame serialization - pack only essential per-frame data  
     def _pack_frame(i: int) -> bytes:
         # Only pack data that changes between frames
+        a = frames_list[i]
         frame_dict = {'positions': positions_list[i]}
         if cell_changes:
             frame_dict['cell'] = cells_list[i]
-        return msgpack.packb(frame_dict, use_bin_type=True)
+        # Per-frame arrays
+        if has_any_momenta:
+            frame_dict['momenta'] = a.get_momenta()
+        if not tags_static:
+            frame_dict['tags'] = a.get_tags()
+        if not init_charges_static:
+            frame_dict['initial_charges'] = a.get_initial_charges()
+        if not init_magmoms_static:
+            frame_dict['initial_magmoms'] = a.get_initial_magnetic_moments()
+        # Forces/stress
+        if has_any_forces and 'forces' in a.arrays:
+            frame_dict['forces'] = a.arrays['forces']
+        if has_any_stress and hasattr(a, 'stress') and getattr(a, 'stress') is not None:
+            frame_dict['stress'] = np.asarray(getattr(a, 'stress'), dtype=np.float64)
+        # Calculator results
+        if has_any_calc:
+            calc_data = _calc_results_for(a)
+            if calc_data is not None:
+                frame_dict['calc_results'] = calc_data
+        # Info dict
+        if hasattr(a, 'info') and a.info:
+            frame_dict['info'] = _serialize_info(a.info)
+        # Custom arrays
+        standard_arrays = {'numbers', 'positions', 'momenta', 'masses', 'tags', 'charges', 'forces'}
+        custom_arrays = {}
+        for key, value in a.arrays.items():
+            if key not in standard_arrays:
+                custom_arrays[key] = value
+        if custom_arrays:
+            frame_dict['custom_arrays'] = custom_arrays
+        return cast(bytes, msgpack.packb(frame_dict, use_bin_type=True))
 
     with open(filename, 'wb', buffering=1024*1024) as f:
         frame_offsets: List[Tuple[int, int]] = []
@@ -121,8 +213,8 @@ def write_tess(
         symbols_idx = np.array([unique_symbols_lookup[s] for s in symbols], dtype=np.uint16)
         
         # Write header
-        header_dict: Dict[str, object] = {
-            'format_version': 4,
+        header_dict: Dict[str, Any] = {
+            'format_version': 5,
             'metadata': dict(metadata or {}),
             'unique_symbols': unique_symbols,
             'num_frames': len(frames_list),
@@ -138,14 +230,20 @@ def write_tess(
                 'cell_changes': cell_changes,
             }
         }
+        # Add static arrays when invariant across frames
+        if tags_static:
+            header_dict['static_data']['tags'] = first_tags
+        if init_charges_static:
+            header_dict['static_data']['initial_charges'] = first_init_charges
+        if init_magmoms_static:
+            header_dict['static_data']['initial_magmoms'] = first_init_magmoms
         if compression_mode != 'none':
-            header_dict['compression'] = {
-                'type': compression_mode,
-            }
+            comp_dict: Dict[str, Any] = {'type': compression_mode}
             if compression_mode == 'zlib':
-                header_dict['compression']['level'] = compression_level
+                comp_dict['level'] = int(compression_level)
+            header_dict['compression'] = comp_dict
             header_dict['frame_uncompressed_lengths'] = uncompressed_lengths
-        header_bytes = msgpack.packb(header_dict, use_bin_type=True)
+        header_bytes = cast(bytes, msgpack.packb(header_dict, use_bin_type=True))
         header_start = f.tell()
         f.write(header_bytes)
 
@@ -163,6 +261,8 @@ def read_tess(filename: str, frames_indices: Optional[List[int]] = None) -> Tupl
         import mmap
         import zlib
         import lz4.block
+        import numpy as np
+        from ase.calculators.singlepoint import SinglePointCalculator
     except ImportError:
         raise ImportError("You need to install with `pip install atomict[utils]` to use the newer formats")
 
@@ -185,7 +285,7 @@ def read_tess(filename: str, frames_indices: Optional[List[int]] = None) -> Tupl
             header = msgpack.unpackb(header_bytes, raw=False, strict_map_key=False)
 
             format_version = header.get('format_version', 1)
-            if format_version not in {2, 3, 4}:
+            if format_version not in {2, 3, 4, 5}:
                 raise ValueError("Invalid format version")
 
             compression_info = header.get('compression')
@@ -218,10 +318,10 @@ def read_tess(filename: str, frames_indices: Optional[List[int]] = None) -> Tupl
                 filtered_offsets = [(i, offset) for i, offset in enumerate(frame_offsets)]
 
             # Pre-allocate the result list based on requested frames
-            atoms_list = [None] * len(frames_to_load)
+            atoms_list: List[Optional[Atoms]] = [None] * len(frames_to_load)
             
-            # Handle format version 4 with static data
-            if format_version == 4:
+            # Handle format version 4/5 with static data
+            if format_version in {4, 5}:
                 static_data = header.get('static_data', {})
                 unique_symbols = header['unique_symbols']
                 symbols_idx = static_data['symbols']
@@ -231,13 +331,21 @@ def read_tess(filename: str, frames_indices: Optional[List[int]] = None) -> Tupl
                 pbc = static_data['pbc']
                 static_cell = static_data.get('cell')
                 cell_changes = static_data.get('cell_changes', True)
+                static_tags = static_data.get('tags')
+                static_init_charges = static_data.get('initial_charges')
+                static_init_magmoms = static_data.get('initial_magmoms')
                 
                 # Create a template Atoms object to clone for efficiency
-                import numpy as np
                 template_atoms = Atoms(numbers=numbers, pbc=pbc)
                 template_atoms.set_masses(masses)
                 if static_cell is not None:
                     template_atoms.set_cell(static_cell)
+                if static_tags is not None:
+                    template_atoms.set_tags(static_tags)
+                if static_init_charges is not None:
+                    template_atoms.set_initial_charges(static_init_charges)
+                if static_init_magmoms is not None:
+                    template_atoms.set_initial_magnetic_moments(static_init_magmoms)
             else:
                 convert = dict_to_atoms
                 static_data = None
@@ -263,12 +371,42 @@ def read_tess(filename: str, frames_indices: Optional[List[int]] = None) -> Tupl
                             frame_dict = msgpack.unpackb(
                                 frame_bytes, raw=False, strict_map_key=False
                             )
-                            if format_version == 4:
-                                # Fast path for v4: clone template and update only changing data
+                            if format_version in {4, 5}:
+                                # Fast path for v4/v5: clone template and update changing data
                                 atoms = template_atoms.copy()
                                 atoms.set_positions(frame_dict['positions'])
                                 if cell_changes and 'cell' in frame_dict:
                                     atoms.set_cell(frame_dict['cell'])
+                                # v5: restore additional properties if present
+                                if format_version == 5:
+                                    if 'tags' in frame_dict:
+                                        atoms.set_tags(frame_dict['tags'])
+                                    if 'initial_charges' in frame_dict:
+                                        atoms.set_initial_charges(frame_dict['initial_charges'])
+                                    if 'initial_magmoms' in frame_dict:
+                                        atoms.set_initial_magnetic_moments(frame_dict['initial_magmoms'])
+                                    if 'momenta' in frame_dict:
+                                        atoms.set_momenta(frame_dict['momenta'])
+                                    if 'forces' in frame_dict:
+                                        atoms.arrays['forces'] = frame_dict['forces']
+                                    if 'info' in frame_dict and isinstance(frame_dict['info'], dict):
+                                        atoms.info.update(frame_dict['info'])
+                                    if 'custom_arrays' in frame_dict and isinstance(frame_dict['custom_arrays'], dict):
+                                        for k, v in frame_dict['custom_arrays'].items():
+                                            atoms.arrays[k] = v
+                                    # Calculator results (merge stress if present)
+                                    calc_data = {}
+                                    if 'calc_results' in frame_dict and isinstance(frame_dict['calc_results'], dict):
+                                        calc_data = dict(frame_dict['calc_results'])
+                                    if 'stress' in frame_dict:
+                                        calc_data['stress'] = frame_dict['stress']
+                                    if len(calc_data) > 0:
+                                        calc = SinglePointCalculator(atoms)
+                                        for key, value in calc_data.items():
+                                            if key != 'name':
+                                                calc.results[key] = value
+                                        if calc.results:
+                                            atoms.calc = calc
                                 atoms_list[chunk_start + result_idx] = atoms
                             else:
                                 atoms_list[chunk_start + result_idx] = convert(frame_dict)[0]
@@ -291,11 +429,39 @@ def read_tess(filename: str, frames_indices: Optional[List[int]] = None) -> Tupl
                             frame_dict = msgpack.unpackb(
                                 frame_bytes, raw=False, strict_map_key=False
                             )
-                            if format_version == 4:
+                            if format_version in {4, 5}:
                                 atoms = template_atoms.copy()
                                 atoms.set_positions(frame_dict['positions'])
                                 if cell_changes and 'cell' in frame_dict:
                                     atoms.set_cell(frame_dict['cell'])
+                                if format_version == 5:
+                                    if 'tags' in frame_dict:
+                                        atoms.set_tags(frame_dict['tags'])
+                                    if 'initial_charges' in frame_dict:
+                                        atoms.set_initial_charges(frame_dict['initial_charges'])
+                                    if 'initial_magmoms' in frame_dict:
+                                        atoms.set_initial_magnetic_moments(frame_dict['initial_magmoms'])
+                                    if 'momenta' in frame_dict:
+                                        atoms.set_momenta(frame_dict['momenta'])
+                                    if 'forces' in frame_dict:
+                                        atoms.arrays['forces'] = frame_dict['forces']
+                                    if 'info' in frame_dict and isinstance(frame_dict['info'], dict):
+                                        atoms.info.update(frame_dict['info'])
+                                    if 'custom_arrays' in frame_dict and isinstance(frame_dict['custom_arrays'], dict):
+                                        for k, v in frame_dict['custom_arrays'].items():
+                                            atoms.arrays[k] = v
+                                    calc_data = {}
+                                    if 'calc_results' in frame_dict and isinstance(frame_dict['calc_results'], dict):
+                                        calc_data = dict(frame_dict['calc_results'])
+                                    if 'stress' in frame_dict:
+                                        calc_data['stress'] = frame_dict['stress']
+                                    if len(calc_data) > 0:
+                                        calc = SinglePointCalculator(atoms)
+                                        for key, value in calc_data.items():
+                                            if key != 'name':
+                                                calc.results[key] = value
+                                        if calc.results:
+                                            atoms.calc = calc
                                 atoms_list[chunk_start + result_idx] = atoms
                             else:
                                 atoms_list[chunk_start + result_idx] = convert(frame_dict)[0]
@@ -305,15 +471,43 @@ def read_tess(filename: str, frames_indices: Optional[List[int]] = None) -> Tupl
                     frame_dict = msgpack.unpackb(
                         frame_slice, raw=False, strict_map_key=False
                     )
-                    if format_version == 4:
+                    if format_version in {4, 5}:
                         atoms = template_atoms.copy()
                         atoms.set_positions(frame_dict['positions'])
                         if cell_changes and 'cell' in frame_dict:
                             atoms.set_cell(frame_dict['cell'])
+                        if format_version == 5:
+                            if 'tags' in frame_dict:
+                                atoms.set_tags(frame_dict['tags'])
+                            if 'initial_charges' in frame_dict:
+                                atoms.set_initial_charges(frame_dict['initial_charges'])
+                            if 'initial_magmoms' in frame_dict:
+                                atoms.set_initial_magnetic_moments(frame_dict['initial_magmoms'])
+                            if 'momenta' in frame_dict:
+                                atoms.set_momenta(frame_dict['momenta'])
+                            if 'forces' in frame_dict:
+                                atoms.arrays['forces'] = frame_dict['forces']
+                            if 'info' in frame_dict and isinstance(frame_dict['info'], dict):
+                                atoms.info.update(frame_dict['info'])
+                            if 'custom_arrays' in frame_dict and isinstance(frame_dict['custom_arrays'], dict):
+                                for k, v in frame_dict['custom_arrays'].items():
+                                    atoms.arrays[k] = v
+                            calc_data = {}
+                            if 'calc_results' in frame_dict and isinstance(frame_dict['calc_results'], dict):
+                                calc_data = dict(frame_dict['calc_results'])
+                            if 'stress' in frame_dict:
+                                calc_data['stress'] = frame_dict['stress']
+                            if len(calc_data) > 0:
+                                calc = SinglePointCalculator(atoms)
+                                for key, value in calc_data.items():
+                                    if key != 'name':
+                                        calc.results[key] = value
+                                if calc.results:
+                                    atoms.calc = calc
                         atoms_list[result_idx] = atoms
                     else:
                         atoms_list[result_idx] = convert(frame_dict)[0]
         finally:
             mm.close()
     
-    return atoms_list, metadata
+    return cast(List[Atoms], atoms_list), metadata
