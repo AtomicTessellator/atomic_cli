@@ -15,6 +15,45 @@ def _chunk_size(max_workers: int) -> int:
     return max(1, max_workers * 4)
 
 
+def _read_tess_header(filename: str) -> Dict[str, Any]:
+
+    try:
+        import msgpack
+        import msgpack_numpy as m
+        import mmap
+    except ImportError:
+        raise ImportError("You need to install with `pip install atomict[utils]` to use the newer formats")
+
+    # Enable numpy array deserialization for header contents that may include numpy arrays
+    m.patch()
+
+    with open(filename, 'rb') as f:
+        mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+        try:
+            # Advise the kernel we'll read sequentially if available
+            if hasattr(mm, 'madvise'):
+                import mmap as mmap_module
+                if hasattr(mmap_module, 'MADV_SEQUENTIAL'):
+                    mm.madvise(mmap_module.MADV_SEQUENTIAL)
+
+            file_size = mm.size()
+            header_start = int.from_bytes(mm[file_size - 8:file_size], 'little')
+            header_bytes = mm[header_start:file_size - 8]
+            header = msgpack.unpackb(header_bytes, raw=False, strict_map_key=False)
+
+            format_version = header.get('format_version', 1)
+            if format_version not in {2, 3, 4, 5}:
+                raise ValueError("Invalid format version")
+
+            # Normalize frame_offsets to a list of tuples for convenience
+            if 'frame_offsets' in header and isinstance(header['frame_offsets'], list):
+                header['frame_offsets'] = [tuple(offset) for offset in header['frame_offsets']]
+
+            return header
+        finally:
+            mm.close()
+
+
 def write_tess(
     atoms: Union['Atoms', List['Atoms']],
     filename: str,
@@ -269,6 +308,25 @@ def read_tess(filename: str, frames_indices: Optional[List[int]] = None) -> Tupl
     # Enable numpy array deserialization
     m.patch()
 
+    # Read header once using helper
+    header = _read_tess_header(filename)
+
+    format_version = header.get('format_version', 1)
+    compression_info = header.get('compression')
+    if isinstance(compression_info, dict):
+        compression_type = compression_info.get('type', 'none')
+    elif isinstance(compression_info, str):
+        compression_type = compression_info
+    else:
+        compression_type = 'none'
+    compression_type = (compression_type or 'none').lower()
+    if compression_type not in {'none', 'zlib', 'lz4'}:
+        raise ValueError(f"Unsupported compression type '{compression_type}' in tess file")
+
+    metadata = header.get('metadata', {})
+    frame_offsets = [tuple(offset) for offset in header['frame_offsets']]
+    num_frames = len(frame_offsets)
+
     with open(filename, 'rb') as f:
         # Use mmap with larger read-ahead hint
         mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
@@ -278,30 +336,6 @@ def read_tess(filename: str, frames_indices: Optional[List[int]] = None) -> Tupl
                 import mmap as mmap_module
                 if hasattr(mmap_module, 'MADV_SEQUENTIAL'):
                     mm.madvise(mmap_module.MADV_SEQUENTIAL)
-            
-            file_size = mm.size()
-            header_start = int.from_bytes(mm[file_size - 8:file_size], 'little')
-            header_bytes = mm[header_start:file_size - 8]
-            header = msgpack.unpackb(header_bytes, raw=False, strict_map_key=False)
-
-            format_version = header.get('format_version', 1)
-            if format_version not in {2, 3, 4, 5}:
-                raise ValueError("Invalid format version")
-
-            compression_info = header.get('compression')
-            if isinstance(compression_info, dict):
-                compression_type = compression_info.get('type', 'none')
-            elif isinstance(compression_info, str):
-                compression_type = compression_info
-            else:
-                compression_type = 'none'
-            compression_type = (compression_type or 'none').lower()
-            if compression_type not in {'none', 'zlib', 'lz4'}:
-                raise ValueError(f"Unsupported compression type '{compression_type}' in tess file")
-
-            metadata = header.get('metadata', {})
-            frame_offsets = [tuple(offset) for offset in header['frame_offsets']]
-            num_frames = len(frame_offsets)
 
             # Determine which frames to load
             if frames_indices is not None:
@@ -319,7 +353,7 @@ def read_tess(filename: str, frames_indices: Optional[List[int]] = None) -> Tupl
 
             # Pre-allocate the result list based on requested frames
             atoms_list: List[Optional[Atoms]] = [None] * len(frames_to_load)
-            
+
             # Handle format version 4/5 with static data
             if format_version in {4, 5}:
                 static_data = header.get('static_data', {})
@@ -334,7 +368,7 @@ def read_tess(filename: str, frames_indices: Optional[List[int]] = None) -> Tupl
                 static_tags = static_data.get('tags')
                 static_init_charges = static_data.get('initial_charges')
                 static_init_magmoms = static_data.get('initial_magmoms')
-                
+
                 # Create a template Atoms object to clone for efficiency
                 template_atoms = Atoms(numbers=numbers, pbc=pbc)
                 template_atoms.set_masses(masses)
@@ -350,7 +384,7 @@ def read_tess(filename: str, frames_indices: Optional[List[int]] = None) -> Tupl
                 convert = dict_to_atoms
                 static_data = None
                 cell_changes = True
-            
+
             # Process frames with minimal overhead
             if compression_type == 'zlib' and len(filtered_offsets) > 0:
 
