@@ -122,7 +122,8 @@ class TrajectoryWriter:
                 if numbers is None or positions is None:
                     raise TypeError('Unsupported atoms-like object; expected ASE Atoms or compatible wrapper')
                 plain = Atoms(numbers=numbers, positions=positions, cell=cell, pbc=pbc)
-            self._buffer.append(plain)
+            # Make a copy to avoid all frames pointing to the same object after in-place modifications
+            self._buffer.append(plain.copy())
 
     def close(self) -> None:
         """Flush buffered frames and/or close backend."""
