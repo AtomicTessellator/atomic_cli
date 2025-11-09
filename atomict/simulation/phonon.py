@@ -67,6 +67,16 @@ def create_phonon_run(project_id: str, source_geometry_id: str, action: str, nam
     if action not in ["LAUNCH", "DRAFT"]:
         raise ValueError(f"Invalid action: {action} (must be 'LAUNCH' or 'DRAFT')")
     
+    # Validate model is one of the supported constants
+    valid_models = [
+        MODEL_ORB_D3_V2,
+        MODEL_MATTERSIM_1_0_0_5M,
+        MODEL_ORB_V3_CONSERVATIVE,
+        MODEL_ESEN_30M_OAM,
+    ]
+    if model not in valid_models:
+        raise ValueError(f"Invalid model: {model}")
+    
     payload = {
         "project_id": project_id,
         "source_geometry_id": source_geometry_id,
