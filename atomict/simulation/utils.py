@@ -1,11 +1,5 @@
-try:
-    from ase import Atoms
-    from ase.io import read
-except ImportError:
-    raise ImportError(
-        "The 'ase' package is required for JSON operations with Atoms objects. "
-        "To install the optional dependencies such as ase, spglib, pymatgen, use `pip install atomict[utils]`"
-    )
+from ase import Atoms
+from ase.io import read
 
 import logging
 import os

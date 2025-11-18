@@ -9,13 +9,9 @@ from rich.console import Console
 from atomict.__version__ import __version__
 from atomict.cli.commands import login, token, user
 from atomict.cli.ext.custom_classes import DefaultCommandGroup
-
-try:
-    from .commands import adsorbate, catalysis, k8s, project, task, traj, upload
-    from .commands.exploration import soec, sqs
-    from .commands.simulation import fhiaims, kpoint, vibes
-except ImportError:
-    sys.exit(1)
+from .commands import adsorbate, catalysis, k8s, project, task, traj, upload
+from .commands.exploration import soec, sqs
+from .commands.simulation import fhiaims, kpoint, vibes
 
 
 console = Console()
@@ -71,16 +67,11 @@ def convert(input_file, output_file):
       tess input.traj output.atraj
       
     """ 
-    try:
-        import os.path
-        from ase.io import read, write
-        from ase.io.formats import UnknownFileTypeError
-        from atomict.io.formats.atraj import read_atraj, write_atraj
-        from atomict.io.formats.tess import read_tess, write_tess
-    except ImportError:
-        console.print("[red]Error: ASE (Atomic Simulation Environment) is required for file conversion.[/red]")
-        console.print("[yellow]Install it with: pip install ase[/yellow]")
-        return
+    import os.path
+    from ase.io import read, write
+    from ase.io.formats import UnknownFileTypeError
+    from atomict.io.formats.atraj import read_atraj, write_atraj
+    from atomict.io.formats.tess import read_tess, write_tess
 
     RW_FORMATS = [
         'abinit-in', 'aims', 'bundletrajectory', 'castep-cell', 'castep-geom', 

@@ -1,15 +1,8 @@
 import os
 import logging
-
-try:
-    from ase import Atoms
-    from ase.io import read
-    from ase.io.formats import UnknownFileTypeError
-except ImportError:
-    raise ImportError(
-        "The 'ase' package is required for JSON operations with Atoms objects. "
-        "To install the optional dependencies such as ase, spglib, pymatgen, use `pip install atomict[utils]`"
-    )
+from ase import Atoms
+from ase.io import read
+from ase.io.formats import UnknownFileTypeError
 
 from atomict.io.fhiaims import read_aims_output
 
