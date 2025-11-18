@@ -17,12 +17,9 @@ def _chunk_size(max_workers: int) -> int:
 
 def _read_tess_header(filename: str) -> Dict[str, Any]:
 
-    try:
-        import msgpack
-        import msgpack_numpy as m
-        import mmap
-    except ImportError:
-        raise ImportError("You need to install with `pip install atomict[utils]` to use the newer formats")
+    import msgpack
+    import msgpack_numpy as m
+    import mmap
 
     # Enable numpy array deserialization for header contents that may include numpy arrays
     m.patch()
@@ -56,16 +53,13 @@ def _read_tess_header(filename: str) -> Dict[str, Any]:
 
 def _decode_frame(frame_bytes: bytes, header: Dict[str, Any], template_atoms: Optional['Atoms'] = None) -> 'Atoms':
 
-    try:
-        import msgpack
-        import msgpack_numpy as m
-        from atomict.io.atoms import dict_to_atoms
-        from ase import Atoms
-        from ase.calculators.singlepoint import SinglePointCalculator
-        import zlib
-        import lz4.block
-    except ImportError:
-        raise ImportError("You need to install with `pip install atomict[utils]` to use the newer formats")
+    import msgpack
+    import msgpack_numpy as m
+    from atomict.io.atoms import dict_to_atoms
+    from ase import Atoms
+    from ase.calculators.singlepoint import SinglePointCalculator
+    import zlib
+    import lz4.block
 
     # Enable numpy array deserialization for any numpy contents
     m.patch()
@@ -162,15 +156,12 @@ def write_tess(
     compression_level: int = 0,
 ) -> None:
 
-    try:
-        import msgpack
-        import msgpack_numpy as m
-        from ase import Atoms
-        import zlib
-        import lz4.block
-        import numpy as np
-    except ImportError:
-        raise ImportError("You need to install with `pip install atomict[utils]` to use the newer formats")
+    import msgpack
+    import msgpack_numpy as m
+    from ase import Atoms
+    import zlib
+    import lz4.block
+    import numpy as np
 
     # Enable numpy array serialization
     m.patch()
@@ -392,18 +383,15 @@ def write_tess(
 
 def read_tess(filename: str, frames_indices: Optional[List[int]] = None) -> Tuple[List['Atoms'], Dict]:
 
-    try:
-        import msgpack
-        import msgpack_numpy as m
-        from atomict.io.atoms import dict_to_atoms
-        from ase import Atoms
-        import mmap
-        import zlib
-        import lz4.block
-        import numpy as np
-        from ase.calculators.singlepoint import SinglePointCalculator
-    except ImportError:
-        raise ImportError("You need to install with `pip install atomict[utils]` to use the newer formats")
+    import msgpack
+    import msgpack_numpy as m
+    from atomict.io.atoms import dict_to_atoms
+    from ase import Atoms
+    import mmap
+    import zlib
+    import lz4.block
+    import numpy as np
+    from ase.calculators.singlepoint import SinglePointCalculator
 
     # Enable numpy array deserialization
     m.patch()

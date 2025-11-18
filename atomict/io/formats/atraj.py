@@ -9,13 +9,9 @@ def write_atraj(atoms: Union['ase.Atoms', List['ase.Atoms']], filename: str, met
     """Save atoms to a mpv1 file."""
 
     from atomict.io.atoms import atoms_to_dict
-
-    try:
-        import msgpack
-        import msgpack_numpy as m
-        from ase import Atoms
-    except ImportError:
-        raise ImportError("You need to install with `pip install atomict[utils]` to use the newer formats")
+    import msgpack
+    import msgpack_numpy as m
+    from ase import Atoms
 
     # Enable numpy array serialization
     m.patch()
@@ -47,12 +43,8 @@ def read_atraj(filename: str) -> Union['ase.Atoms', List['ase.Atoms']]:
 
     """Load atoms from a mpv1 file."""
     from atomict.io.atoms import dict_to_atoms
-
-    try:
-        import msgpack
-        import msgpack_numpy as m
-    except ImportError:
-        raise ImportError("You need to install with `pip install atomict[utils]` to use the newer formats")
+    import msgpack
+    import msgpack_numpy as m
 
     # Enable numpy array deserialization
     m.patch()
