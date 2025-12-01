@@ -1,11 +1,5 @@
-try:
-    from ase.io.aims import check_convergence, get_aims_out_chunks, get_header_chunk
-    from ase.utils import reader
-except ImportError:
-    raise ImportError(
-        "The 'ase' package is required for FHI-aims operations. "
-        "To install the optional dependencies such as ase, spglib, pymatgen, use `pip install atomict[utils]`"
-    )
+from ase.io.aims import check_convergence, get_aims_out_chunks, get_header_chunk
+from ase.utils import reader
 
 
 # We have to write our own function because he read_aims_output function inside ASE only supports

@@ -1,14 +1,8 @@
 import logging
-try:
-    import ase.io
-    import spglib
-    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-    from pymatgen.core import Structure
-except ImportError:
-    raise ImportError(
-        "The 'ase' package is required for FHI-aims operations. "
-        "To install the optional dependencies such as ase, spglib, pymatgen, use `pip install atomict[utils]`"
-    )
+import ase.io
+import spglib
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+from pymatgen.core import Structure
 
 
 class CIFAnalyzer:

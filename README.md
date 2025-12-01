@@ -4,11 +4,8 @@
 ```
 pip install atomict
 
-# install utils package with scientific extensions (ase, spglib) 
-pip install atomict[utils]
-
 # ", with a git url
-pip install git+https://github.com/AtomicTessellator/atomic_cli#egg=atomict[utils]
+pip install git+https://github.com/AtomicTessellator/atomic_cli#egg=atomict
 
 # Troubleshooting
 If pip install is not working, try:
@@ -17,6 +14,7 @@ pip install --upgrade setuptools pip wheel
 
 ## Installation for devs
 ```
+# installs linting and formatting tools with some general defaults
 pip install -e ".[dev]"
 ```
 
