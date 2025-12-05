@@ -1,5 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING, Any, cast
+from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING, Any, cast, IO
+import contextlib
+import os
 
 if TYPE_CHECKING:
     from ase import Atoms
@@ -15,38 +17,36 @@ def _chunk_size(max_workers: int) -> int:
     return max(1, max_workers * 4)
 
 
-def _read_tess_header(filename: str) -> Dict[str, Any]:
-
+def _parse_tess_header(mm: Any, file_size: int) -> Dict[str, Any]:
     import msgpack
     import msgpack_numpy as m
-    import mmap
-
+    
     # Enable numpy array deserialization for header contents that may include numpy arrays
     m.patch()
+
+    header_start = int.from_bytes(mm[file_size - 8:file_size], 'little')
+    header_bytes = mm[header_start:file_size - 8]
+    header = msgpack.unpackb(header_bytes, raw=False, strict_map_key=False)
+
+    format_version = header.get('format_version', 1)
+    if format_version not in {2, 3, 4, 5}:
+        raise ValueError("Invalid format version")
+
+    # Normalize frame_offsets to a list of tuples for convenience
+    if 'frame_offsets' in header and isinstance(header['frame_offsets'], list):
+        header['frame_offsets'] = [tuple(offset) for offset in header['frame_offsets']]
+
+    return header
+
+
+def _read_tess_header(filename: str) -> Dict[str, Any]:
+
+    import mmap
 
     with open(filename, 'rb') as f:
         mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
         try:
-            # Advise the kernel we'll read sequentially if available
-            if hasattr(mm, 'madvise'):
-                import mmap as mmap_module
-                if hasattr(mmap_module, 'MADV_SEQUENTIAL'):
-                    mm.madvise(mmap_module.MADV_SEQUENTIAL)
-
-            file_size = mm.size()
-            header_start = int.from_bytes(mm[file_size - 8:file_size], 'little')
-            header_bytes = mm[header_start:file_size - 8]
-            header = msgpack.unpackb(header_bytes, raw=False, strict_map_key=False)
-
-            format_version = header.get('format_version', 1)
-            if format_version not in {2, 3, 4, 5}:
-                raise ValueError("Invalid format version")
-
-            # Normalize frame_offsets to a list of tuples for convenience
-            if 'frame_offsets' in header and isinstance(header['frame_offsets'], list):
-                header['frame_offsets'] = [tuple(offset) for offset in header['frame_offsets']]
-
-            return header
+            return _parse_tess_header(mm, mm.size())
         finally:
             mm.close()
 
@@ -381,7 +381,7 @@ def write_tess(
         f.write(header_start.to_bytes(8, 'little'))
 
 
-def read_tess(filename: str, frames_indices: Optional[List[int]] = None) -> Tuple[List['Atoms'], Dict]:
+def read_tess(filename: Union[str, IO[bytes]], frames_indices: Optional[List[int]] = None) -> Tuple[List['Atoms'], Dict]:
 
     import msgpack
     import msgpack_numpy as m
@@ -396,102 +396,140 @@ def read_tess(filename: str, frames_indices: Optional[List[int]] = None) -> Tupl
     # Enable numpy array deserialization
     m.patch()
 
-    # Read header once using helper
-    header = _read_tess_header(filename)
-
-    format_version = header.get('format_version', 1)
-    compression_info = header.get('compression')
-    if isinstance(compression_info, dict):
-        compression_type = compression_info.get('type', 'none')
-    elif isinstance(compression_info, str):
-        compression_type = compression_info
+    # Manage file context
+    if isinstance(filename, (str, os.PathLike)):
+        f_ctx = open(filename, 'rb')
+        f_to_close = True
     else:
-        compression_type = 'none'
-    compression_type = (compression_type or 'none').lower()
-    if compression_type not in {'none', 'zlib', 'lz4'}:
-        raise ValueError(f"Unsupported compression type '{compression_type}' in tess file")
+        f_ctx = filename
+        f_to_close = False
 
-    metadata = header.get('metadata', {})
-    frame_offsets = [tuple(offset) for offset in header['frame_offsets']]
-    num_frames = len(frame_offsets)
+    with contextlib.ExitStack() as stack:
+        if f_to_close:
+            f = stack.enter_context(f_ctx)
+        else:
+            f = f_ctx
 
-    with open(filename, 'rb') as f:
-        # Use mmap with larger read-ahead hint
-        mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-        try:
-            # Advise the kernel we'll read sequentially
-            if hasattr(mm, 'madvise'):
-                import mmap as mmap_module
-                if hasattr(mmap_module, 'MADV_SEQUENTIAL'):
-                    mm.madvise(mmap_module.MADV_SEQUENTIAL)
-
-            # Determine which frames to load
-            if frames_indices is not None:
-                # Validate and normalize indices
-                frames_to_load = []
-                for idx in frames_indices:
-                    if idx < 0 or idx >= num_frames:
-                        raise IndexError(f"Frame index {idx} out of range [0, {num_frames})")
-                    frames_to_load.append(idx)
-                # Filter offsets to only requested frames
-                filtered_offsets = [(i, frame_offsets[i]) for i in frames_to_load]
+        # Determine view and size
+        mm: Any = None
+        view: Any = None
+        size: int = 0
+        
+        # Try mmap first (efficient for large files)
+        if hasattr(f, 'fileno'):
+            try:
+                mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+                stack.callback(mm.close)
+                
+                # Advise the kernel we'll read sequentially
+                if hasattr(mm, 'madvise'):
+                    import mmap as mmap_module
+                    if hasattr(mmap_module, 'MADV_SEQUENTIAL'):
+                        mm.madvise(mmap_module.MADV_SEQUENTIAL)
+                
+                view = mm
+                size = mm.size()
+            except Exception:
+                # Fallback if mmap fails (e.g. pipe)
+                pass
+        
+        if view is None:
+            # Try getting buffer (BytesIO)
+            if hasattr(f, 'getbuffer'):
+                view = f.getbuffer()
+                size = view.nbytes
             else:
-                frames_to_load = list(range(num_frames))
-                filtered_offsets = [(i, offset) for i, offset in enumerate(frame_offsets)]
+                # Fallback: read all into memory
+                if hasattr(f, 'seekable') and f.seekable():
+                    f.seek(0)
+                content = f.read()
+                view = content
+                size = len(content)
 
-            # Pre-allocate the result list based on requested frames
-            atoms_list: List[Optional[Atoms]] = [None] * len(frames_to_load)
+        # Read header
+        header = _parse_tess_header(view, size)
 
-            # Handle format version 4/5 with static data
-            if format_version in {4, 5}:
-                static_data = header.get('static_data', {})
-                unique_symbols = header['unique_symbols']
-                symbols_idx = static_data['symbols']
-                symbols = [unique_symbols[i] for i in symbols_idx]
-                numbers = static_data['numbers']
-                masses = static_data['masses']
-                pbc = static_data['pbc']
-                static_cell = static_data.get('cell')
-                cell_changes = static_data.get('cell_changes', True)
-                static_tags = static_data.get('tags')
-                static_init_charges = static_data.get('initial_charges')
-                static_init_magmoms = static_data.get('initial_magmoms')
+        format_version = header.get('format_version', 1)
+        compression_info = header.get('compression')
+        if isinstance(compression_info, dict):
+            compression_type = compression_info.get('type', 'none')
+        elif isinstance(compression_info, str):
+            compression_type = compression_info
+        else:
+            compression_type = 'none'
+        compression_type = (compression_type or 'none').lower()
+        if compression_type not in {'none', 'zlib', 'lz4'}:
+            raise ValueError(f"Unsupported compression type '{compression_type}' in tess file")
 
-                # Create a template Atoms object to clone for efficiency
-                template_atoms = Atoms(numbers=numbers, pbc=pbc)
-                template_atoms.set_masses(masses)
-                if static_cell is not None:
-                    template_atoms.set_cell(static_cell)
-                if static_tags is not None:
-                    template_atoms.set_tags(static_tags)
-                if static_init_charges is not None:
-                    template_atoms.set_initial_charges(static_init_charges)
-                if static_init_magmoms is not None:
-                    template_atoms.set_initial_magnetic_moments(static_init_magmoms)
-            else:
-                convert = dict_to_atoms
-                static_data = None
-                cell_changes = True
+        metadata = header.get('metadata', {})
+        frame_offsets = [tuple(offset) for offset in header['frame_offsets']]
+        num_frames = len(frame_offsets)
 
-            # Process frames with minimal overhead
-            if len(filtered_offsets) > 0:
-                # Unified decode path using helper; still parallelized
-                def _decode(idx_offset: Tuple[int, Tuple[int, int]]) -> Tuple[int, 'Atoms']:
-                    orig_idx, (start, length) = idx_offset
-                    raw_slice = mm[start:start + length]
-                    return orig_idx, _decode_frame(raw_slice, header, template_atoms if format_version in {4, 5} else None)
+        # Determine which frames to load
+        if frames_indices is not None:
+            # Validate and normalize indices
+            frames_to_load = []
+            for idx in frames_indices:
+                if idx < 0 or idx >= num_frames:
+                    raise IndexError(f"Frame index {idx} out of range [0, {num_frames})")
+                frames_to_load.append(idx)
+            # Filter offsets to only requested frames
+            filtered_offsets = [(i, frame_offsets[i]) for i in frames_to_load]
+        else:
+            frames_to_load = list(range(num_frames))
+            filtered_offsets = [(i, offset) for i, offset in enumerate(frame_offsets)]
 
-                worker_count = _max_workers(len(filtered_offsets))
-                chunk_size = _chunk_size(worker_count)
+        # Pre-allocate the result list based on requested frames
+        atoms_list: List[Optional[Atoms]] = [None] * len(frames_to_load)
 
-                with ThreadPoolExecutor(max_workers=worker_count) as executor:
-                    for chunk_start in range(0, len(filtered_offsets), chunk_size):
-                        offset_chunk = filtered_offsets[chunk_start:chunk_start + chunk_size]
-                        for result_idx, (orig_idx, atoms) in enumerate(
-                            executor.map(_decode, offset_chunk), start=0
-                        ):
-                            atoms_list[chunk_start + result_idx] = atoms
-        finally:
-            mm.close()
+        # Handle format version 4/5 with static data
+        if format_version in {4, 5}:
+            static_data = header.get('static_data', {})
+            unique_symbols = header['unique_symbols']
+            symbols_idx = static_data['symbols']
+            symbols = [unique_symbols[i] for i in symbols_idx]
+            numbers = static_data['numbers']
+            masses = static_data['masses']
+            pbc = static_data['pbc']
+            static_cell = static_data.get('cell')
+            cell_changes = static_data.get('cell_changes', True)
+            static_tags = static_data.get('tags')
+            static_init_charges = static_data.get('initial_charges')
+            static_init_magmoms = static_data.get('initial_magmoms')
+
+            # Create a template Atoms object to clone for efficiency
+            template_atoms = Atoms(numbers=numbers, pbc=pbc)
+            template_atoms.set_masses(masses)
+            if static_cell is not None:
+                template_atoms.set_cell(static_cell)
+            if static_tags is not None:
+                template_atoms.set_tags(static_tags)
+            if static_init_charges is not None:
+                template_atoms.set_initial_charges(static_init_charges)
+            if static_init_magmoms is not None:
+                template_atoms.set_initial_magnetic_moments(static_init_magmoms)
+        else:
+            convert = dict_to_atoms
+            static_data = None
+            cell_changes = True
+
+        # Process frames with minimal overhead
+        if len(filtered_offsets) > 0:
+            # Unified decode path using helper; still parallelized
+            def _decode(idx_offset: Tuple[int, Tuple[int, int]]) -> Tuple[int, 'Atoms']:
+                orig_idx, (start, length) = idx_offset
+                raw_slice = view[start:start + length]
+                return orig_idx, _decode_frame(raw_slice, header, template_atoms if format_version in {4, 5} else None)
+
+            worker_count = _max_workers(len(filtered_offsets))
+            chunk_size = _chunk_size(worker_count)
+
+            with ThreadPoolExecutor(max_workers=worker_count) as executor:
+                for chunk_start in range(0, len(filtered_offsets), chunk_size):
+                    offset_chunk = filtered_offsets[chunk_start:chunk_start + chunk_size]
+                    for result_idx, (orig_idx, atoms) in enumerate(
+                        executor.map(_decode, offset_chunk), start=0
+                    ):
+                        atoms_list[chunk_start + result_idx] = atoms
     
     return cast(List[Atoms], atoms_list), metadata
