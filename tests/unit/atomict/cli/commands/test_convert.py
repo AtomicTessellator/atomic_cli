@@ -3,7 +3,7 @@ from click.testing import CliRunner
 from pathlib import Path
 # writes to tempfile due to conflicts with library code
 import tempfile
-from atomict.cli.main import convert
+from atomict.cli.commands.convert import convert
 
 
 @pytest.fixture
