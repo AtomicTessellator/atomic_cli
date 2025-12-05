@@ -150,7 +150,7 @@ def _decode_frame(frame_bytes: bytes, header: Dict[str, Any], template_atoms: Op
 
 def write_tess(
     atoms: Union['Atoms', List['Atoms']],
-    filename: str,
+    filename: Union[str, IO[bytes], os.PathLike],
     metadata: Optional[Dict] = None,
     compression: Optional[str] = 'none',
     compression_level: int = 0,
@@ -298,7 +298,19 @@ def write_tess(
             frame_dict['custom_arrays'] = custom_arrays
         return cast(bytes, msgpack.packb(frame_dict, use_bin_type=True))
 
-    with open(filename, 'wb', buffering=1024*1024) as f:
+    if isinstance(filename, (str, os.PathLike)):
+        f_ctx = open(filename, 'wb', buffering=1024*1024)
+        f_to_close = True
+    else:
+        f_ctx = filename
+        f_to_close = False
+
+    with contextlib.ExitStack() as stack:
+        if f_to_close:
+            f = stack.enter_context(f_ctx)
+        else:
+            f = f_ctx
+
         frame_offsets: List[Tuple[int, int]] = []
         uncompressed_lengths: List[int] = []
         if compression_mode == 'zlib' or compression_mode == 'lz4':
