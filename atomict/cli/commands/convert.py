@@ -12,16 +12,8 @@ console = Console()
 @click.command()
 @click.argument("input_file", required=True)
 @click.argument("output_file", required=True)
-def convert(input_file, output_file):
-    """Convert between atomic structure file formats using ASE
-
-    Supports all formats that ASE can read/write, with special handling for .atm and .atraj files.
-    Usage examples:
-      tess convert input.cif output.xyz
-      tess convert input.xyz output.atm
-      tess convert input.traj output.atraj
-      
-    """ 
+def convert(input_file: str, output_file: str):
+    """Convert atomic structure files between supported formats (e.g. .xyz, .cif, .traj).""" 
     RW_FORMATS = [
         'abinit-in', 'aims', 'bundletrajectory', 'castep-cell', 'castep-geom', 
         'castep-md', 'cfg', 'cif', 'crystal', 'cube', 'db', 'dftb', 'dlp4', 
