@@ -8,9 +8,9 @@ from rich.console import Console
 
 from atomict.__version__ import __version__
 from atomict.cli.commands import login, token, user
-from .commands import adsorbate, catalysis, k8s, project, task, traj, upload, convert
+from .commands import k8s, project, task, traj, upload, convert
 from .commands.exploration import soec, sqs
-from .commands.simulation import fhiaims, kpoint, vibes
+from .commands.simulation import fhiaims, kpoint
 
 
 console = Console()
@@ -95,17 +95,14 @@ cli.add_command(task.task_group)
 cli.add_command(upload.upload_group)
 cli.add_command(project.project_group)
 cli.add_command(k8s.k8s_group)
-cli.add_command(adsorbate.adsorbate_group)
 cli.add_command(fhiaims.fhiaims_group)
 cli.add_command(kpoint.kpoint_group)
-cli.add_command(catalysis.catalysis_group)
 cli.add_command(sqs.sqs_group)
 cli.add_command(soec.soecexploration_group)
 cli.add_command(traj.traj)
 cli.add_command(user.user_group)
 cli.add_command(login._login)
 cli.add_command(token._token)
-cli.add_command(vibes.vibes_group)
 
 
 def main():

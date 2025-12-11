@@ -50,19 +50,6 @@ This command prints out your current token.
 
 ![Alt text](img/at_project_get.png?raw=true "tess project get")
 
-
-## Get a list of adsorbates
-
-```$ tess adsorbate get```
-
-![Alt text](img/at_adsorbate_get.png?raw=true "tess adsorbate get")
-
-## Search objects for substrings
-
-```$ tess adsorbate get --search NH3```
-
-![Alt text](img/at_adsorbate_get_search.png?raw=true "tess adsorbate get --search")
-
 ## Get a list of tasks
 
 ```$ tess task get```
