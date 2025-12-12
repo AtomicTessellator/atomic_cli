@@ -6,6 +6,7 @@ import os
 
 # from atomict.io.msgpack import load_msgpack_trajectory
 from atomict.io.formats.atraj import read_atraj
+from atomict.io.formats.tess import read_tess
 from atomict.io.fhiaims import read_aims_output
 from atomict.io.utils import human_filesize
 from atomict.simulation.mlrelax import get_mlrelax, get_mlrelax_files
@@ -24,6 +25,8 @@ def fetch_source_geometry(sim: dict, workbench_dir: str) -> Atoms:
         
         if extension == "atraj":
             atoms, _ = read_atraj(workbench_dir + f"/geometry.{extension}")
+        elif extension == "tess":
+            atoms, _ = read_tess(workbench_dir + f"/geometry.{extension}")
         else:
             atoms = read(workbench_dir + f"/geometry.{extension}")
 
@@ -106,6 +109,8 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
         
         if extension == "atraj":
             atoms, _ = read_atraj(workbench_dir + f"/geometry.{extension}")
+        elif extension == "tess":
+            atoms, _ = read_tess(workbench_dir + f"/geometry.{extension}")
         else:
             atoms = read(workbench_dir + f"/geometry.{extension}")
 
