@@ -20,7 +20,7 @@ classifiers = [
 ]
 
 description = "The client application for the https://atomictessellator.com/"
-keywords = ["atomic", "tessellator", "cli", "client", "fhi-aims", "kpoint", "sqs", "adsorbate"]
+keywords = ["atomic", "tessellator", "cli", "client", "fhi-aims", "kpoint", "sqs"]
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }

@@ -8,10 +8,9 @@ from rich.console import Console
 
 from atomict.__version__ import __version__
 from atomict.cli.commands import login, token, user
-from atomict.cli.ext.custom_classes import DefaultCommandGroup
-from .commands import adsorbate, catalysis, k8s, project, task, traj, upload
+from .commands import k8s, project, task, traj, upload, convert
 from .commands.exploration import soec, sqs
-from .commands.simulation import fhiaims, kpoint, vibes
+from .commands.simulation import fhiaims, kpoint
 
 
 console = Console()
@@ -37,7 +36,7 @@ def setup_logging(verbose: bool):
         )
 
 
-@click.group(cls=DefaultCommandGroup, invoke_without_command=True)
+@click.group(invoke_without_command=True)
 @click.option(
     "-v", "--verbose", is_flag=True, default=False, help="Enable verbose output"
 )
@@ -45,117 +44,10 @@ def setup_logging(verbose: bool):
 @click.pass_context
 def cli(ctx, verbose: bool):
     """Atomic Tessellator CLI - Manage simulations and computational resources
-    
-    Default behavior: when called with two file arguments, converts between file formats.
     """
     setup_logging(verbose)
-
-    if ctx.invoked_subcommand is None and len(sys.argv) <= 1:
+    if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
-
-
-@cli.command(default_command=True)
-@click.argument("input_file", required=True)
-@click.argument("output_file", required=True)
-def convert(input_file, output_file):
-    """Convert between atomic structure file formats using ASE
-
-    Supports all formats that ASE can read/write, with special handling for .atm and .atraj files.
-    Usage examples:
-      tess input.cif output.xyz
-      tess input.xyz output.atm
-      tess input.traj output.atraj
-      
-    """ 
-    import os.path
-    from ase.io import read, write
-    from ase.io.formats import UnknownFileTypeError
-    from atomict.io.formats.atraj import read_atraj, write_atraj
-    from atomict.io.formats.tess import read_tess, write_tess
-
-    RW_FORMATS = [
-        'abinit-in', 'aims', 'bundletrajectory', 'castep-cell', 'castep-geom', 
-        'castep-md', 'cfg', 'cif', 'crystal', 'cube', 'db', 'dftb', 'dlp4', 
-        'dmol-arc', 'dmol-car', 'dmol-incoor', 'eon', 'espresso-in', 'extxyz', 
-        'gaussian-in', 'gen', 'gpumd', 'gromacs', 'gromos', 'json', 'jsv', 
-        'lammps-data', 'magres', 'mustem', 'mysql', 'netcdftrajectory', 'nwchem-in', 
-        'onetep-in', 'postgresql', 'prismatic', 'proteindatabank', 'res', 
-        'rmc6f', 'struct', 'sys', 'traj', 'turbomole', 'v-sim', 'vasp', 
-        'vasp-xdatcar', 'xsd', 'xsf', 'xtd', 'xyz'
-    ]
-
-    try:
-        input_ext = os.path.splitext(input_file)[1].lower()[1:]
-        output_ext = os.path.splitext(output_file)[1].lower()[1:]
-
-        if not os.path.exists(input_file):
-            console.print(f"[red]Error: Input file '{input_file}' not found.[/red]")
-            return
-
-        traj_msgpack_formats = ["atraj", "tess"]
-        
-        def _is_supported(ext: str) -> bool:
-            return (
-                ext in RW_FORMATS
-                or ext in traj_msgpack_formats
-            )
-        
-        def _print_supported_error(ext: str, action: str) -> None:
-            console.print(f"[red]Error: Format '{ext}' is not supported for {action}.[/red]")
-            console.print("[yellow]Supported read/write formats include:[/yellow]")
-            for i in range(0, len(RW_FORMATS), 5):
-                console.print("[yellow]  " + ", ".join(RW_FORMATS[i:i+5]) + "[/yellow]")
-            console.print("[yellow]Special formats: atm (msgpack), atraj (msgpack trajectory), tess (msgpack trajectory)[/yellow]")
-        
-        if not _is_supported(input_ext):
-            _print_supported_error(input_ext, "reading")
-            return
-        
-        if not _is_supported(output_ext):
-            _print_supported_error(output_ext, "writing")
-            return
-
-        try:
-            if input_ext == "atraj":
-                atoms, _ = read_atraj(input_file)
-            elif input_ext == "tess":
-                atoms, _ = read_tess(input_file)
-            else:
-                atoms = read(input_file, index=":")
-        except UnknownFileTypeError:
-            console.print(f"[red]Error: Unknown file type for input file '{input_file}'[/red]")
-            console.print(f"[yellow]The file extension '{input_ext}' is not recognized.[/yellow]")
-            console.print("[yellow]Make sure the file has the correct extension for its format.[/yellow]")
-            return
-        except Exception as e:
-            console.print(f"[red]Error reading input file '{input_file}': {str(e)}.[/red]")
-            console.print(f"[yellow]Make sure '{input_ext}' is a valid format and the file is not corrupted.[/yellow]")
-            return
-        
-        try:
-            if output_ext == "atraj":
-                write_atraj(atoms, output_file)
-            elif output_ext == "tess":
-                write_tess(atoms, output_file)
-            else:
-                write(output_file, atoms)
-
-            console.print(f"[green]Successfully converted {input_file} to {output_file}[/green]")
-
-        except UnknownFileTypeError:
-            console.print(f"[red]Error: Unknown file type for output file '{output_file}'[/red]")
-            console.print(f"[yellow]The file extension '{output_ext}' is not recognized.[/yellow]")
-            console.print("[yellow]Make sure the file has the correct extension for its format.[/yellow]")
-            return
-        except Exception as e:
-            console.print(f"[red]Error writing output file '{output_file}': {str(e)}[/red]")
-            console.print(f"[yellow]Make sure '{output_ext}' is a valid format and you have write permissions.[/yellow]")
-            return
-            
-    except Exception as e:
-        logging.debug(f"Conversion failed with error: {str(e)}", exc_info=True)
-        console.print(f"[red]Error during conversion: {str(e)}[/red]")
-        console.print("[yellow]Try running with --verbose for more detailed error information.[/yellow]")
 
 
 @cli.command(hidden=True)
@@ -198,21 +90,19 @@ end
 
 
 cli.add_command(completion)
+cli.add_command(convert.convert)
 cli.add_command(task.task_group)
 cli.add_command(upload.upload_group)
 cli.add_command(project.project_group)
 cli.add_command(k8s.k8s_group)
-cli.add_command(adsorbate.adsorbate_group)
 cli.add_command(fhiaims.fhiaims_group)
 cli.add_command(kpoint.kpoint_group)
-cli.add_command(catalysis.catalysis_group)
 cli.add_command(sqs.sqs_group)
 cli.add_command(soec.soecexploration_group)
 cli.add_command(traj.traj)
 cli.add_command(user.user_group)
 cli.add_command(login._login)
 cli.add_command(token._token)
-cli.add_command(vibes.vibes_group)
 
 
 def main():
