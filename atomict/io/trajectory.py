@@ -123,7 +123,25 @@ class TrajectoryWriter:
                     raise TypeError('Unsupported atoms-like object; expected ASE Atoms or compatible wrapper')
                 plain = Atoms(numbers=numbers, positions=positions, cell=cell, pbc=pbc)
             # Make a copy to avoid all frames pointing to the same object after in-place modifications
-            self._buffer.append(plain.copy())
+            copied = plain.copy()
+
+            # Preserve calculator results using SinglePointCalculator
+            # (ASE's Atoms.copy() intentionally does not copy the calculator)
+            if plain.calc is not None:
+                from ase.calculators.singlepoint import SinglePointCalculator
+
+                results = {}
+                for prop in ['energy', 'forces', 'stress', 'dipole', 'charges', 'magmom', 'magmoms']:
+                    try:
+                        val = plain.calc.get_property(prop, plain, allow_calculation=False)
+                        if val is not None:
+                            results[prop] = val
+                    except Exception:
+                        pass
+                if results:
+                    copied.calc = SinglePointCalculator(copied, **results)
+
+            self._buffer.append(copied)
 
     def close(self) -> None:
         """Flush buffered frames and/or close backend."""

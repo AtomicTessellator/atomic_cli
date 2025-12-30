@@ -109,9 +109,9 @@ def test_read_error(runner, fixture_path, temp_dir, monkeypatch):
     def mock_read(*args, **kwargs):
         raise Exception("Unknown file type")
     
-    # Patch the read function to raise an exception
-    import ase.io
-    monkeypatch.setattr(ase.io, "read", mock_read)
+    # Patch the read function where it's used (not where it's defined)
+    import atomict.cli.commands.convert
+    monkeypatch.setattr(atomict.cli.commands.convert, "read", mock_read)
     
     result = runner.invoke(convert, [str(input_file), str(output_file)])
     
@@ -132,7 +132,6 @@ def test_write_error(runner, fixture_path, temp_dir, monkeypatch):
         pytest.skip(f"Fixture file {input_file} not found")
     
     # Create a mock atoms object and read function that returns it
-    import ase
     mock_atoms = object()  # Simple mock atoms object
     
     def mock_read(*args, **kwargs):
@@ -142,10 +141,10 @@ def test_write_error(runner, fixture_path, temp_dir, monkeypatch):
     def mock_write(*args, **kwargs):
         raise Exception("Write error")
     
-    # Patch the functions
-    import ase.io
-    monkeypatch.setattr(ase.io, "read", mock_read)
-    monkeypatch.setattr(ase.io, "write", mock_write)
+    # Patch the functions where they're used (not where they're defined)
+    import atomict.cli.commands.convert
+    monkeypatch.setattr(atomict.cli.commands.convert, "read", mock_read)
+    monkeypatch.setattr(atomict.cli.commands.convert, "write", mock_write)
     
     result = runner.invoke(convert, [str(input_file), str(output_file)])
     
