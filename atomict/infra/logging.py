@@ -79,7 +79,8 @@ class LokiHandler(logging.Handler):
                     
                     try:
                         item = self.queue.get(timeout=timeout)
-                        batch.append(item)
+                        if item is not None:  # Skip sentinel values
+                            batch.append(item)
                     except:
                         pass  # Queue.get timed out
                     
@@ -94,9 +95,7 @@ class LokiHandler(logging.Handler):
                         if batch:
                             self._send_batch(batch)
                             batch = []
-                        else:
-                            pass
-                        last_flush = time.time()  # Update last_flush even if batch was empty
+                        last_flush = time.time()
                         
                 except Exception as e:
                     # Log to stderr to avoid recursion
@@ -104,6 +103,10 @@ class LokiHandler(logging.Handler):
                     print(f"[LokiHandler._worker] ERROR in worker: {e}", file=sys.stderr)
                     import traceback
                     traceback.print_exc()
+            
+            # Flush final batch before exiting
+            if batch:
+                self._send_batch(batch)
             
         except Exception as e:
             import sys
@@ -154,18 +157,25 @@ class LokiHandler(logging.Handler):
         """Flush remaining logs and stop the worker thread"""
         
         self.stop_event.set()
-        # Flush any remaining logs
+        
+        # Put a sentinel value to wake up the worker if it's blocked in queue.get()
+        self.queue.put(None)
+        
+        # Wait for worker to finish - it should now wake up and exit
+        self.worker_thread.join(timeout=2)
+        
+        # Flush any remaining logs from queue (in case worker exited before processing them)
         remaining = []
         while not self.queue.empty():
             try:
-                remaining.append(self.queue.get_nowait())
+                item = self.queue.get_nowait()
+                if item is not None:  # Skip sentinel values
+                    remaining.append(item)
             except:
                 break
         if remaining:
             self._send_batch(remaining)
         
-        # Wait for worker to finish
-        self.worker_thread.join(timeout=1)
         super().close()
 
 
