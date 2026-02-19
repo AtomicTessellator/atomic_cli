@@ -8,7 +8,7 @@ from requests.exceptions import (
     ConnectionError,
     Timeout,
 )
-from tenacity import retry, stop_after_attempt, wait_exponential, after_log, retry_if_exception_type, retry_if_exception, before_sleep_log
+from tenacity import retry, stop_after_attempt, stop_after_delay, wait_exponential, after_log, retry_if_exception_type, retry_if_exception, before_sleep_log
 
 from atomict.exceptions import APIValidationError, PermissionDenied
 from atomict.utils.tenacity import before_log
@@ -23,7 +23,7 @@ def is_http_5xx_error(exception):
 
 
 @retry(
-    stop=stop_after_attempt(5),
+    stop=(stop_after_attempt(5) | stop_after_delay(300)),
     wait=wait_exponential(multiplier=2, min=1, max=30),
     retry=(retry_if_exception_type((ConnectionError, Timeout)) | retry_if_exception(is_http_5xx_error)),
     before=before_log(logger, logging.INFO),
@@ -37,7 +37,7 @@ def get(path: str):
     if os.environ.get("AT_TOKEN"):
         headers["Authorization"] = f"Token {os.environ.get('AT_TOKEN')}"
 
-    response = requests.get(f"{api_root}/{path}", headers=headers)
+    response = requests.get(f"{api_root}/{path}", headers=headers, timeout=120)
 
     content_type = response.headers.get("Content-Type")
 
@@ -66,7 +66,7 @@ def get(path: str):
 
 
 @retry(
-    stop=stop_after_attempt(5),
+    stop=(stop_after_attempt(5) | stop_after_delay(300)),
     wait=wait_exponential(multiplier=2, min=1, max=30),
     retry=(retry_if_exception_type((ConnectionError, Timeout)) | retry_if_exception(is_http_5xx_error)),
     before=before_log(logger, logging.INFO),
@@ -94,10 +94,10 @@ def post(path: str, payload: dict, files=None, extra_headers={}):
 
     if files is not None:
         response = requests.post(
-            f"{api_root}/{path}", data=payload, headers=headers, files=files
+            f"{api_root}/{path}", data=payload, headers=headers, files=files, timeout=120
         )
     else:
-        response = requests.post(f"{api_root}/{path}", data=payload, headers=headers)
+        response = requests.post(f"{api_root}/{path}", data=payload, headers=headers, timeout=120)
 
     if response.status_code in [requests.codes.ok, requests.codes.created]:
         resp = response.json()
@@ -116,7 +116,7 @@ def post(path: str, payload: dict, files=None, extra_headers={}):
 
 
 @retry(
-    stop=stop_after_attempt(5),
+    stop=(stop_after_attempt(5) | stop_after_delay(300)),
     wait=wait_exponential(multiplier=2, min=1, max=30),
     retry=(retry_if_exception_type((ConnectionError, Timeout)) | retry_if_exception(is_http_5xx_error)),
     before=before_log(logger, logging.INFO),
@@ -131,7 +131,7 @@ def patch(path: str, payload: dict):
         headers["Authorization"] = f"Token {os.environ.get('AT_TOKEN')}"
 
     api_root = os.environ.get("AT_SERVER", "https://api.atomictessellator.com")
-    response = requests.patch(f"{api_root}/{path}", data=payload_enc, headers=headers)
+    response = requests.patch(f"{api_root}/{path}", data=payload_enc, headers=headers, timeout=120)
 
     if response.status_code == requests.codes.ok:
         resp = response.json()
@@ -150,7 +150,7 @@ def patch(path: str, payload: dict):
 
 
 @retry(
-    stop=stop_after_attempt(5),
+    stop=(stop_after_attempt(5) | stop_after_delay(300)),
     wait=wait_exponential(multiplier=2, min=1, max=30),
     retry=(retry_if_exception_type((ConnectionError, Timeout)) | retry_if_exception(is_http_5xx_error)),
     before=before_log(logger, logging.INFO),
@@ -164,7 +164,7 @@ def delete(path: str):
         headers["Authorization"] = f"Token {os.environ.get('AT_TOKEN')}"
 
     api_root = os.environ.get("AT_SERVER", "https://api.atomictessellator.com")
-    response = requests.delete(f"{api_root}/{path}", headers=headers)
+    response = requests.delete(f"{api_root}/{path}", headers=headers, timeout=120)
 
     if response.status_code == requests.codes.ok:
         resp = response.json()
