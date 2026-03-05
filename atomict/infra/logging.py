@@ -226,7 +226,7 @@ def config_loggers(
             batch_size=batch_size,
             flush_interval=flush_interval,
         )
-        loki_handler.setFormatter(logging.Formatter(f"%(levelname)s %(asctime)s {prefix} %(message)s"))
+        loki_handler.setFormatter(logging.Formatter(f"%(asctime)s %(levelname)s  {prefix} %(message)s"))
         
         # Add to root logger
         logging.getLogger().addHandler(loki_handler)
