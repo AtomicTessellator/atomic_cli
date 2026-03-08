@@ -1,4 +1,10 @@
-from atomict.api import get, post
+from atomict.api import post
+from atomict.resource_helpers import (
+    delete_resource,
+    list_resources,
+    retrieve_resource,
+    update_resource,
+)
 
 
 def get_ea_exploration(exploration_id: str, **params):
@@ -9,10 +15,23 @@ def get_ea_exploration(exploration_id: str, **params):
         exploration_id: str - The ID of the exploration
         **params: Additional GET parameters to pass to the API
     """
-    query_string = '&'.join(f"{k}={v}" for k, v in params.items())
-    base_url = f"api/ea-exploration/{exploration_id}/"
-    url = f"{base_url}?{query_string}" if query_string else base_url
-    return get(url)
+    return retrieve_resource("api/ea-exploration", exploration_id, **params)
+
+
+def list_ea_explorations(**params):
+    return list_resources("api/ea-exploration", **params)
+
+
+def create_ea_exploration(payload: dict[str, object]):
+    return post("api/ea-exploration/", payload=payload)
+
+
+def update_ea_exploration(exploration_id: str, fields: dict[str, object]):
+    return update_resource("api/ea-exploration", exploration_id, fields)
+
+
+def delete_ea_exploration(exploration_id: str):
+    return delete_resource("api/ea-exploration", exploration_id)
 
 
 def get_ea_exploration_sample(sample_id: str, **params):
@@ -23,10 +42,7 @@ def get_ea_exploration_sample(sample_id: str, **params):
         sample_id: str - The ID of the sample
         **params: Additional GET parameters to pass to the API
     """
-    query_string = '&'.join(f"{k}={v}" for k, v in params.items())
-    base_url = f"api/ea-exploration-sample/{sample_id}/"
-    url = f"{base_url}?{query_string}" if query_string else base_url
-    return get(url)
+    return retrieve_resource("api/ea-exploration-sample", sample_id, **params)
 
 
 def get_ea_exploration_samples(exploration_id: str, **params):
@@ -37,13 +53,21 @@ def get_ea_exploration_samples(exploration_id: str, **params):
         exploration_id: str - The ID of the exploration
         **params: Additional GET parameters to pass to the API
     """
-    # Start with the required exploration parameter
     query_params = params.copy()
     query_params['exploration'] = exploration_id
-    
-    query_string = '&'.join(f"{k}={v}" for k, v in query_params.items())
-    url = f"api/ea-exploration-sample/?{query_string}"
-    return get(url)
+    return list_resources("api/ea-exploration-sample", **query_params)
+
+
+def list_ea_exploration_samples(**params):
+    return list_resources("api/ea-exploration-sample", **params)
+
+
+def update_ea_exploration_sample(sample_id: str, fields: dict[str, object]):
+    return update_resource("api/ea-exploration-sample", sample_id, fields)
+
+
+def delete_ea_exploration_sample(sample_id: str):
+    return delete_resource("api/ea-exploration-sample", sample_id)
 
 
 def get_ea_exploration_analysis(analysis_id: str, **params):
@@ -54,10 +78,25 @@ def get_ea_exploration_analysis(analysis_id: str, **params):
         analysis_id: str - The ID of the analysis
         **params: Additional GET parameters to pass to the API
     """
-    query_string = '&'.join(f"{k}={v}" for k, v in params.items())
-    base_url = f"api/ea-exploration-analysis/{analysis_id}/"
-    url = f"{base_url}?{query_string}" if query_string else base_url
-    return get(url)
+    return retrieve_resource("api/ea-exploration-analysis", analysis_id, **params)
+
+
+def list_ea_exploration_analyses(**params):
+    return list_resources("api/ea-exploration-analysis", **params)
+
+
+def create_ea_exploration_analysis(payload: dict[str, object]):
+    return post("api/ea-exploration-analysis/", payload=payload)
+
+
+def update_ea_exploration_analysis(
+    analysis_id: str, fields: dict[str, object]
+):
+    return update_resource("api/ea-exploration-analysis", analysis_id, fields)
+
+
+def delete_ea_exploration_analysis(analysis_id: str):
+    return delete_resource("api/ea-exploration-analysis", analysis_id)
 
 
 def get_ea_exploration_analysis_file(analysis_file_id: str, **params):
@@ -68,10 +107,27 @@ def get_ea_exploration_analysis_file(analysis_file_id: str, **params):
         analysis_file_id: str - The ID of the analysis file
         **params: Additional GET parameters to pass to the API
     """
-    query_string = '&'.join(f"{k}={v}" for k, v in params.items())
-    base_url = f"api/ea-exploration-analysis-file/{analysis_file_id}/"
-    url = f"{base_url}?{query_string}" if query_string else base_url
-    return get(url)
+    return retrieve_resource(
+        "api/ea-exploration-analysis-file", analysis_file_id, **params
+    )
+
+
+def list_ea_exploration_analysis_files(**params):
+    return list_resources("api/ea-exploration-analysis-file", **params)
+
+
+def create_ea_exploration_analysis_file(payload: dict[str, object]):
+    return post("api/ea-exploration-analysis-file/", payload=payload)
+
+
+def update_ea_exploration_analysis_file(
+    file_id: str, fields: dict[str, object]
+):
+    return update_resource("api/ea-exploration-analysis-file", file_id, fields)
+
+
+def delete_ea_exploration_analysis_file(file_id: str):
+    return delete_resource("api/ea-exploration-analysis-file", file_id)
 
 
 def associate_user_upload_with_ea_exploration(user_upload_id: str, analysis_id: str):
@@ -115,3 +171,31 @@ def create_exploration_sample(
         "api/ea-exploration-sample/",
         payload=payload,
     )
+
+
+def create_ea_exploration_sample(
+    exploration_id: str,
+    simulation_id: str = None,
+    mlrelax_id: str = None,
+    strain: float = None,
+    matrix: int = None,
+):
+    return create_exploration_sample(
+        exploration_id=exploration_id,
+        simulation_id=simulation_id,
+        mlrelax_id=mlrelax_id,
+        strain=strain,
+        matrix=matrix,
+    )
+
+
+def create_soec_exploration(payload: dict[str, object]):
+    return create_ea_exploration(payload)
+
+
+def get_soec_exploration(exploration_id: str, **params):
+    return get_ea_exploration(exploration_id, **params)
+
+
+def list_soec_explorations(**params):
+    return list_ea_explorations(**params)

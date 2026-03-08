@@ -1,5 +1,11 @@
-from atomict.api import delete, get, post
+from atomict.api import post
 from atomict.infra.distwork.task import SimulationAction
+from atomict.resource_helpers import (
+    delete_resource,
+    list_resources,
+    retrieve_resource,
+    update_resource,
+)
 
 
 def create_simulation(
@@ -36,23 +42,46 @@ def create_simulation(
     return result
 
 
+def create_fhiaims_simulation(*args, **kwargs):
+    return create_simulation(*args, **kwargs)
+
+
 def get_simulation(simulation_id: str, **params):
     """
     Get a FHI aims simulation
     """
-    query_string = '&'.join(f"{k}={v}" for k, v in params.items())
-    base_url = f"api/fhiaims-simulation/{simulation_id}/"
-    url = f"{base_url}?{query_string}" if query_string else base_url
-    result = get(url)
-    return result
+    return retrieve_resource("api/fhiaims-simulation", simulation_id, **params)
+
+
+def get_fhiaims_simulation(simulation_id: str, **params):
+    return get_simulation(simulation_id, **params)
+
+
+def list_simulations(**params):
+    return list_resources("api/fhiaims-simulation", **params)
+
+
+def list_fhiaims_simulations(**params):
+    return list_simulations(**params)
+
+
+def update_simulation(simulation_id: str, fields: dict[str, object]):
+    return update_resource("api/fhiaims-simulation", simulation_id, fields)
+
+
+def update_fhiaims_simulation(simulation_id: str, fields: dict[str, object]):
+    return update_simulation(simulation_id, fields)
 
 
 def delete_simulation(simulation_id):
     """
     Delete a FHI aims simulation
     """
-    result = delete(f"api/fhiaims-simulation/{simulation_id}/")
-    return result
+    return delete_resource("api/fhiaims-simulation", simulation_id)
+
+
+def delete_fhiaims_simulation(simulation_id: str):
+    return delete_simulation(simulation_id)
 
 
 def associate_user_upload_with_fhiaims_simulation(
@@ -72,5 +101,32 @@ def get_simulation_files(simulation_id: str):
     """
     Get the files associated with a FHI-aims simulation
     """
-    result = get(f"api/fhiaims-simulation-file/?simulation__id={simulation_id}")
-    return result
+    return list_resources("api/fhiaims-simulation-file", simulation__id=simulation_id)
+
+
+def get_simulation_file(file_id: str, **params):
+    return retrieve_resource("api/fhiaims-simulation-file", file_id, **params)
+
+
+def get_fhiaims_simulation_file(file_id: str, **params):
+    return get_simulation_file(file_id, **params)
+
+
+def list_simulation_files(**params):
+    return list_resources("api/fhiaims-simulation-file", **params)
+
+
+def list_fhiaims_simulation_files(**params):
+    return list_simulation_files(**params)
+
+
+def create_simulation_file(payload: dict[str, object]):
+    return post("api/fhiaims-simulation-file/", payload=payload)
+
+
+def update_simulation_file(file_id: str, fields: dict[str, object]):
+    return update_resource("api/fhiaims-simulation-file", file_id, fields)
+
+
+def delete_simulation_file(file_id: str):
+    return delete_resource("api/fhiaims-simulation-file", file_id)

@@ -1,6 +1,7 @@
 from enum import Enum
 
 from atomict.api import get, patch
+from atomict.resource_helpers import list_resources, update_resource
 from atomict.exceptions import UserTaskAbortException
 
 
@@ -21,6 +22,22 @@ class TaskStatus(Enum):
 
 def get_task(task_id: str):
     return get(f"api/tasks/{task_id}/")
+
+
+def list_tasks(**params):
+    if "depth" not in params:
+        params["depth"] = 2
+    return list_resources("api/tasks", **params)
+
+
+def get_task_status_history(task_id: str, **params):
+    query_params = {"id": task_id}
+    query_params.update(params)
+    return list_resources("api/task-status-history", **query_params)
+
+
+def cancel_task(task_id: str):
+    return update_resource("api/tasks", task_id, {"status": TaskStatus.USER_ABORTED.value})
 
 
 def task_should_abort(task_id: str) -> bool:

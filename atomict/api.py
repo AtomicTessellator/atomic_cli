@@ -1,6 +1,7 @@
 import json
-import os
 import logging
+import os
+from typing import Any, Mapping, Optional
 
 import requests
 from requests.exceptions import (
@@ -30,14 +31,16 @@ def is_http_5xx_error(exception):
     after=after_log(logger, logging.INFO),
     before_sleep=before_sleep_log(logger, logging.WARNING),
 )
-def get(path: str):
+def get(path: str, params: Optional[Mapping[str, Any]] = None):
     api_root = os.environ.get("AT_SERVER", "https://api.atomictessellator.com")
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
 
     if os.environ.get("AT_TOKEN"):
         headers["Authorization"] = f"Token {os.environ.get('AT_TOKEN')}"
 
-    response = requests.get(f"{api_root}/{path}", headers=headers, timeout=120)
+    response = requests.get(
+        f"{api_root}/{path}", headers=headers, params=params, timeout=120
+    )
 
     content_type = response.headers.get("Content-Type")
 
@@ -132,6 +135,40 @@ def patch(path: str, payload: dict):
 
     api_root = os.environ.get("AT_SERVER", "https://api.atomictessellator.com")
     response = requests.patch(f"{api_root}/{path}", data=payload_enc, headers=headers, timeout=120)
+
+    if response.status_code == requests.codes.ok:
+        resp = response.json()
+
+        if resp.get("error") is not None and "api/tasks/" not in path:
+            raise Exception(resp["error"])
+        else:
+            return resp
+
+    elif response.status_code == requests.codes.bad_request:
+        raise APIValidationError(response.json())
+    elif response.status_code == requests.codes.forbidden:
+        raise PermissionDenied(response.json())
+    else:
+        response.raise_for_status()
+
+
+@retry(
+    stop=(stop_after_attempt(5) | stop_after_delay(300)),
+    wait=wait_exponential(multiplier=2, min=1, max=30),
+    retry=(retry_if_exception_type((ConnectionError, Timeout)) | retry_if_exception(is_http_5xx_error)),
+    before=before_log(logger, logging.INFO),
+    after=after_log(logger, logging.INFO),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
+)
+def put(path: str, payload: dict):
+    payload_enc = json.dumps(payload)
+    headers = {"Content-Type": "application/json"}
+
+    if os.environ.get("AT_TOKEN"):
+        headers["Authorization"] = f"Token {os.environ.get('AT_TOKEN')}"
+
+    api_root = os.environ.get("AT_SERVER", "https://api.atomictessellator.com")
+    response = requests.put(f"{api_root}/{path}", data=payload_enc, headers=headers, timeout=120)
 
     if response.status_code == requests.codes.ok:
         resp = response.json()

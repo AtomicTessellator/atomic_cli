@@ -1,7 +1,13 @@
 from typing import Union
 
-from atomict.api import get, post
+from atomict.api import post
 from atomict.infra.distwork.task import SimulationAction
+from atomict.resource_helpers import (
+    delete_resource,
+    list_resources,
+    retrieve_resource,
+    update_resource,
+)
 from atomict.simulation.models import MODEL_ORB_V3_CONSERVATIVE, MODEL_ESEN_30M_OAM, MODEL_UMA
 
 COMPUTATION_TYPE_RELAXATION = 0
@@ -16,15 +22,15 @@ def get_mlrelax(id: str, **params):
         id: str - The ID of the MLRelaxation
         **params: Additional GET parameters to pass to the API
     """
-    # Build query string from parameters
-    query_string = '&'.join(f"{k}={v}" for k, v in params.items())
-    base_url = f"api/mlrelax/{id}/"
-    
-    # Add query string if we have parameters
-    url = f"{base_url}?{query_string}" if query_string else base_url
-    
-    result = get(url)
-    return result
+    return retrieve_resource("api/mlrelax", id, **params)
+
+
+def get_mlrelaxation(mlrelax_id: str, **params):
+    return get_mlrelax(mlrelax_id, **params)
+
+
+def list_mlrelaxations(**params):
+    return list_resources("api/mlrelax", **params)
 
 
 def associate_user_upload_with_mlrelaxation(user_upload_id: str, mlrelax_id: str):
@@ -89,9 +95,36 @@ def create_mlrelaxation(
     return result
 
 
+def update_mlrelaxation(mlrelax_id: str, fields: dict[str, object]):
+    return update_resource("api/mlrelax", mlrelax_id, fields)
+
+
+def delete_mlrelaxation(mlrelax_id: str):
+    return delete_resource("api/mlrelax", mlrelax_id)
+
+
 def get_mlrelax_files(mlrelax_id: str):
     """
     Get the files associated with a MLRelaxation
     """
-    result = get(f"api/mlrelax-file/?mlrelax__id={mlrelax_id}")
-    return result
+    return list_resources("api/mlrelax-file", mlrelax__id=mlrelax_id)
+
+
+def get_mlrelax_file(file_id: str, **params):
+    return retrieve_resource("api/mlrelax-file", file_id, **params)
+
+
+def list_mlrelax_files(**params):
+    return list_resources("api/mlrelax-file", **params)
+
+
+def create_mlrelax_file(payload: dict[str, object]):
+    return post("api/mlrelax-file/", payload=payload)
+
+
+def update_mlrelax_file(file_id: str, fields: dict[str, object]):
+    return update_resource("api/mlrelax-file", file_id, fields)
+
+
+def delete_mlrelax_file(file_id: str):
+    return delete_resource("api/mlrelax-file", file_id)

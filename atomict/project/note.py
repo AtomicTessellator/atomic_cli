@@ -1,4 +1,10 @@
-from atomict.api import post
+from atomict.resource_helpers import (
+    create_resource,
+    delete_resource,
+    list_resources,
+    retrieve_resource,
+    update_resource,
+)
 
 
 def create_project_note(
@@ -12,7 +18,20 @@ def create_project_note(
         "show_description": show_description,
     }
 
-    response = post(
-        "api/project-note/", payload, extra_headers={"Content-Type": "application/json"}
-    )
-    return response
+    return create_resource("api/project-note", payload)
+
+
+def get_project_note(note_id: str, **params) -> dict:
+    return retrieve_resource("api/project-note", note_id, **params)
+
+
+def list_project_notes(**params) -> dict:
+    return list_resources("api/project-note", **params)
+
+
+def update_project_note(note_id: str, fields: dict[str, object]) -> dict:
+    return update_resource("api/project-note", note_id, fields)
+
+
+def delete_project_note(note_id: str) -> dict:
+    return delete_resource("api/project-note", note_id)

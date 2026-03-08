@@ -1,4 +1,10 @@
-from atomict.api import post, delete
+from atomict.resource_helpers import (
+    create_resource,
+    delete_resource,
+    list_resources,
+    retrieve_resource,
+    update_resource,
+)
 
 
 def create_object_link(
@@ -12,15 +18,23 @@ def create_object_link(
         "dst_id": dst_object_id
     }
 
-    response = post(
-        "api/object-link/", payload, extra_headers={"Content-Type": "application/json"}
-    )
-    return response
+    return create_resource("api/object-link", payload)
 
 
 def delete_object_link(link_id: str) -> dict:
     """
     Delete a link between an object and a project
     """
-    response = delete(f"api/object-link/{link_id}/")
-    return response
+    return delete_resource("api/object-link", link_id)
+
+
+def get_object_link(link_id: str, **params) -> dict:
+    return retrieve_resource("api/object-link", link_id, **params)
+
+
+def list_object_links(**params) -> dict:
+    return list_resources("api/object-link", **params)
+
+
+def update_object_link(link_id: str, fields: dict[str, object]) -> dict:
+    return update_resource("api/object-link", link_id, fields)
