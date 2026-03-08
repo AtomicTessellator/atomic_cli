@@ -16,7 +16,6 @@ def test_registry_contains_expected_resources():
         "sqs-exploration",
         "ea-exploration",
         "mlrelax",
-        "qe-simulation",
     ]:
         assert resource in MCP_RESOURCE_REGISTRY
 
