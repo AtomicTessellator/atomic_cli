@@ -27,30 +27,6 @@ def delete_project_star(star_id: str) -> dict:
     return delete_resource("api/project-star", star_id)
 
 
-def get_project_molecule(molecule_id: str, **params) -> dict:
-    return retrieve_resource("api/project-molecule", molecule_id, **params)
-
-
-def list_project_molecules(**params) -> dict:
-    return list_resources("api/project-molecule", **params)
-
-
-def create_project_molecule(project_id: str, **fields) -> dict:
-    payload = {"project": project_id}
-    payload.update(fields)
-    return create_resource("api/project-molecule", payload)
-
-
-def update_project_molecule(
-    molecule_id: str, fields: dict[str, object]
-) -> dict:
-    return update_resource("api/project-molecule", molecule_id, fields)
-
-
-def delete_project_molecule(molecule_id: str) -> dict:
-    return delete_resource("api/project-molecule", molecule_id)
-
-
 def get_project_workbench_layout(layout_id: str, **params) -> dict:
     return retrieve_resource("api/project-workbench-layout", layout_id, **params)
 
