@@ -2,12 +2,14 @@ from atomict.api import get, post
 
 
 def get_impact_simulation(id: str, **params):
-    """
-    Get Impact Simulation
-
+    """Get impact simulation details.
+    
     Args:
-        id: str - The ID of the Impact Simulation
-        **params: Additional GET parameters to pass to the API
+        id (str): The resource identifier.
+        **params (Any): Additional query parameters to include in the request.
+    
+    Returns:
+        dict: The API response payload.
     """
     # Build query string from parameters
     query_string = '&'.join(f"{k}={v}" for k, v in params.items())
@@ -21,8 +23,14 @@ def get_impact_simulation(id: str, **params):
 
 
 def associate_user_upload_with_impact_simulation(user_upload_id: str, impact_simulation_id: str):
-    """
-    Associate a user upload with an Impact Simulation
+    """Associate a user upload with an impact simulation.
+    
+    Args:
+        user_upload_id (str): The user upload identifier.
+        impact_simulation_id (str): The impact simulation identifier.
+    
+    Returns:
+        dict: The API response payload.
     """
     result = post(
         "api/impact-simulation-file/",
@@ -32,8 +40,13 @@ def associate_user_upload_with_impact_simulation(user_upload_id: str, impact_sim
 
 
 def get_impact_simulation_files(impact_simulation_id: str):
-    """
-    Get the files associated with an Impact Simulation
+    """List files associated with an impact simulation.
+    
+    Args:
+        impact_simulation_id (str): The impact simulation identifier.
+    
+    Returns:
+        dict: The API response payload.
     """
     result = get(f"api/impact-simulation-file/?impact_simulation__id={impact_simulation_id}")
     return result

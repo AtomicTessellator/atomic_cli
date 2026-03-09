@@ -8,22 +8,64 @@ from atomict.resource_helpers import (
 
 
 def get_organisation(organisation_id: str, **params) -> dict:
+    """Get organisation details.
+    
+    Args:
+        organisation_id (str): The organisation identifier.
+        **params (Any): Additional query parameters to include in the request.
+    
+    Returns:
+        dict: The API response payload.
+    """
     return retrieve_resource("api/organisation", organisation_id, **params)
 
 
 def list_organisations(**params) -> dict:
+    """List organisations.
+    
+    Args:
+        **params (Any): Additional query parameters to include in the request.
+    
+    Returns:
+        dict: The API response payload.
+    """
     return list_resources("api/organisation", **params)
 
 
 def create_organisation(payload: dict[str, object]) -> dict:
+    """Create a new organisation.
+    
+    Args:
+        payload (dict[str, object]): The payload to send to the API.
+    
+    Returns:
+        dict: The API response payload.
+    """
     return create_resource("api/organisation", payload)
 
 
 def update_organisation(organisation_id: str, fields: dict[str, object]) -> dict:
+    """Update organisation.
+    
+    Args:
+        organisation_id (str): The organisation identifier.
+        fields (dict[str, object]): Field values to update on the resource.
+    
+    Returns:
+        dict: The API response payload.
+    """
     return update_resource("api/organisation", organisation_id, fields)
 
 
 def delete_organisation(organisation_id: str) -> dict:
+    """Delete organisation.
+    
+    Args:
+        organisation_id (str): The organisation identifier.
+    
+    Returns:
+        dict: The API response payload.
+    """
     return delete_resource("api/organisation", organisation_id)
 
 

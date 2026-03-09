@@ -26,10 +26,27 @@ def get_mlrelax(id: str, **params):
 
 
 def get_mlrelaxation(mlrelax_id: str, **params):
+    """Get ML relaxation details.
+    
+    Args:
+        mlrelax_id (str): The ML relaxation identifier.
+        **params (Any): Additional query parameters to include in the request.
+    
+    Returns:
+        dict: The API response payload.
+    """
     return get_mlrelax(mlrelax_id, **params)
 
 
 def list_mlrelaxations(**params):
+    """List ML relaxations.
+    
+    Args:
+        **params (Any): Additional query parameters to include in the request.
+    
+    Returns:
+        dict: The API response payload.
+    """
     return list_resources("api/mlrelax", **params)
 
 
@@ -56,8 +73,22 @@ def create_mlrelaxation(
     calculator: Union[int, None] = None,
     extra_simulation_kwargs: dict = None,
 ):
-    """
-    Create a MLRelaxation
+    """Create a new ML relaxation.
+    
+    Args:
+        project_id (str): The project identifier.
+        source_geometry_id (str): The source geometry identifier.
+        action (SimulationAction): The action to perform for the simulation.
+        name (str | None): The resource name.
+        description (str | None): The resource description.
+        computation_type (int): The computation type to use for the ML relaxation.
+        f_max (float | None): The force convergence threshold.
+        model (int): The model identifier to use for the run.
+        calculator (Union[int, None]): The calculator identifier to use for the run.
+        extra_simulation_kwargs (dict | None): Additional simulation keyword arguments to include in the request.
+    
+    Returns:
+        dict: The API response payload.
     """
 
     if action not in [SimulationAction.SAVE_DRAFT, SimulationAction.LAUNCH]:
@@ -96,10 +127,27 @@ def create_mlrelaxation(
 
 
 def update_mlrelaxation(mlrelax_id: str, fields: dict[str, object]):
+    """Update ML relaxation.
+    
+    Args:
+        mlrelax_id (str): The ML relaxation identifier.
+        fields (dict[str, object]): Field values to update on the resource.
+    
+    Returns:
+        dict: The API response payload.
+    """
     return update_resource("api/mlrelax", mlrelax_id, fields)
 
 
 def delete_mlrelaxation(mlrelax_id: str):
+    """Delete ML relaxation.
+    
+    Args:
+        mlrelax_id (str): The ML relaxation identifier.
+    
+    Returns:
+        dict: The API response payload.
+    """
     return delete_resource("api/mlrelax", mlrelax_id)
 
 
@@ -111,20 +159,62 @@ def get_mlrelax_files(mlrelax_id: str):
 
 
 def get_mlrelax_file(file_id: str, **params):
+    """Get ML relaxation file details.
+    
+    Args:
+        file_id (str): The file identifier.
+        **params (Any): Additional query parameters to include in the request.
+    
+    Returns:
+        dict: The API response payload.
+    """
     return retrieve_resource("api/mlrelax-file", file_id, **params)
 
 
 def list_mlrelax_files(**params):
+    """List ML relaxation files.
+    
+    Args:
+        **params (Any): Additional query parameters to include in the request.
+    
+    Returns:
+        dict: The API response payload.
+    """
     return list_resources("api/mlrelax-file", **params)
 
 
 def create_mlrelax_file(payload: dict[str, object]):
+    """Create a new ML relaxation file.
+    
+    Args:
+        payload (dict[str, object]): The payload to send to the API.
+    
+    Returns:
+        dict: The API response payload.
+    """
     return post("api/mlrelax-file/", payload=payload)
 
 
 def update_mlrelax_file(file_id: str, fields: dict[str, object]):
+    """Update ML relaxation file.
+    
+    Args:
+        file_id (str): The file identifier.
+        fields (dict[str, object]): Field values to update on the resource.
+    
+    Returns:
+        dict: The API response payload.
+    """
     return update_resource("api/mlrelax-file", file_id, fields)
 
 
 def delete_mlrelax_file(file_id: str):
+    """Delete ML relaxation file.
+    
+    Args:
+        file_id (str): The file identifier.
+    
+    Returns:
+        dict: The API response payload.
+    """
     return delete_resource("api/mlrelax-file", file_id)

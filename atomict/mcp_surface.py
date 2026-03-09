@@ -1,8 +1,46 @@
 from __future__ import annotations
 
+import ast
 from dataclasses import dataclass
+from functools import lru_cache
 from importlib import import_module
+from pathlib import Path
 from typing import Callable
+
+
+@lru_cache(maxsize=None)
+def _module_function_docstrings(module_name: str) -> dict[str, str]:
+    source_path = Path(__file__).resolve().parent.parent / (
+        module_name.replace(".", "/") + ".py"
+    )
+    if not source_path.exists():
+        return {}
+
+    try:
+        source = source_path.read_text()
+    except OSError:
+        return {}
+
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return {}
+
+    docstrings: dict[str, str] = {}
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            docstring = ast.get_docstring(node)
+            if docstring:
+                docstrings[node.name] = docstring
+    return docstrings
+
+
+def _load_surface_notes(module_name: str, function_name: str) -> str | None:
+    return _module_function_docstrings(module_name).get(function_name)
+
+
+def _fallback_surface_notes(function_name: str) -> str:
+    return function_name.replace("_", " ").capitalize() + "."
 
 
 @dataclass(frozen=True)
@@ -13,6 +51,15 @@ class SurfaceOperation:
     function: str
     kind: str = "wrapper"
     notes: str = ""
+
+    def __post_init__(self):
+        if not self.notes:
+            object.__setattr__(
+                self,
+                "notes",
+                _load_surface_notes(self.module, self.function)
+                or _fallback_surface_notes(self.function),
+            )
 
 
 MCP_SOURCE_PARITY_SURFACE: tuple[SurfaceOperation, ...] = (

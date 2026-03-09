@@ -1,6 +1,8 @@
 import logging
 import os
 import shutil
+from collections.abc import Callable
+from typing import Any
 
 from atomict.infra.distwork.task import TaskStatus, update_task_status
 from atomict.io.utils import human_filesize
@@ -13,8 +15,17 @@ def display_name(user_upload):
     return user_upload["orig_name"]
 
 
-def clear_workspace(sim, base_path: str = "./workspace"):
+def clear_workspace(sim: dict[str, Any], base_path: str = "./workspace") -> None:
 
+    """Clear a local workspace directory.
+
+    Args:
+        sim (dict[str, Any]): The simulation payload that owns the workspace.
+        base_path (str): The base directory containing workspace folders.
+
+    Returns:
+        None: This helper removes local files in place and does not return a value.
+    """
     target_dir = os.path.join(base_path, sim["id"])
 
     if os.path.exists(target_dir):
@@ -22,12 +33,19 @@ def clear_workspace(sim, base_path: str = "./workspace"):
         shutil.rmtree(target_dir)
 
 
-def download_workspace(workspace_files, target_directory: str):
-    """Download a workspace to a target directory
+def download_workspace(
+    workspace_files: list[dict[str, Any]], target_directory: str
+) -> None:
+    """Download workspace files to a local directory.
 
     Args:
-        workspace_files list of UserUpload objects: List of files to download
-        target_directory (str): The directory to download the files to
+        workspace_files (list[dict[str, Any]]): The workspace file payloads to
+            download.
+        target_directory (str): The local directory where the files should be
+            written.
+
+    Returns:
+        None: This helper downloads files to disk and does not return a value.
     """
 
     os.makedirs(target_directory, exist_ok=True)
@@ -51,16 +69,22 @@ def download_workspace(workspace_files, target_directory: str):
 
 
 def upload_workspace(
-    sim, associate_function, workspace_folder: str, starting_percent: int = 80
-):
-    """
-    Uploads a workspace folder to the Atomic platform, and associates the uploaded files with the given simulation.
+    sim: dict[str, Any],
+    associate_function: Callable[[str, str], object],
+    workspace_folder: str,
+    starting_percent: int = 80,
+) -> None:
+    """Upload a local workspace directory.
 
     Args:
-        sim: The simulation object to associate the uploaded files with
-        associate_function: The function to associate the uploaded files with the simulation (e.g. associate_user_upload_with_qe_simulation)
-        workspace_folder: The folder to upload
-        starting_percent: The starting percentage to use when updating the task status
+        sim (dict[str, Any]): The simulation payload that owns the workspace.
+        associate_function (Callable[[str, str], object]): The callback used to
+            associate an uploaded file with the simulation.
+        workspace_folder (str): The local workspace directory to upload.
+        starting_percent (int): The initial task progress percentage to report.
+
+    Returns:
+        None: This helper uploads files and updates task progress in place.
     """
 
     simulation_id = sim["id"]
