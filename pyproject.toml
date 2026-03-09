@@ -23,7 +23,7 @@ description = "The client application for the https://atomictessellator.com/"
 keywords = ["atomic", "tessellator", "cli", "client", "fhi-aims", "kpoint", "sqs"]
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
 dynamic = ["version", "dependencies"]
 
 [project.urls]
