@@ -16,26 +16,40 @@ from atomict.user.files import download_file
 from atomict.user.workspace import download_workspace
 
 
+def _read_geometry_file(filepath: str, extension: str) -> Atoms:
+    if extension == "atraj":
+        atoms, _ = read_atraj(filepath)
+    elif extension == "tess":
+        atoms, _ = read_tess(filepath)
+    else:
+        atoms = read(filepath)
+
+    if isinstance(atoms, list):
+        return atoms[-1]
+    return atoms
+
+
 def fetch_source_geometry(sim: dict, workbench_dir: str) -> Atoms:
     if sim.get("source_geometry"):
-
         extension = sim["source_geometry"]["orig_name"].split(".")[-1]
-
-        download_file(sim["source_geometry"]["id"], workbench_dir + f"/geometry.{extension}")
-        
-        if extension == "atraj":
-            atoms, _ = read_atraj(workbench_dir + f"/geometry.{extension}")
-        elif extension == "tess":
-            atoms, _ = read_tess(workbench_dir + f"/geometry.{extension}")
-        else:
-            atoms = read(workbench_dir + f"/geometry.{extension}")
-
-        if isinstance(atoms, list):
-            return atoms[-1]
-        else:
-            return atoms
+        filepath = workbench_dir + f"/geometry.{extension}"
+        download_file(sim["source_geometry"]["id"], filepath)
+        return _read_geometry_file(filepath, extension)
     else:
-        raise ValueError("No input geometry found")
+        raise ValueError("No associated input geometry found (simulation.source_geometry)")
+
+
+def get_source_geometry(sim: dict, workbench_dir: str) -> Atoms:
+    """Return the source geometry, reading from disk if already present."""
+    if sim.get("source_geometry"):
+        extension = sim["source_geometry"]["orig_name"].split(".")[-1]
+        filepath = workbench_dir + f"/geometry.{extension}"
+        if os.path.exists(filepath):
+            logging.info(f"Source geometry already on disk, skipping download: {filepath}")
+            return _read_geometry_file(filepath, extension)
+        return fetch_source_geometry(sim, workbench_dir)
+    else:
+        raise ValueError("No associated input geometry found (simulation.source_geometry)")
 
 
 def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
