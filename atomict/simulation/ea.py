@@ -1,83 +1,100 @@
 from atomict.api import get, post
 
 
-def get_ea_exploration(exploration_id: str, **params):
+def get_ea_exploration(exploration_id: str, *, api_root: str = None, token: str = None, **params):
     """
     Get EA exploration
     
     Args:
         exploration_id: str - The ID of the exploration
+        api_root: str - Optional API root URL (defaults to AT_SERVER env var)
+        token: str - Optional API token (defaults to AT_TOKEN env var)
         **params: Additional GET parameters to pass to the API
     """
     query_string = '&'.join(f"{k}={v}" for k, v in params.items())
     base_url = f"api/ea-exploration/{exploration_id}/"
     url = f"{base_url}?{query_string}" if query_string else base_url
-    return get(url)
+    return get(url, api_root=api_root, token=token)
 
 
-def get_ea_exploration_sample(sample_id: str, **params):
+def get_ea_exploration_sample(sample_id: str, *, api_root: str = None, token: str = None, **params):
     """
     Get EA exploration sample
     
     Args:
         sample_id: str - The ID of the sample
+        api_root: str - Optional API root URL (defaults to AT_SERVER env var)
+        token: str - Optional API token (defaults to AT_TOKEN env var)
         **params: Additional GET parameters to pass to the API
     """
     query_string = '&'.join(f"{k}={v}" for k, v in params.items())
     base_url = f"api/ea-exploration-sample/{sample_id}/"
     url = f"{base_url}?{query_string}" if query_string else base_url
-    return get(url)
+    return get(url, api_root=api_root, token=token)
 
 
-def get_ea_exploration_samples(exploration_id: str, **params):
+def get_ea_exploration_samples(exploration_id: str, *, api_root: str = None, token: str = None, **params):
     """
     Get EA exploration samples
     
     Args:
         exploration_id: str - The ID of the exploration
+        api_root: str - Optional API root URL (defaults to AT_SERVER env var)
+        token: str - Optional API token (defaults to AT_TOKEN env var)
         **params: Additional GET parameters to pass to the API
     """
-    # Start with the required exploration parameter
     query_params = params.copy()
     query_params['exploration'] = exploration_id
-    
+
     query_string = '&'.join(f"{k}={v}" for k, v in query_params.items())
     url = f"api/ea-exploration-sample/?{query_string}"
-    return get(url)
+    return get(url, api_root=api_root, token=token)
 
 
-def get_ea_exploration_analysis(analysis_id: str, **params):
+def get_ea_exploration_analysis(analysis_id: str, *, api_root: str = None, token: str = None, **params):
     """
     Get EA exploration analysis
     
     Args:
         analysis_id: str - The ID of the analysis
+        api_root: str - Optional API root URL (defaults to AT_SERVER env var)
+        token: str - Optional API token (defaults to AT_TOKEN env var)
         **params: Additional GET parameters to pass to the API
     """
     query_string = '&'.join(f"{k}={v}" for k, v in params.items())
     base_url = f"api/ea-exploration-analysis/{analysis_id}/"
     url = f"{base_url}?{query_string}" if query_string else base_url
-    return get(url)
+    return get(url, api_root=api_root, token=token)
 
 
-def get_ea_exploration_analysis_file(analysis_file_id: str, **params):
+def get_ea_exploration_analysis_file(analysis_file_id: str, *, api_root: str = None, token: str = None, **params):
     """
     Get EA exploration analysis file
     
     Args:
         analysis_file_id: str - The ID of the analysis file
+        api_root: str - Optional API root URL (defaults to AT_SERVER env var)
+        token: str - Optional API token (defaults to AT_TOKEN env var)
         **params: Additional GET parameters to pass to the API
     """
     query_string = '&'.join(f"{k}={v}" for k, v in params.items())
     base_url = f"api/ea-exploration-analysis-file/{analysis_file_id}/"
     url = f"{base_url}?{query_string}" if query_string else base_url
-    return get(url)
+    return get(url, api_root=api_root, token=token)
 
 
-def associate_user_upload_with_ea_exploration(user_upload_id: str, analysis_id: str):
+def associate_user_upload_with_ea_exploration(
+    user_upload_id: str,
+    analysis_id: str,
+    *,
+    api_root: str = None,
+    token: str = None,
+):
     return post(
         "api/ea-exploration-analysis-file/",
         payload={"user_upload_id": user_upload_id, "analysis_id": analysis_id},
+        api_root=api_root,
+        token=token,
     )
 
 
@@ -87,6 +104,9 @@ def create_exploration_sample(
     mlrelax_id: str = None,
     strain: float = None,
     matrix: int = None,
+    *,
+    api_root: str = None,
+    token: str = None,
 ):
     """
     Create an exploration sample
@@ -114,4 +134,6 @@ def create_exploration_sample(
     return post(
         "api/ea-exploration-sample/",
         payload=payload,
+        api_root=api_root,
+        token=token,
     )
