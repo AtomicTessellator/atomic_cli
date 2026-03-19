@@ -3,8 +3,14 @@ import os
 from atomict.api import get, post
 
 
-def upload_single_file(full_path: str, file_name: str = None, project_id: str = None):
-
+def upload_single_file(
+    full_path: str,
+    file_name: str = None,
+    project_id: str = None,
+    *,
+    api_root: str = None,
+    token: str = None,
+):
     payload = {}
 
     if file_name:
@@ -16,12 +22,12 @@ def upload_single_file(full_path: str, file_name: str = None, project_id: str = 
         payload['project_id'] = project_id
 
     with open(full_path, "rb") as f:
-        result = post("user/file_upload/", files={file_name: f}, payload=payload)
+        result = post("user/file_upload/", files={file_name: f}, payload=payload, api_root=api_root, token=token)
         return result
 
 
-def download_file(user_upload_id: str, destination_path: str):
-    content = get(f"user/file_upload_get/{user_upload_id}/")
+def download_file(user_upload_id: str, destination_path: str, *, api_root: str = None, token: str = None):
+    content = get(f"user/file_upload_get/{user_upload_id}/", api_root=api_root, token=token)
 
     # Write the content to the destination path
     # if there's a directory path in the destination path, create the directory
