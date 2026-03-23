@@ -101,18 +101,12 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
         os.makedirs(mlrelax_dir, exist_ok=True)
         download_workspace(files["results"], mlrelax_dir)
 
-        traj_file = os.path.join(mlrelax_dir, "relax.traj")
-        atraj_file = os.path.join(mlrelax_dir, "relax.atraj")
+        for ext in ("atraj", "tess", "traj"):
+            candidate = os.path.join(mlrelax_dir, f"relax.{ext}")
+            if os.path.exists(candidate):
+                return _read_geometry_file(candidate, ext)
 
-        if os.path.exists(atraj_file):
-            atoms, _ = read_atraj(atraj_file)
-        else:
-            atoms = read(traj_file)
-        
-        if isinstance(atoms, list):
-            return atoms[-1]
-        else:
-            return atoms
+        raise FileNotFoundError(f"No relaxation output found in {mlrelax_dir}")
 
     elif sim.get("starting_structure_userupload"):
         logging.info(f"Previous UserUpload: {sim['starting_structure_userupload']['id']}")
