@@ -1,40 +1,45 @@
 from atomict.api import get, post, patch
 
 
-def get_kpoint_exploration(simulation_id: str):
+def get_kpoint_exploration(simulation_id: str, *, api_root: str = None, token: str = None):
     """
     Get kpoints for a simulation
     """
-    result = get(f"api/kpoint-exploration/{simulation_id}/")
+    result = get(f"api/kpoint-exploration/{simulation_id}/", api_root=api_root, token=token)
     return result
 
 
-def update_kpoint_exploration(exploration_id: str, fields: dict):
+def update_kpoint_exploration(exploration_id: str, fields: dict, *, api_root: str = None, token: str = None):
     """
     Update KPoint exploration
     """
-    result = patch(f"api/kpoint-exploration/{exploration_id}/", payload=fields)
+    result = patch(f"api/kpoint-exploration/{exploration_id}/", payload=fields, api_root=api_root, token=token)
     return result
 
 
-def get_kpoint_simulation_list(exploration_id: str):
+def get_kpoint_simulation_list(exploration_id: str, *, api_root: str = None, token: str = None):
     """
     Get kpoints for a simulation
     """
-    result = get(f"api/kpoint-simulation/?exploration__id={exploration_id}")
+    result = get(f"api/kpoint-simulation/?exploration__id={exploration_id}", api_root=api_root, token=token)
     return result
 
 
-def get_kpoint_simulation(simulation_id: str):
+def get_kpoint_simulation(simulation_id: str, *, api_root: str = None, token: str = None):
     """
     Get KPoint simulation
     """
-    result = get(f"api/kpoint-simulation/{simulation_id}/")
+    result = get(f"api/kpoint-simulation/{simulation_id}/", api_root=api_root, token=token)
     return result
 
 
 def create_kpoint_simulation(
-    exploration_id: str, simulation_id: str, k_points: list[float]
+    exploration_id: str,
+    simulation_id: str,
+    k_points: list[float],
+    *,
+    api_root: str = None,
+    token: str = None,
 ):
     """
     Create KPoint simulation
@@ -46,29 +51,31 @@ def create_kpoint_simulation(
             "simulation_id": simulation_id,
             "k_points": k_points,
         },
+        api_root=api_root,
+        token=token,
     )
     return result
 
 
-def update_kpoint_simulation(simulation_id: str, fields: dict):
+def update_kpoint_simulation(simulation_id: str, fields: dict, *, api_root: str = None, token: str = None):
     """
     Update KPoint simulation
     """
-    result = patch(f"api/kpoint-simulation/{simulation_id}/", payload=fields)
+    result = patch(f"api/kpoint-simulation/{simulation_id}/", payload=fields, api_root=api_root, token=token)
     return result
 
 
-def get_kpoint_analysis(analysis_id: str):
+def get_kpoint_analysis(analysis_id: str, *, api_root: str = None, token: str = None):
     """
     Get KPoint analysis
     """
-    result = get(f"api/kpoint-analysis/{analysis_id}/")
+    result = get(f"api/kpoint-analysis/{analysis_id}/", api_root=api_root, token=token)
     return result
 
 
-def update_kpoint_analysis(analysis_id: str, fields: dict):
+def update_kpoint_analysis(analysis_id: str, fields: dict, *, api_root: str = None, token: str = None):
     """
     Update KPoint analysis
     """
-    result = patch(f"api/kpoint-analysis/{analysis_id}/", payload=fields)
+    result = patch(f"api/kpoint-analysis/{analysis_id}/", payload=fields, api_root=api_root, token=token)
     return result
