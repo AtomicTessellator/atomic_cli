@@ -79,3 +79,20 @@ def update_kpoint_analysis(analysis_id: str, fields: dict, *, api_root: str = No
     """
     result = patch(f"api/kpoint-analysis/{analysis_id}/", payload=fields, api_root=api_root, token=token)
     return result
+
+
+def delete_kpoint_simulations(exploration_id: str, *, api_root: str = None, token: str = None):
+    """Delete all FHIAims simulations linked to the exploration via KPointSimulation.
+
+    Calls the server-side reset_simulations endpoint which cascade-deletes
+    KPointSimulation records by deleting their FHIAimsSimulation parents.
+    Safe to call when no simulations exist (returns {"deleted": 0}).
+    Used as a saga compensation and as a clean-slate step before retrying Stage 1.
+    """
+    result = post(
+        f"api/kpoint-exploration/{exploration_id}/reset_simulations/",
+        payload={},
+        api_root=api_root,
+        token=token,
+    )
+    return result
