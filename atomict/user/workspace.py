@@ -13,10 +13,15 @@ def display_name(user_upload):
     return user_upload["orig_name"]
 
 
-def clear_workspace(sim, base_path: str = "./workspace"):
+def clear_workspace(sim: dict | str, base_path: str = "./workspace"):
+    if isinstance(sim, str):
+        sim_id = sim
+    elif isinstance(sim, dict) and hasattr(sim, "id"):
+        sim_id = sim["id"]
+    else:
+        raise ValueError("Simulation parameter must be of type dict | str.")
 
-    target_dir = os.path.join(base_path, sim["id"])
-
+    target_dir = os.path.join(base_path, sim_id)
     if os.path.exists(target_dir):
         logging.warning(f"Removing existing workspace folder {target_dir}")
         shutil.rmtree(target_dir)
