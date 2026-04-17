@@ -29,17 +29,17 @@ def _read_geometry_file(filepath: str, extension: str) -> Atoms:
     return atoms
 
 
-def fetch_source_geometry(sim: dict, workbench_dir: str) -> Atoms:
+def fetch_source_geometry(sim: dict, workbench_dir: str, *, api_root: str = None, token: str = None) -> Atoms:
     if sim.get("source_geometry"):
         extension = sim["source_geometry"]["orig_name"].split(".")[-1]
         filepath = workbench_dir + f"/geometry.{extension}"
-        download_file(sim["source_geometry"]["id"], filepath)
+        download_file(sim["source_geometry"]["id"], filepath, api_root=api_root, token=token)
         return _read_geometry_file(filepath, extension)
     else:
         raise ValueError("No associated input geometry found (simulation.source_geometry)")
 
 
-def get_source_geometry(sim: dict, workbench_dir: str) -> Atoms:
+def get_source_geometry(sim: dict, workbench_dir: str, *, api_root: str = None, token: str = None) -> Atoms:
     """Return the source geometry, reading from disk if already present."""
     if sim.get("source_geometry"):
         extension = sim["source_geometry"]["orig_name"].split(".")[-1]
@@ -47,12 +47,12 @@ def get_source_geometry(sim: dict, workbench_dir: str) -> Atoms:
         if os.path.exists(filepath):
             logging.info(f"Source geometry already on disk, skipping download: {filepath}")
             return _read_geometry_file(filepath, extension)
-        return fetch_source_geometry(sim, workbench_dir)
+        return fetch_source_geometry(sim, workbench_dir, api_root=api_root, token=token)
     else:
         raise ValueError("No associated input geometry found (simulation.source_geometry)")
 
 
-def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
+def fetch_relaxed_geometry(sim: dict, workbench_dir: str, *, api_root: str = None, token: str = None) -> Atoms:
 
     """
     Fetch the relaxed geometry from the simulation
@@ -62,9 +62,9 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
     """
 
     if sim.get("starting_structure"):
-        previous_simulation = fhi_get_simulation(sim["starting_structure"]["id"], include_ht=True)
+        previous_simulation = fhi_get_simulation(sim["starting_structure"]["id"], include_ht=True, api_root=api_root, token=token)
         logging.info(f"Previous simulation: {previous_simulation['id']}")
-        files = fhi_get_simulation_files(previous_simulation["id"])
+        files = fhi_get_simulation_files(previous_simulation["id"], api_root=api_root, token=token)
 
         total_size = 0
         for file in files["results"]:
@@ -76,7 +76,7 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
 
         prev_sim_dir = os.path.join(workbench_dir, "previous_simulation")
         os.makedirs(prev_sim_dir, exist_ok=True)
-        download_workspace(files["results"], prev_sim_dir)
+        download_workspace(files["results"], prev_sim_dir, api_root=api_root, token=token)
         atoms = read_aims_output(
             os.path.join(prev_sim_dir, f"{previous_simulation['id']}.out")
         )
@@ -85,9 +85,9 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
 
     elif sim.get("starting_structure_mlrelax"):
         
-        previous_mlrelax = get_mlrelax(sim["starting_structure_mlrelax"]["id"], include_ht=True)
+        previous_mlrelax = get_mlrelax(sim["starting_structure_mlrelax"]["id"], include_ht=True, api_root=api_root, token=token)
         logging.info(f"Previous MLRelaxation: {previous_mlrelax['id']}")
-        files = get_mlrelax_files(previous_mlrelax["id"])
+        files = get_mlrelax_files(previous_mlrelax["id"], api_root=api_root, token=token)
 
         total_size = 0
         for file in files["results"]:
@@ -99,7 +99,7 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
 
         mlrelax_dir = os.path.join(workbench_dir, "previous_mlrelax")
         os.makedirs(mlrelax_dir, exist_ok=True)
-        download_workspace(files["results"], mlrelax_dir)
+        download_workspace(files["results"], mlrelax_dir, api_root=api_root, token=token)
 
         for ext in ("atraj", "tess", "traj"):
             candidate = os.path.join(mlrelax_dir, f"relax.{ext}")
@@ -113,7 +113,7 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str) -> Atoms:
 
         extension = sim["starting_structure_userupload"]["orig_name"].split(".")[-1]
 
-        download_file(sim["starting_structure_userupload"]["id"], workbench_dir + f"/geometry.{extension}")
+        download_file(sim["starting_structure_userupload"]["id"], workbench_dir + f"/geometry.{extension}", api_root=api_root, token=token)
         
         if extension == "atraj":
             atoms, _ = read_atraj(workbench_dir + f"/geometry.{extension}")

@@ -8,32 +8,38 @@ COMPUTATION_TYPE_RELAXATION = 0
 COMPUTATION_TYPE_SINGLE_POINT = 1
 
 
-def get_mlrelax(id: str, **params):
+def get_mlrelax(id: str, *, api_root: str = None, token: str = None, **params):
     """
     Get MLRelaxation
 
     Args:
         id: str - The ID of the MLRelaxation
+        api_root: str - Optional API root URL (defaults to AT_SERVER env var)
+        token: str - Optional API token (defaults to AT_TOKEN env var)
         **params: Additional GET parameters to pass to the API
     """
-    # Build query string from parameters
     query_string = '&'.join(f"{k}={v}" for k, v in params.items())
     base_url = f"api/mlrelax/{id}/"
-    
-    # Add query string if we have parameters
     url = f"{base_url}?{query_string}" if query_string else base_url
-    
-    result = get(url)
+    result = get(url, api_root=api_root, token=token)
     return result
 
 
-def associate_user_upload_with_mlrelaxation(user_upload_id: str, mlrelax_id: str):
+def associate_user_upload_with_mlrelaxation(
+    user_upload_id: str,
+    mlrelax_id: str,
+    *,
+    api_root: str = None,
+    token: str = None,
+):
     """
     Associate a user upload with a MLRelaxation
     """
     result = post(
         "api/mlrelax-file/",
         payload={"user_upload_id": user_upload_id, "mlrelax_id": mlrelax_id},
+        api_root=api_root,
+        token=token,
     )
     return result
 
@@ -49,6 +55,9 @@ def create_mlrelaxation(
     model: int = MODEL_ESEN_30M_OAM,
     calculator: Union[int, None] = None,
     extra_simulation_kwargs: dict = None,
+    *,
+    api_root: str = None,
+    token: str = None,
 ):
     """
     Create a MLRelaxation
@@ -85,13 +94,13 @@ def create_mlrelaxation(
     if extra_simulation_kwargs:
         payload.update(extra_simulation_kwargs)
 
-    result = post("api/mlrelax/", payload)
+    result = post("api/mlrelax/", payload, api_root=api_root, token=token)
     return result
 
 
-def get_mlrelax_files(mlrelax_id: str):
+def get_mlrelax_files(mlrelax_id: str, *, api_root: str = None, token: str = None):
     """
     Get the files associated with a MLRelaxation
     """
-    result = get(f"api/mlrelax-file/?mlrelax__id={mlrelax_id}")
+    result = get(f"api/mlrelax-file/?mlrelax__id={mlrelax_id}", api_root=api_root, token=token)
     return result

@@ -30,12 +30,13 @@ def is_http_5xx_error(exception):
     after=after_log(logger, logging.INFO),
     before_sleep=before_sleep_log(logger, logging.WARNING),
 )
-def get(path: str):
-    api_root = os.environ.get("AT_SERVER", "https://api.atomictessellator.com")
+def get(path: str, api_root: str = None, token: str = None):
+    api_root = api_root or os.environ.get("AT_SERVER", "https://api.atomictessellator.com")
+    token = token or os.environ.get("AT_TOKEN")
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
 
-    if os.environ.get("AT_TOKEN"):
-        headers["Authorization"] = f"Token {os.environ.get('AT_TOKEN')}"
+    if token:
+        headers["Authorization"] = f"Token {token}"
 
     response = requests.get(f"{api_root}/{path}", headers=headers, timeout=120)
 
@@ -73,7 +74,7 @@ def get(path: str):
     after=after_log(logger, logging.INFO),
     before_sleep=before_sleep_log(logger, logging.WARNING),
 )
-def post(path: str, payload: dict, files=None, extra_headers={}):
+def post(path: str, payload: dict, files=None, extra_headers={}, api_root: str = None, token: str = None):
     # Jesus christ this logic needs cleaning up
     if not files and "Content-Type" not in extra_headers:
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
@@ -87,10 +88,11 @@ def post(path: str, payload: dict, files=None, extra_headers={}):
         else:
             headers.update(extra_headers)
 
-    if os.environ.get("AT_TOKEN"):
-        headers["Authorization"] = f"Token {os.environ.get('AT_TOKEN')}"
+    api_root = api_root or os.environ.get("AT_SERVER", "https://api.atomictessellator.com")
+    token = token or os.environ.get("AT_TOKEN")
 
-    api_root = os.environ.get("AT_SERVER", "https://api.atomictessellator.com")
+    if token:
+        headers["Authorization"] = f"Token {token}"
 
     if files is not None:
         response = requests.post(
@@ -123,14 +125,15 @@ def post(path: str, payload: dict, files=None, extra_headers={}):
     after=after_log(logger, logging.INFO),
     before_sleep=before_sleep_log(logger, logging.WARNING),
 )
-def patch(path: str, payload: dict):
+def patch(path: str, payload: dict, api_root: str = None, token: str = None):
     payload_enc = json.dumps(payload)
     headers = {"Content-Type": "application/json"}
 
-    if os.environ.get("AT_TOKEN"):
-        headers["Authorization"] = f"Token {os.environ.get('AT_TOKEN')}"
+    api_root = api_root or os.environ.get("AT_SERVER", "https://api.atomictessellator.com")
+    token = token or os.environ.get("AT_TOKEN")
 
-    api_root = os.environ.get("AT_SERVER", "https://api.atomictessellator.com")
+    if token:
+        headers["Authorization"] = f"Token {token}"
     response = requests.patch(f"{api_root}/{path}", data=payload_enc, headers=headers, timeout=120)
 
     if response.status_code == requests.codes.ok:
@@ -157,13 +160,14 @@ def patch(path: str, payload: dict):
     after=after_log(logger, logging.INFO),
     before_sleep=before_sleep_log(logger, logging.WARNING),
 )
-def delete(path: str):
+def delete(path: str, api_root: str = None, token: str = None):
     headers = {}
 
-    if os.environ.get("AT_TOKEN"):
-        headers["Authorization"] = f"Token {os.environ.get('AT_TOKEN')}"
+    api_root = api_root or os.environ.get("AT_SERVER", "https://api.atomictessellator.com")
+    token = token or os.environ.get("AT_TOKEN")
 
-    api_root = os.environ.get("AT_SERVER", "https://api.atomictessellator.com")
+    if token:
+        headers["Authorization"] = f"Token {token}"
     response = requests.delete(f"{api_root}/{path}", headers=headers, timeout=120)
 
     if response.status_code == requests.codes.ok:
