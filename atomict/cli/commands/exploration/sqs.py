@@ -126,41 +126,56 @@ def get(
 @sqs_group.command()
 @click.option("--name", help="Exploration name")
 @click.option("--description", help="Exploration description")
-@click.option("--project", required=True, help="Project ID")
-@click.option("--auto-max-size", is_flag=True, help="Automatically determine max size")
 @click.option("--max-size", type=int, help="Maximum structure size")
-@click.option("--atom-count-limit", type=int, help="Upper limit for atom count")
 @click.option("--cutoffs", type=float, multiple=True, help="Cluster cutoff values")
-@click.option("--starting-structure", required=True, help="FHIAims simulation ID")
+@click.option(
+    "--source-geometry",
+    required=True,
+    help="UserUpload ID for the source geometry",
+)
+@click.option(
+    "--target-concentration",
+    "target_concentrations",
+    multiple=True,
+    help="Target concentration in ELEMENT=WEIGHT format (weights must sum to 1.0)",
+)
 @click.option("--json-output", is_flag=True, help="Output in JSON format")
 def create(
     name: Optional[str],
     description: Optional[str],
-    project: str,
-    auto_max_size: bool = False,
     max_size: Optional[int] = None,
-    atom_count_limit: Optional[int] = None,
     cutoffs: Optional[List[float]] = None,
-    starting_structure: str = None,
+    source_geometry: str = None,
+    target_concentrations: tuple = (),
     json_output: bool = False,
 ):
     """Create a new SQS exploration"""
     client = get_client()
     console = Console()
 
-    data = {"project": project, "auto_max_size": auto_max_size}
+    parsed_targets = []
+    for tc in target_concentrations:
+        try:
+            element, weight = tc.split("=", 1)
+            parsed_targets.append({"element": element, "weight": float(weight)})
+        except ValueError:
+            console.print(
+                f"[red]Invalid --target-concentration format: {tc}. Use ELEMENT=WEIGHT[/red]"
+            )
+            return
+
+    data = {
+        "source_geometry": source_geometry,
+        "target_concentrations": parsed_targets,
+    }
     if name:
         data["name"] = name
     if description:
         data["description"] = description
     if max_size is not None:
         data["max_size"] = max_size
-    if atom_count_limit is not None:
-        data["atom_count_upper_limit"] = atom_count_limit
     if cutoffs:
         data["cluster_cutoffs"] = list(cutoffs)
-    if starting_structure:
-        data["starting_structure"] = starting_structure
 
     result = client.post("/api/sqs-exploration/", data=data)
 
@@ -210,7 +225,6 @@ def get_target_concentration(
         console.print(f"ID: {result['id']}")
         console.print(f"Exploration: {result['exploration']}")
         console.print(f"Element: {result.get('element', 'N/A')}")
-        console.print(f"Concentration: {result.get('concentration', 'N/A')}")
         console.print(f"Weight: {result.get('weight', 'N/A')}")
     else:
         if not exploration:
@@ -235,7 +249,7 @@ def get_target_concentration(
         columns = [
             ("ID", "id", None),
             ("Element", "element", None),
-            ("Concentration", "concentration", None),
+            ("Weight", "weight", None),
             ("Created", "created_at", format_datetime),
         ]
 
@@ -261,14 +275,15 @@ def get_target_concentration(
 @click.option("--exploration", required=True, help="SQS Exploration ID")
 @click.option("--element", required=True, help="Element symbol")
 @click.option(
-    "--concentration", required=True, type=float, help="Target concentration (0-1)"
+    "--weight",
+    required=True,
+    type=float,
+    help="Target concentration weight (0-1)",
 )
-@click.option("--weight", type=float, help="Weight for this target concentration")
 @click.option("--json-output", is_flag=True, help="Output in JSON format")
 def create_target_concentration(
     exploration: str,
     element: str,
-    concentration: float,
     weight: float,
     json_output: bool = False,
 ):
@@ -276,14 +291,13 @@ def create_target_concentration(
     client = get_client()
     console = Console()
 
-    if not 0 <= concentration <= 1:
-        console.print("[red]Concentration must be between 0 and 1[/red]")
+    if not 0 <= weight <= 1:
+        console.print("[red]Weight must be between 0 and 1[/red]")
         return
 
     data = {
         "exploration": exploration,
         "element": element,
-        "concentration": concentration,
         "weight": weight,
     }
 
@@ -319,8 +333,8 @@ def create_simulation_file(
     console = Console()
 
     data = {
-        "exploration": exploration,
-        "user_upload": user_upload,
+        "exploration_id": exploration,
+        "user_upload_id": user_upload,
     }
 
     result = client.post("/api/sqs-simulation-file/", data=data)

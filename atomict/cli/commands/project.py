@@ -144,19 +144,23 @@ def get(
 
 
 @project_group.command()
-@click.option("--name", required=True, help="Project name")
+@click.option("--name", help="Project name")
 @click.option("--description", help="Project description")
 @click.option("--json-output", is_flag=True, help="Output in JSON format")
-def create(name: str, description: Optional[str] = None, json_output: bool = False):
+def create(
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    json_output: bool = False,
+):
     """Create a new project"""
     client = get_client()
     console = Console()
 
-    data = {
-        "name": name,
-    }
+    data = {}
+    if name:
+        data["name"] = name
     if description:
-        data["description"] = description
+        data["description_html"] = description
 
     result = client.post("/api/project/", data=data)
 
@@ -207,9 +211,9 @@ def get_note(
         console.print(f"Project: {result.get('project', 'N/A')}")
         console.print(f"Created: {format_datetime(result.get('created_at'))}")
         console.print(f"Updated: {format_datetime(result.get('updated_at'))}")
-        if result.get("content"):
+        if result.get("content_html"):
             console.print("\n[bold]Content[/bold]")
-            console.print(result["content"])
+            console.print(result["content_html"])
     else:
         params = {}
         if search is not None:
@@ -261,22 +265,24 @@ def get_note(
 
 @project_group.command()
 @click.option("--project", required=True, help="Project ID")
-@click.option("--title", required=True, help="Note title")
+@click.option("--title", help="Note title")
 @click.option("--content", help="Note content")
 @click.option("--json-output", is_flag=True, help="Output in JSON format")
 def create_note(
-    project: str, title: str, content: Optional[str] = None, json_output: bool = False
+    project: str,
+    title: Optional[str] = None,
+    content: Optional[str] = None,
+    json_output: bool = False,
 ):
     """Create a new project note"""
     client = get_client()
     console = Console()
 
-    data = {
-        "project": project,
-        "title": title,
-    }
+    data = {"project": project}
+    if title:
+        data["title"] = title
     if content:
-        data["content"] = content
+        data["content_html"] = content
 
     result = client.post("/api/project-note/", data=data)
 

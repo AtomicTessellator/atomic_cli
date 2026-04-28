@@ -111,10 +111,15 @@ def get(
 
         columns = [
             ("ID", "id", None),
-            ("Project name", "project", lambda x: x.get("name", "N/A")),
+            (
+                "Project",
+                "project",
+                lambda x: (
+                    x.get("name", "N/A") if isinstance(x, dict) else (x or "N/A")
+                ),
+            ),
             ("Progress", "progress", None),
             ("Status", "status", get_status_string),
-            ("Error", "error", None),
             ("Created", "created_at", format_datetime),
         ]
 
@@ -139,7 +144,7 @@ def get(
 def get_status_history(task_id: str, json_output: bool = False):
     """Get status history for a task"""
     client = get_client()
-    results = client.get("/api/task-status-history/", params={"id": task_id})
+    results = client.get("/api/task-status-history/", params={"task": task_id})
 
     if json_output:
         console.print_json(data=results)

@@ -129,7 +129,7 @@ def get_job(
     console = Console()
 
     if id:
-        job = client.get(f"/api/k8s-job/{id}/")
+        job = client.get(f"/api/launchable-job/{id}/")
         if json_output:
             console.print_json(data=job)
             return
@@ -163,9 +163,9 @@ def get_job(
                 return
 
         if fetch_all:
-            results = client.get_all("/api/k8s-job/", params=params)
+            results = client.get_all("/api/launchable-job/", params=params)
         else:
-            results = client.get("/api/k8s-job/", params=params)
+            results = client.get("/api/launchable-job/", params=params)
 
         if json_output:
             console.print_json(data=results)

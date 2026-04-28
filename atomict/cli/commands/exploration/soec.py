@@ -44,9 +44,14 @@ def get(
         console.print(Panel.fit(f"[bold]EA Exploration Details[/bold]"))
         console.print(f"ID: {result['id']}")
         console.print(f"Name: {result.get('name', 'N/A')}")
-        console.print(f"Status: {get_status_string(result.get('status'))}")
+        if result.get("task"):
+            console.print(
+                f"Status: {get_status_string(result['task'].get('status'))}"
+            )
+        console.print(f"Calculator: {result.get('calculator', 'N/A')}")
+        console.print(f"Strains: {result.get('strains_list', [])}")
         console.print(f"Created: {format_datetime(result.get('created_at'))}")
-        console.print(f"Updated: {format_datetime(result.get('updated_at'))}")
+        console.print(f"Updated: {format_datetime(result.get('edited_at'))}")
 
         if result.get("parameters"):
             console.print("\n[bold]Parameters[/bold]")
@@ -80,13 +85,20 @@ def get(
         columns = [
             ("ID", "id", None),
             ("Name", "name", None),
+            ("Calculator", "calculator", None),
             ("Strains list", "strains_list", None),
             ("Stress algorithm", "stress_algorithm", None),
             ("Stress method", "stress_method", None),
             ("Num last samples", "num_last_samples", None),
-            ("Status", "status", get_status_string),
+            (
+                "Status",
+                "task",
+                lambda x: (
+                    get_status_string(x.get("status")) if isinstance(x, dict) else None
+                ),
+            ),
             ("Created", "created_at", format_datetime),
-            ("Updated", "updated_at", format_datetime),
+            ("Updated", "edited_at", format_datetime),
         ]
 
         items, footer_string = get_pagination_info(results)
@@ -104,73 +116,82 @@ def get(
         console.print(table)
 
 
+CALCULATOR_MAP = {
+    "fhi-aims": 1,
+    "uma-s-1p1": 4,
+    "uma-m-1p1": 5,
+}
+
+
 @soecexploration_group.command()
-@click.option("--name", required=True, help="Exploration name")
-@click.option("--project", required=True, help="Project ID")
+@click.option("--name", help="Exploration name")
 @click.option(
-    "--relaxed-structure-simulation", help="ID of the relaxed structure simulation"
+    "--calculator",
+    required=True,
+    type=click.Choice(list(CALCULATOR_MAP.keys()), case_sensitive=False),
+    help="Calculator to use (fhi-aims, uma-s-1p1, uma-m-1p1)",
 )
-@click.option("--relaxed-structure", help="ID of the relaxed structure upload")
-@click.option("--k8s-cluster", help="K8S cluster ID (required for launch)")
-@click.option("--launch", is_flag=True, help="Launch the exploration immediately")
+@click.option(
+    "--strain",
+    "strains",
+    multiple=True,
+    type=float,
+    help="Strain value (repeatable to override the default strains_list)",
+)
+@click.option(
+    "--starting-structure-mlrelax",
+    help="ID of the starting MLRelaxation",
+)
+@click.option(
+    "--source-geometry",
+    help="ID of the source geometry UserUpload",
+)
+@click.option(
+    "--description", help="Exploration description"
+)
+@click.option(
+    "--launch", is_flag=True, help="Launch the exploration immediately"
+)
 @click.option("--json-output", is_flag=True, help="Output in JSON format")
 def create(
-    name: str,
-    project: str,
-    relaxed_structure_simulation: Optional[str] = None,
-    relaxed_structure: Optional[str] = None,
-    k8s_cluster: Optional[str] = None,
+    name: Optional[str],
+    calculator: str,
+    strains: tuple,
+    starting_structure_mlrelax: Optional[str] = None,
+    source_geometry: Optional[str] = None,
+    description: Optional[str] = None,
     launch: bool = False,
     json_output: bool = False,
 ):
-    """Create a new SOEC exploration
-
-    Either --relaxed-structure-simulation or --relaxed-structure must be provided.
-    If --launch is specified, --k8s-cluster must also be provided.
-    """
+    """Create a new SOEC exploration"""
     client = get_client()
     console = Console()
 
-    # Validate required fields for launch
-    if launch and not k8s_cluster:
-        console.print("[red]K8S cluster ID is required when launching[/red]")
-        return
-
-    # Validate relaxed structure source
-    if not (relaxed_structure_simulation or relaxed_structure):
-        console.print(
-            "[red]Either relaxed-structure-simulation or relaxed-structure must be provided[/red]"
-        )
-        return
-
-    if relaxed_structure_simulation and relaxed_structure:
-        console.print(
-            "[red]Cannot specify both relaxed-structure-simulation and relaxed-structure[/red]"
-        )
-        return
-
-    # Prepare request data
     data = {
-        "name": name,
-        "project": project,
+        "calculator": CALCULATOR_MAP[calculator.lower()],
     }
-
-    if relaxed_structure_simulation:
-        data["relaxed_structure_simulation"] = relaxed_structure_simulation
-    if relaxed_structure:
-        data["relaxed_structure"] = relaxed_structure
-    if k8s_cluster:
-        data["k8s_cluster"] = k8s_cluster
-    if launch:
-        data["action"] = "LAUNCH"
+    if strains:
+        data["strains_list"] = list(strains)
+    if name:
+        data["name"] = name
+    if description:
+        data["description"] = description
+    if starting_structure_mlrelax:
+        data["starting_structure_mlrelax_id"] = starting_structure_mlrelax
+    if source_geometry:
+        data["source_geometry_id"] = source_geometry
 
     result = client.post("/api/ea-exploration/", data=data)
+
+    if launch:
+        client.post(f"/api/ea-exploration/{result['id']}/launch_stage1/", data={})
 
     if json_output:
         console.print_json(data=result)
     else:
+        label = name or result["id"]
         console.print(
-            f"[green]Created SOEC exploration '{name}' with ID: {result['id']}[/green]"
+            f"[green]Created SOEC exploration '{label}' with ID: {result['id']}[/green]"
         )
         if launch:
             console.print("[green]Exploration has been queued for launch[/green]")
@@ -285,17 +306,32 @@ def get_sample(
 
 @soecexploration_group.command()
 @click.option("--exploration", required=True, help="SOEC Exploration ID")
-@click.option("--simulation", required=True, help="Simulation ID")
+@click.option("--simulation", help="FHI-aims simulation ID")
+@click.option("--mlrelax", help="MLRelaxation ID")
+@click.option("--strain", type=float, help="Strain value applied to the sample")
+@click.option("--matrix", type=int, help="Strain matrix index")
 @click.option("--json-output", is_flag=True, help="Output in JSON format")
-def create_sample(exploration: str, simulation: str, json_output: bool = False):
+def create_sample(
+    exploration: str,
+    simulation: Optional[str] = None,
+    mlrelax: Optional[str] = None,
+    strain: Optional[float] = None,
+    matrix: Optional[int] = None,
+    json_output: bool = False,
+):
     """Create a new SOEC exploration sample"""
     client = get_client()
     console = Console()
 
-    data = {
-        "exploration": exploration,
-        "simulation": simulation,
-    }
+    data = {"exploration_id": exploration}
+    if simulation:
+        data["simulation_id"] = simulation
+    if mlrelax:
+        data["mlrelax_id"] = mlrelax
+    if strain is not None:
+        data["strain"] = strain
+    if matrix is not None:
+        data["matrix"] = matrix
 
     result = client.post("/api/ea-exploration-sample/", data=data)
 
@@ -452,8 +488,8 @@ def create_analysis_file(analysis: str, file_id: str, json_output: bool = False)
     console = Console()
 
     data = {
-        "analysis": analysis,
-        "user_upload": file_id,
+        "analysis_id": analysis,
+        "user_upload_id": file_id,
     }
 
     result = client.post("/api/ea-exploration-analysis-file/", data=data)
@@ -530,10 +566,10 @@ def get_analysis_file(
 
         if fetch_all:
             results = client.get_all(
-                "/api/soec-exploration-analysis-file/", params=params
+                "/api/ea-exploration-analysis-file/", params=params
             )
         else:
-            results = client.get("/api/soec-exploration-analysis-file/", params=params)
+            results = client.get("/api/ea-exploration-analysis-file/", params=params)
 
         if json_output:
             console.print_json(data=results)
