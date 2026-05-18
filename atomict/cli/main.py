@@ -10,7 +10,7 @@ from atomict.__version__ import __version__
 from atomict.cli.commands import login, token, user, workspace
 from .commands import k8s, project, task, traj, upload, convert
 from .commands.exploration import soec, sqs
-from .commands.simulation import fhiaims, kpoint
+from .commands.simulation import fhiaims, kpoint, qe
 
 
 console = Console()
@@ -97,6 +97,7 @@ cli.add_command(project.project_group)
 cli.add_command(k8s.k8s_group)
 cli.add_command(fhiaims.fhiaims_group)
 cli.add_command(kpoint.kpoint_group)
+cli.add_command(qe.qe_group)
 cli.add_command(sqs.sqs_group)
 cli.add_command(soec.soecexploration_group)
 cli.add_command(traj.traj)
