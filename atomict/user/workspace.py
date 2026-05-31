@@ -41,12 +41,23 @@ def download_workspace(workspace_files, target_directory: str, *, api_root: str 
             f"Downloading file {display_name(sim_file['user_upload'])} ({human_filesize(sim_file['user_upload']['size'])})"
         )
 
-        download_file(
-            sim_file["user_upload"]["id"],
-            f"{target_directory}/{sim_file['user_upload']['users_name']}",
-            api_root=api_root,
-            token=token,
-        )
+        destination_path = f"{target_directory}/{sim_file['user_upload']['users_name']}"
+
+        if sim_file['user_upload']['size'] == 0:
+            # Make intermediate dirs
+            destination_dir = os.path.dirname(destination_path)
+            if destination_dir:
+                os.makedirs(destination_dir, exist_ok=True)
+            
+            with open(destination_path, "w") as f:
+                pass # Will create a 0 byte file
+        else:
+            download_file(
+                sim_file["user_upload"]["id"],
+                destination_path,
+                api_root=api_root,
+                token=token,
+            )
 
         finished_bytes += sim_file["user_upload"]["size"]
         logging.info(
