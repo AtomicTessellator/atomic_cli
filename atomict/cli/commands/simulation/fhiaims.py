@@ -44,7 +44,7 @@ def get(
         # Format single simulation output
         console.print(f"ID: {simulation['id']}")
         console.print(f"Name: {simulation.get('name', 'N/A')}")
-        console.print(f"Finite diff displacement: {simulation.get('finite_diff_displacement', 'N/A')}")
+        console.print(f"Description: {simulation.get('description', 'N/A')}")
         console.print(f"Created: {format_datetime(simulation['created_at'])}")
         if simulation.get("task"):
             status = get_status_string(simulation["task"].get("status"))
@@ -77,12 +77,9 @@ def get(
             console.print_json(data=results)
             return
 
-        # Define columns based on what's already in the table_0 setup
         columns = [
             ("ID", "id", None),
             ("Name", "name", None),
-            ("Finite diff displacement", "finite_diff_displacement", None),
-            ("Task status", "task", lambda x: get_status_string(x.get("status"))),
             ("Created", "created_at", format_datetime),
             (
                 "Status",
@@ -116,37 +113,22 @@ def get(
 @click.option("--description", help="Simulation description")
 @click.option("--control-file", required=True, help="Control file content")
 @click.option("--geometry-file", required=True, help="Geometry file content")
-@click.option(
-    "--generate-finite-diff",
-    is_flag=True,
-    help="Generate finite difference displacements",
-)
-@click.option(
-    "--finite-diff-displacement",
-    type=float,
-    help="Finite difference displacement value",
-)
 def create(
     name: Optional[str],
     description: Optional[str],
     control_file: str,
     geometry_file: str,
-    generate_finite_diff: bool = False,
-    finite_diff_displacement: Optional[float] = None,
 ):
     """Create a new FHI-aims simulation"""
     client = get_client()
     data = {
         "control_file": control_file,
         "geometry_file": geometry_file,
-        "generate_finite_diff_displacements": generate_finite_diff,
     }
     if name:
         data["name"] = name
     if description:
         data["description"] = description
-    if finite_diff_displacement is not None:
-        data["finite_diff_displacement"] = finite_diff_displacement
 
     simulation = client.post("/api/fhiaims-simulation/", data=data)
     console.print(f"[green]Created simulation with ID: {simulation['id']}[/green]")

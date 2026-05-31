@@ -22,12 +22,14 @@ def clear_workspace(sim, base_path: str = "./workspace"):
         shutil.rmtree(target_dir)
 
 
-def download_workspace(workspace_files, target_directory: str):
+def download_workspace(workspace_files, target_directory: str, *, api_root: str = None, token: str = None):
     """Download a workspace to a target directory
 
     Args:
         workspace_files list of UserUpload objects: List of files to download
         target_directory (str): The directory to download the files to
+        api_root (str): Optional API root URL (defaults to AT_SERVER env var)
+        token (str): Optional API token (defaults to AT_TOKEN env var)
     """
 
     os.makedirs(target_directory, exist_ok=True)
@@ -39,10 +41,23 @@ def download_workspace(workspace_files, target_directory: str):
             f"Downloading file {display_name(sim_file['user_upload'])} ({human_filesize(sim_file['user_upload']['size'])})"
         )
 
-        download_file(
-            sim_file["user_upload"]["id"],
-            f"{target_directory}/{sim_file['user_upload']['users_name']}",
-        )
+        destination_path = f"{target_directory}/{sim_file['user_upload']['users_name']}"
+
+        if sim_file['user_upload']['size'] == 0:
+            # Make intermediate dirs
+            destination_dir = os.path.dirname(destination_path)
+            if destination_dir:
+                os.makedirs(destination_dir, exist_ok=True)
+            
+            with open(destination_path, "w") as f:
+                pass # Will create a 0 byte file
+        else:
+            download_file(
+                sim_file["user_upload"]["id"],
+                destination_path,
+                api_root=api_root,
+                token=token,
+            )
 
         finished_bytes += sim_file["user_upload"]["size"]
         logging.info(
@@ -51,7 +66,13 @@ def download_workspace(workspace_files, target_directory: str):
 
 
 def upload_workspace(
-    sim, associate_function, workspace_folder: str, starting_percent: int = 80
+    sim,
+    associate_function,
+    workspace_folder: str,
+    starting_percent: int = 80,
+    *,
+    api_root: str = None,
+    token: str = None,
 ):
     """
     Uploads a workspace folder to the Atomic platform, and associates the uploaded files with the given simulation.
@@ -61,6 +82,8 @@ def upload_workspace(
         associate_function: The function to associate the uploaded files with the simulation (e.g. associate_user_upload_with_qe_simulation)
         workspace_folder: The folder to upload
         starting_percent: The starting percentage to use when updating the task status
+        api_root (str): Optional API root URL (defaults to AT_SERVER env var)
+        token (str): Optional API token (defaults to AT_TOKEN env var)
     """
 
     simulation_id = sim["id"]
@@ -85,7 +108,7 @@ def upload_workspace(
             file_size = os.path.getsize(file_path)
 
             try:
-                result = upload_single_file(file_path, inner_workspace)
+                result = upload_single_file(file_path, inner_workspace, api_root=api_root, token=token)
                 if result["status"] != "OK":
                     logging.error(f"Failed to upload {inner_workspace}")
                     logging.error(result)

@@ -118,16 +118,22 @@ def get(
 
 @kpoint_group.command()
 @click.option("--exploration", required=True, help="Exploration ID")
+@click.option("--simulation", required=True, help="FHI-aims simulation ID")
 @click.option(
-    "--k-points", required=True, multiple=True, type=float, help="K-point values"
+    "--k-points", multiple=True, type=float, help="K-point values"
 )
-def create(exploration: str, k_points: List[float]):
+def create(exploration: str, simulation: str, k_points: List[float]):
     """Create a new K-point simulation"""
     client = get_client()
-    data = {"exploration": exploration, "k_points": list(k_points)}
+    data = {
+        "exploration_id": exploration,
+        "simulation_id": simulation,
+    }
+    if k_points:
+        data["k_points"] = list(k_points)
 
-    simulation = client.post("/api/kpoint-simulation/", data=data)
-    console.print(f"[green]Created simulation with ID: {simulation['id']}[/green]")
+    result = client.post("/api/kpoint-simulation/", data=data)
+    console.print(f"[green]Created simulation with ID: {result['id']}[/green]")
 
 
 @kpoint_group.command()
@@ -234,14 +240,14 @@ def get_exploration(
 
 
 @kpoint_group.command()
-@click.option("--name", required=True, help="Exploration name")
+@click.option("--name", help="Exploration name")
 @click.option("--description", help="Exploration description")
-def create_exploration(name: str, description: Optional[str] = None):
+def create_exploration(name: Optional[str] = None, description: Optional[str] = None):
     """Create a new K-point exploration"""
     client = get_client()
-    data = {
-        "name": name,
-    }
+    data = {}
+    if name:
+        data["name"] = name
     if description:
         data["description"] = description
 
@@ -355,20 +361,17 @@ def get_analysis(
 
 
 @kpoint_group.command()
-@click.argument("analysis")
+@click.argument("analysis", required=False)
 @click.option("--exploration", required=True, help="Exploration ID")
-def create_analysis(exploration: str, analysis: str):
-    """Create a new K-point analysis. Takes JSON analysis data as main argument."""
+def create_analysis(exploration: str, analysis: Optional[str] = None):
+    """Create a new K-point analysis. Optionally takes JSON analysis data as the argument."""
     client = get_client()
-    # TODO: what data would a user provide?
-    data = {
-        "analysis": analysis,
-    }
-    if exploration:
-        data["exploration"] = exploration
+    data = {"exploration_id": exploration}
+    if analysis is not None:
+        data["analysis"] = analysis
 
-    analysis = client.post("/api/kpoint-analysis/", data=data)
-    console.print(f"[green]Created analysis with ID: {analysis['id']}[/green]")
+    result = client.post("/api/kpoint-analysis/", data=data)
+    console.print(f"[green]Created analysis with ID: {result['id']}[/green]")
 
 
 @kpoint_group.command()
