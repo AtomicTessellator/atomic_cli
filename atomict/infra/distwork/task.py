@@ -42,8 +42,9 @@ def update_task_status(
     *,
     api_root: str = None,
     token: str = None,
+    **kwargs,
 ):
-    payload = {}
+    payload = dict(kwargs)
 
     if status:
         payload["status"] = status.value
