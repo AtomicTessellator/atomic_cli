@@ -7,6 +7,9 @@ from atomict.io.utils import human_filesize
 from atomict.user.files import download_file, upload_single_file
 
 
+logger = logging.getLogger(__name__)
+
+
 def display_name(user_upload):
     if "users_name" in user_upload and user_upload["users_name"] not in ["", None]:
         return user_upload["users_name"]
@@ -18,7 +21,7 @@ def clear_workspace(sim, base_path: str = "./workspace"):
     target_dir = os.path.join(base_path, sim["id"])
 
     if os.path.exists(target_dir):
-        logging.warning(f"Removing existing workspace folder {target_dir}")
+        logger.warning(f"Removing existing workspace folder {target_dir}")
         shutil.rmtree(target_dir)
 
 
@@ -37,7 +40,7 @@ def download_workspace(workspace_files, target_directory: str, *, api_root: str 
     total_bytes = sum([f["user_upload"]["size"] for f in workspace_files])
     finished_bytes = 0
     for sim_file in workspace_files:
-        logging.info(
+        logger.info(
             f"Downloading file {display_name(sim_file['user_upload'])} ({human_filesize(sim_file['user_upload']['size'])})"
         )
 
@@ -60,7 +63,7 @@ def download_workspace(workspace_files, target_directory: str, *, api_root: str 
             )
 
         finished_bytes += sim_file["user_upload"]["size"]
-        logging.info(
+        logger.info(
             f"Downloaded {human_filesize(finished_bytes)} of {human_filesize(total_bytes)} ({finished_bytes/total_bytes*100:.1f}%)"
         )
 
@@ -110,14 +113,14 @@ def upload_workspace(
             try:
                 result = upload_single_file(file_path, inner_workspace, api_root=api_root, token=token)
                 if result["status"] != "OK":
-                    logging.error(f"Failed to upload {inner_workspace}")
-                    logging.error(result)
+                    logger.error(f"Failed to upload {inner_workspace}")
+                    logger.error(result)
                     raise Exception(f"Failed to upload {inner_workspace} {result}")
                 else:
-                    logging.info(f"Uploaded {inner_workspace} OK")
+                    logger.info(f"Uploaded {inner_workspace} OK")
             except Exception as e:
-                logging.error(f"Failed to upload {inner_workspace}")
-                logging.error(e)
+                logger.error(f"Failed to upload {inner_workspace}")
+                logger.error(e)
                 raise
 
             associate_function(result["UserUpload"]["id"], simulation_id)
