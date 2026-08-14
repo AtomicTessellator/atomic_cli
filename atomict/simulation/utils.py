@@ -16,6 +16,9 @@ from atomict.user.files import download_file
 from atomict.user.workspace import download_workspace
 
 
+logger = logging.getLogger(__name__)
+
+
 def _read_geometry_file(filepath: str, extension: str) -> Atoms:
     if extension == "atraj":
         atoms, _ = read_atraj(filepath)
@@ -45,7 +48,7 @@ def get_source_geometry(sim: dict, workbench_dir: str, *, api_root: str = None, 
         extension = sim["source_geometry"]["orig_name"].split(".")[-1]
         filepath = workbench_dir + f"/geometry.{extension}"
         if os.path.exists(filepath):
-            logging.info(f"Source geometry already on disk, skipping download: {filepath}")
+            logger.info(f"Source geometry already on disk, skipping download: {filepath}")
             return _read_geometry_file(filepath, extension)
         return fetch_source_geometry(sim, workbench_dir, api_root=api_root, token=token)
     else:
@@ -63,14 +66,14 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str, *, api_root: str = Non
 
     if sim.get("starting_structure"):
         previous_simulation = fhi_get_simulation(sim["starting_structure"]["id"], include_ht=True, api_root=api_root, token=token)
-        logging.info(f"Previous simulation: {previous_simulation['id']}")
+        logger.info(f"Previous simulation: {previous_simulation['id']}")
         files = fhi_get_simulation_files(previous_simulation["id"], api_root=api_root, token=token)
 
         total_size = 0
         for file in files["results"]:
             total_size += file["user_upload"]["size"]
 
-        logging.info(
+        logger.info(
             f"Previous simulation: Downloading {len(files['results'])} files, Total size: {human_filesize(total_size)}"
         )
 
@@ -86,14 +89,14 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str, *, api_root: str = Non
     elif sim.get("starting_structure_mlrelax"):
         
         previous_mlrelax = get_mlrelax(sim["starting_structure_mlrelax"]["id"], include_ht=True, api_root=api_root, token=token)
-        logging.info(f"Previous MLRelaxation: {previous_mlrelax['id']}")
+        logger.info(f"Previous MLRelaxation: {previous_mlrelax['id']}")
         files = get_mlrelax_files(previous_mlrelax["id"], api_root=api_root, token=token)
 
         total_size = 0
         for file in files["results"]:
             total_size += file["user_upload"]["size"]
 
-        logging.info(
+        logger.info(
             f"Previous MLRelaxation: Downloading {len(files['results'])} files, Total size: {human_filesize(total_size)}"
         )
 
@@ -109,7 +112,7 @@ def fetch_relaxed_geometry(sim: dict, workbench_dir: str, *, api_root: str = Non
         raise FileNotFoundError(f"No relaxation output found in {mlrelax_dir}")
 
     elif sim.get("starting_structure_userupload"):
-        logging.info(f"Previous UserUpload: {sim['starting_structure_userupload']['id']}")
+        logger.info(f"Previous UserUpload: {sim['starting_structure_userupload']['id']}")
 
         extension = sim["starting_structure_userupload"]["orig_name"].split(".")[-1]
 
