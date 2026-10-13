@@ -10,7 +10,7 @@ rich~=13.0
 # science
 ase>=3.23.0
 spglib==2.5.0
-pymatgen==2025.3.10
+pymatgen==2025.10.7
 msgpack==1.1.0
 msgpack_numpy==0.4.8
 deepdiff
