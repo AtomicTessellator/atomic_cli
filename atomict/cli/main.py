@@ -13,6 +13,7 @@ from .commands.exploration import soec, sqs
 from .commands.simulation import fhiaims, kpoint, qe
 
 
+logger = logging.getLogger(__name__)
 console = Console()
 
 
@@ -26,9 +27,9 @@ def setup_logging(verbose: bool):
         )
         logging.getLogger("httpx").setLevel(logging.DEBUG)
         logging.getLogger("httpcore").setLevel(logging.DEBUG)
-        logging.debug("Debug mode enabled via AT_DEBUG")
-        logging.debug(f'Python path: {os.getenv("PYTHONPATH")}')
-        logging.debug(f"Working directory: {os.getcwd()}")
+        logger.debug("Debug mode enabled via AT_DEBUG")
+        logger.debug(f'Python path: {os.getenv("PYTHONPATH")}')
+        logger.debug(f"Working directory: {os.getcwd()}")
     else:
         level = logging.DEBUG if verbose else logging.ERROR
         logging.basicConfig(

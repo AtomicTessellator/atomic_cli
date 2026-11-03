@@ -7,6 +7,7 @@ from ase.io.formats import UnknownFileTypeError
 from atomict.io.formats.atraj import read_atraj, write_atraj
 from atomict.io.formats.tess import read_tess, write_tess
 
+logger = logging.getLogger(__name__)
 console = Console()
 
 @click.command()
@@ -94,7 +95,7 @@ def convert(input_file: str, output_file: str):
             return
             
     except Exception as e:
-        logging.debug(f"Conversion failed with error: {str(e)}", exc_info=True)
+        logger.debug(f"Conversion failed with error: {str(e)}", exc_info=True)
         console.print(f"[red]Error during conversion: {str(e)}[/red]")
         console.print("[yellow]Try running with --verbose for more detailed error information.[/yellow]")
 

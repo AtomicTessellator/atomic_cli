@@ -7,6 +7,9 @@ from ase.io.formats import UnknownFileTypeError
 from atomict.io.fhiaims import read_aims_output
 
 
+logger = logging.getLogger(__name__)
+
+
 def read_final_geometry(workspace_dir: str, simulation_id: str):
     """Read the starting structure from the workspace directory
 
@@ -18,7 +21,7 @@ def read_final_geometry(workspace_dir: str, simulation_id: str):
         try:
             return read(next_step_path, foramt='aims')
         except UnknownFileTypeError:
-            logging.warning(f"Could not read {next_step_path}, falling back to output file")
+            logger.warning(f"Could not read {next_step_path}, falling back to output file")
 
     return read_aims_output(
         f"{workspace_dir}/starting_structure/{simulation_id}.out"

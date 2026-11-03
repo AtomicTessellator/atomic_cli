@@ -5,6 +5,9 @@ from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.core import Structure
 
 
+logger = logging.getLogger(__name__)
+
+
 class CIFAnalyzer:
     def __init__(self, file_path):
         self.file_path = file_path
@@ -43,7 +46,7 @@ class CIFAnalyzer:
             info['chemical_formula'] = self.atoms.get_chemical_formula()
         except Exception as e:
             info['chemical_formula'] = 'Unknown'
-            logging.warning(f'Could not determine chemical formula: {str(e)}')
+            logger.warning(f'Could not determine chemical formula: {str(e)}')
         
         try:
             info['volume'] = float(self.atoms.get_volume())
@@ -66,7 +69,7 @@ class CIFAnalyzer:
                 }
             }
         except Exception as e:
-            logging.warning(f'Could not determine cell parameters: {str(e)}')
+            logger.warning(f'Could not determine cell parameters: {str(e)}')
             return {'cell_parameters': None}
 
     def _get_atomic_info(self):
@@ -88,7 +91,7 @@ class CIFAnalyzer:
             
             return info
         except Exception as e:
-            logging.warning(f'Could not get complete atomic information: {str(e)}')
+            logger.warning(f'Could not get complete atomic information: {str(e)}')
             return {
                 'num_atoms': 0,
                 'atomic_numbers': [],
@@ -140,6 +143,6 @@ class CIFAnalyzer:
                 }
                 return symmetry_info
         except Exception as e:
-            logging.warning(f'Could not determine symmetry information: {str(e)}')
+            logger.warning(f'Could not determine symmetry information: {str(e)}')
         
         return {'symmetry': None}

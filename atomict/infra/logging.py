@@ -193,11 +193,17 @@ def config_loggers(
         prefix: Prefix to add to log messages
         task_id: Task ID to include in Loki labels for filtering
     """
+    prefix_part = f"{prefix} " if prefix else ""
+    log_format = (
+        f"%(asctime)s %(levelname)s {prefix_part}%(name)s %(message)s"
+    )
+
     # Base configuration with console handler
     logging_config = dict(
         version=1,
+        disable_existing_loggers=False,
         formatters={
-            "verbose": {"format": f"%(levelname)s %(asctime)s {prefix} %(message)s"}
+            "verbose": {"format": log_format}
         },
         handlers={
             "console": {"class": "logging.StreamHandler", "formatter": "verbose"}
@@ -226,7 +232,7 @@ def config_loggers(
             batch_size=batch_size,
             flush_interval=flush_interval,
         )
-        loki_handler.setFormatter(logging.Formatter(f"%(asctime)s %(levelname)s  {prefix} %(message)s"))
+        loki_handler.setFormatter(logging.Formatter(log_format))
         
         # Add to root logger
         logging.getLogger().addHandler(loki_handler)
